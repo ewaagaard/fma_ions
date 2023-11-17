@@ -1,0 +1,93 @@
+/******************************************************************************************
+ * BOOSTER
+ ******************************************************************************************/
+ call, file = 'psb/psb.seq';
+ call, file = 'psb/psb_fb_lhc.str';
+ call, file = 'psb/psb_aperture.dbx';
+
+/******************************************************************************************
+ * beam, use
+ ******************************************************************************************/
+
+beam, particle=PROTON, pc=0.5708301551893517;
+
+use, sequence=psb1;
+
+
+/******************************************************************************************
+ * Match for desired working point
+ ******************************************************************************************/
+
+# to change tunes QH & QV
+
+QH = 4.2;
+QV = 4.4;
+
+MATCH, Sequence=psb1;
+	VARY, NAME = kbrqf, STEP = 1e-3;
+	VARY, NAME = kbrqd, STEP = 1e-3;
+	GLOBAL, Q1 = QH;
+	GLOBAL, Q2 = QV;
+	JACOBIAN,CALLS=1000,TOLERANCE=1.0E-18,STRATEGY=3;
+ENDMATCH; 
+
+# to include the measured errors as in the control room (note different calibration for different magnets)
+!kBR1XSK6L4= -100*0.005807;
+
+select, flag=twiss, clear;
+select, flag=twiss, column=name, s,betx,bety,dx;
+twiss, sequence=psb1, file=twiss_thick;
+
+/******************************************************************************************
+ * Make thin sequence for use in Xsuite
+ ******************************************************************************************/
+seqedit, sequence = psb1;
+flatten;
+refer=centre;
+endedit;
+use, sequence=psb1;
+
+select, flag = MAKETHIN, clear;
+select, flag=MAKETHIN, SLICE=3, thick=false;
+MAKETHIN, SEQUENCE=psb1, STYLE=SIMPLE;
+
+# splitting to have 160 markers and respect periodicity
+
+seqedit, sequence = psb1;
+flatten;
+markers : marker;
+t=0;
+circumference=table(twiss,psb1$END,s);
+nkicks=160;
+while (t<nkicks){
+      loc=circumference/nkicks*t;
+      install, element = markers,  at=loc;
+      t=t+1;
+      };
+flatten;
+endedit;
+use, sequence=psb1;
+
+CAVFINEM	: RFCAVITY, L:= 1e-6, VOLT:= 0.008, HARMON = 1, LAG:= 0.0, no_cavity_totalpath;
+select, flag = seqedit, clear;
+select, flag = seqedit, class=BR_ACWFB;
+seqedit, sequence = psb1;
+flatten;
+remove, element = selected;
+install, element = BR.C02, class=CAVFINEM, at=-1.8 ,from=BR.BHZ51;
+flatten;
+endedit;
+
+use, sequence=psb1;
+
+MATCH, Sequence=psb1;
+	VARY, NAME = kbrqf, STEP = 1e-3;
+	VARY, NAME = kbrqd, STEP = 1e-3;
+	GLOBAL, Q1 = QH;
+	GLOBAL, Q2 = QV;
+	JACOBIAN,CALLS=1000,TOLERANCE=1.0E-18,STRATEGY=3; !,COOL=real,BALANCE=real, random=real;
+ENDMATCH; 
+
+select, flag=twiss, clear;
+select, flag=twiss, column=name, s,betx,bety,dx;
+twiss, sequence=psb1, file=twiss_thin;
