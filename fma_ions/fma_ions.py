@@ -1,10 +1,10 @@
 """
 Main class to perform Frequency Map Analysis
 """
-from pathlib import Path
-import pandas as pd
+from typing import Any
+from dataclasses import dataclass
+
 import numpy as np
-from scipy import constants
 import xtrack as xt
 import xpart as xp
 import xfields as xf
@@ -26,12 +26,12 @@ plt.rc('legend', fontsize=MEDIUM_SIZE)   # legend fontsize
 plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
 
 # from statisticalEmittance.statisticalEmittance import statisticalEmittance 
-from PySCRDT import PySCRDT, resonance_lines, tune_footprint_maker
+from PySCRDT import PySCRDT, resonance_lines
 import NAFFlib
 
 from .fma_data_classes import BeamParameters_PS, BeamParameters_SPS, PS_Sequence, SPS_Sequence
 
-
+@dataclass
 class FMA:
     """
     Performs tracking and frequency map analysis
@@ -40,28 +40,23 @@ class FMA:
     num_turns - to track in total
     num_spacecharge_interactions - how many interactions per turn
     tol_spacecharge_position - tolerance in placement of SC kicks along line
+    mode - space charge model: 'frozen', 'semi-frozen' or 'pic' (frozen recommended)
+    n_theta - number of divisions for theta coordinates for particles in normalized coordinates
+    n_r - number of divisions for r coordinates for particles in normalized coordinates
+    output_folder - where to save data
     """
-    def __init__(self, 
-                 num_turns = 1200,
-                 num_particles = 5000,
-                 num_spacecharge_interactions = 160, 
-                 tol_spacecharge_position = 1e-2,
-                 mode = 'frozen',
-                 output_folder = 'output_fma'
-                 ):
-        self.num_turns = num_turns
-        self.num_particles = num_particles
-        self.num_spacecharge_interactions = num_spacecharge_interactions
-        self.tol_spacecharge_position = tol_spacecharge_position
-        self.mode = mode
-        self.context = xo.ContextCpu()  # to be upgrade to GPU if needed 
-        self.output_folder = output_folder
-        self.tracking_data_exists = False
-
-        # Tune footprint details
-        self.plot_order = 4
-        self.periodicity = 16
+    num_turns: int = 1200
+    num_spacecharge_interactions: int = 160 
+    tol_spacecharge_position: float = 1e-2
+    n_theta: int = 30
+    n_r: int = 30
+    mode: str = 'frozen'
+    output_folder: str = 'output_fma'
+    plot_order: int = 4
+    periodicity: int = 16
+    tracking_data_exists: bool = False
     
+
     def install_SC_and_track(self, line, beamParams, save_data=True):
         """
         Install Space Charge (SC) and tracks particles with provided Xsuite line and beam parameters
@@ -75,6 +70,7 @@ class FMA:
         -------
         x, y- numpy arrays containing turn-by-turn data coordinates
         """
+        context = xo.ContextCpu()  # to be upgrade to GPU if needed 
         
         # Initialize longitudinal profile for beams 
         lprofile = xf.LongitudinalProfileQGaussian(
@@ -93,14 +89,14 @@ class FMA:
                            tol_spacecharge_position = self.tol_spacecharge_position)
         
         # Build tracker for line
-        line.build_tracker(_context = self.context)
+        line.build_tracker(_context = context)
 
         ##### Generate particles #####
         x_norm, y_norm, _, _ = xp.generate_2D_polar_grid(
                                                         theta_range=(0.01, np.pi/2-0.01),
-                                                        ntheta = 50,
+                                                        ntheta = self.n_theta,
                                                         r_range = (0.1, 7),
-                                                        nr = 80)
+                                                        nr = self.n_r)
         # Build the particle object
         particles = xp.build_particles(line = line, particle_ref = line.particle_ref,
                                        x_norm=x_norm, y_norm=y_norm, delta=0,
@@ -109,11 +105,23 @@ class FMA:
         
         # Track the particles and return turn-by-turn coordinates
         print('\nStarting tracking...')
-        line.track(particles, num_turns = self.num_turns, turn_by_turn_monitor=True, with_progress=True)
+        #line.track(particles, num_turns = self.num_turns, turn_by_turn_monitor=True, with_progress=True)
+        x, y = np.zeros([len(particles.x), self.num_turns]), np.zeros([len(particles.x), self.num_turns])
+        
+        i = 0
+        for turn in range(self.num_turns):
+            if i % 10 == 0:
+                print('Tracking turn {}'.format(i))
+        
+            # Save the turn-by-turn data
+            x[:, i] = particles.x
+            y[:, i] = particles.y
+
+            # Track the particles
+            line.track(particles)
+            i += 1
+        
         print('Finished tracking.\n')
-    
-        x = line.record_last_track.x
-        y = line.record_last_track.y
         print('Average X and Y of tracking: {} and {}'.format(np.mean(x), np.mean(y)))
 
         if save_data:
@@ -198,14 +206,14 @@ class FMA:
         # Make tune footprint
         plot_range  = [[26.0, 26.35], [26.0, 26.35]]
    
-        fig, ax = plt.figure(figsize=(8,6))
+        fig = plt.figure(figsize=(8,6))
         tune_diagram = resonance_lines(plot_range[0],
                     plot_range[1], np.arange(1, self.plot_order+1), self.periodicity)
         tune_diagram.plot_resonance(figure_object = fig, interactive=False)
 
         plt.scatter(Qx, Qy, 4, d, 'o', lw = 0.1, zorder=10, cmap=plt.cm.jet)
-        plt.xlabel('$\mathrm{Q_x}$')
-        plt.ylabel('$\mathrm{Q_y}$')
+        plt.xlabel('$Q_{x}$')
+        plt.ylabel('$Q_{y}$')
         cbar=plt.colorbar()
         cbar.set_label('d',fontsize='18')
         cbar.ax.tick_params(labelsize='18')
@@ -230,14 +238,14 @@ class FMA:
         # Make tune footprint
         plot_range  = [[6.0, 6.4], [6.0, 6.4]]
    
-        fig, ax = plt.figure(figsize=(8,6))
+        fig = plt.figure(figsize=(8,6))
         tune_diagram = resonance_lines(plot_range[0],
                     plot_range[1], np.arange(1, self.plot_order+1), self.periodicity)
         tune_diagram.plot_resonance(figure_object = fig, interactive=False)
 
         plt.scatter(Qx, Qy, 4, d, 'o', lw = 0.1, zorder=10, cmap=plt.cm.jet)
-        plt.xlabel('$\mathrm{Q_x}$')
-        plt.ylabel('$\mathrm{Q_y}$')
+        plt.xlabel('$Q_{x}$')
+        plt.ylabel('$Q_{y}$')
         cbar=plt.colorbar()
         cbar.set_label('d',fontsize='18')
         cbar.ax.tick_params(labelsize='18')
