@@ -96,7 +96,6 @@ Qy_ndc = np.zeros(N_footprint)
 
 
 # Track the particles
-
 for ii in range(num_turns):
     print('Tracking turn {}'.format(ii))
 
@@ -116,6 +115,14 @@ x_tbt_noDP = x_tbt - twiss_xtrack_with_sc['dx'][0]*(x_tbt.transpose() - particle
 px_tbt_noDP = px_tbt - twiss_xtrack_with_sc['dpx'][0]*(px_tbt.transpose() - particles.delta).transpose()
 y_tbt_noDP = y_tbt - twiss_xtrack_with_sc['dy'][0]*(y_tbt.transpose() - particles.delta).transpose()
 py_tbt_noDP = py_tbt - twiss_xtrack_with_sc['dpy'][0]*(py_tbt.transpose() - particles.delta).transpose()
+
+
+xn_tbt = x_tbt_noDP/np.sqrt(twiss_xtrack_with_sc['betx'][0])
+pxn_tbt = -twiss_xtrack_with_sc['alfx'][0]/np.sqrt(twiss_xtrack_with_sc['betx'][0])*x_tbt_noDP \
+          + np.sqrt(twiss_xtrack_with_sc['betx'][0])*px_tbt_noDP
+yn_tbt = y_tbt_noDP/np.sqrt(twiss_xtrack_with_sc['bety'][0])
+pyn_tbt = -twiss_xtrack_with_sc['alfy'][0]/np.sqrt(twiss_xtrack_with_sc['bety'][0])*y_tbt_noDP \
+          + np.sqrt(twiss_xtrack_with_sc['bety'][0])*py_tbt_noDP
 
 # Set threshold for synchrotron radiation frequency to filter out
 Qmin = 0.05
