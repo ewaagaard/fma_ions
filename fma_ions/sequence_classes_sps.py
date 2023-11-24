@@ -1,5 +1,5 @@
 """
-Main module for sequence generator container classes
+Main module for sequence generator container classes for SPS 
 """
 from dataclasses import dataclass
 
@@ -20,7 +20,8 @@ class SPS_sequence_maker:
     Data class to generate Xsuite line from SPS optics repo, selecting
     - qx0, qy0: horizontal and vertical tunes
     - dq1, dq2: X and Y chroma values 
-    - Q: charge state of ion (default None, if Pb beam is used)
+    - Q_PS: ion charge state in PS
+    - Q_SPS: ion charge state in SPS 
     - m_ion: ion mass in atomic units
     - Brho: magnetic rigidity in T*m at injection
     - optics: absolute path to optics repository -> cloned from https://gitlab.cern.ch/acc-models
@@ -31,37 +32,37 @@ class SPS_sequence_maker:
     dq2: float = -3.14426538905229e-09
     # Default SPS PB ION CHROMA VALUES: not displayed on acc-model, extracted from PTC Twiss 
     
-    # Define beam type 
-    use_Pb_beam: bool = True
+    # Define beam type - default is Pb
     ion_type: str = 'Pb'
     seq_name: str = 'nominal'
     seq_folder: str = 'sps'
-    Q: None = None
-    m_ion: None = None
-    Brho: None = None
+    B_PS_extr: float = 1.2368 # [T] - magnetic field in PS for Pb ions, from Heiko Damerau
+    Q_PS: float = 54.
+    Q_SPS: float = 82.
+    m_ion: float = 207.98
     optics: 'str' = '/home/elwaagaa/cernbox/PhD/Projects/acc-models-sps'
     
-    if not use_Pb_beam:
-        if Q is None or m_ion is None or Brho is None:
-            raise ValueError('If default Pb beam is not used, have to provide Q, m_ion (atomic units) and inj Brho!')
 
     def generate_SPS_beam(self):
         """
-        Calculate momentum of beam providing:
-        - m_ion (in atomic units u)
-        - q (number of elementary charges)
-        - Brho (SPS injection field in T*m - has to be computed for PS)
-        - ion_type (str)
+        Generate correct injection parameters for SPS beam
+        
+        Returns:
+        -------
+        ion rest mass in eV, beam momentum in eV/c at SPS injection 
         """
-        print('\nCreating MADX-beam of {}\n'.format(self.ion_type))
-        m_u = 931.49410242e6  # 1 Dalton in eV/c^2 -- atomic mass unit 
-        m_in_eV = self.m_ion * m_u 
-        p = self.Brho * self.Q * constants.c # in  [eV/c], if q is number of elementary charges
+        # Calculate Brho at SPS injection
+        rho_PS = 70.1206 # [m] - PS bending radius 
+        self._Brho_PS_extr = self.B_PS_extr * rho_PS
+        
+        #print('\nCreating MADX-beam of {}\n'.format(self.ion_type))
+        m_in_eV = self.m_ion * constants.physical_constants['atomic mass unit-electron volt relationship'][0]   # 1 Dalton in eV/c^2 -- atomic mass unit
+        p_inj_SPS = 1e9 * (self._Brho_PS_extr * self.Q_PS) / 3.3356 # in  [eV/c], if q is number of elementary charges
 
-        return m_in_eV, p
+        return m_in_eV, p_inj_SPS
 
 
-    def generate_xsuite_seq(self, save_madx_seq=False, save_xsuite_seq=True, return_xsuite_line=True):
+    def generate_xsuite_seq(self, save_madx_seq=False, save_xsuite_seq=False, return_xsuite_line=True):
         """
         Load MADX line, match tunes and chroma, add RF and generate Xsuite line
         """
@@ -73,15 +74,14 @@ class SPS_sequence_maker:
         madx.call("{}/sps.seq".format(self.optics))
         madx.call("{}/strengths/lhc_ion.str".format(self.optics))
         
-        # Choose beam type to add - default Pb
-        if self.use_Pb_beam:
-            madx.call("{}/beams/beam_lhc_ion_injection.madx".format(self.optics))
-        else:
-            m_in_eV, p0c = self.generate_SPS_beam()
-            madx.input(" \
-                       Beam, particle=ion, mass={}, charge={}, pc = {}; \
-                       DPP:=BEAM->SIGE*(BEAM->ENERGY/BEAM->PC)^2;  \
-                       ".format(self.m_ion/1e9, self.Q, self.p0c/1e9))   # convert mass to GeV/c^2
+        # Generate SPS beam - use default Pb or make custom beam
+        m_in_eV, p_inj_SPS = self.generate_SPS_beam()
+        
+        #madx.call("{}/beams/beam_lhc_ion_injection.madx".format(self.optics))
+        madx.input(" \
+                   Beam, particle=ion, mass={}, charge={}, pc = {}, sequence='sps'; \
+                   DPP:=BEAM->SIGE*(BEAM->ENERGY/BEAM->PC)^2;  \
+                   ".format(m_in_eV/1e9, self.Q_SPS, p_inj_SPS/1e9))   # convert mass to GeV/c^2
          
         # Flatten line
         madx.use(sequence='sps')
@@ -112,14 +112,15 @@ class SPS_sequence_maker:
         
         line = xt.Line.from_madx_sequence(madx.sequence['sps'])
         line.build_tracker()
-        madx_beam = madx.sequence['sps'].beam
+        #madx_beam = madx.sequence['sps'].beam
         
-        particle_sample = xp.Particles(
-                p0c = madx_beam.pc*1e9,
-                q0 = madx_beam.charge,
-                mass0 = madx_beam.mass*1e9)
+        self.particle_sample = xp.Particles(
+                p0c = p_inj_SPS,
+                q0 = self.Q_SPS,
+                mass0 = m_in_eV)
+        print('\nGenerated {} beam with gamma = {:.3f}\n'.format(self.ion_type, self.particle_sample.gamma0[0]))
         
-        line.particle_ref = particle_sample
+        line.particle_ref = self.particle_sample
         
         #### SET CAVITY VOLTAGE - with info from Hannes
         # 6x200 MHz cavities: actcse, actcsf, actcsh, actcsi (3 modules), actcsg, actcsj (4 modules)
@@ -131,7 +132,7 @@ class SPS_sequence_maker:
         
         # MADX sequence 
         madx.sequence.sps.elements[nn].lag = 0
-        madx.sequence.sps.elements[nn].volt = 3.0*particle_sample.q0 # different convention between madx and xsuite
+        madx.sequence.sps.elements[nn].volt = 3.0*self.particle_sample.q0 # different convention between madx and xsuite
         madx.sequence.sps.elements[nn].freq = madx.sequence['sps'].beam.freq0*harmonic_nb
         
         # Xsuite sequence 

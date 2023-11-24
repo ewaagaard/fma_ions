@@ -27,18 +27,28 @@ class BeamParameters_PS :
     eyn: float = 0.5e-6    
     Q_int: float = 6.
 
-@dataclass    
-class PS_Sequence: 
-    """Data container for Xsuite PS sequence"""
-    print('\nLoading PS sequence...')
-    ps_line = xt.Line.from_json(ps_fname)
-    ps_line.build_tracker()
-    twiss_ps = ps_line.twiss() 
+  
+class Sequences: 
+    """Container of Xsuite default Pb sequences"""
     
-@dataclass    
-class SPS_Sequence: 
-    """Data container for Xsuite SPS sequence"""
-    print('\nLoading SPS sequence...')
-    sps_line = xt.Line.from_json(sps_fname)
-    sps_line.build_tracker()
-    twiss_sps = sps_line.twiss() 
+    @staticmethod 
+    def get_PS_line_and_twiss():
+        """Extract Xsuite PS sequence""" 
+        print('\nLoading PS sequence...')
+        ps_line = xt.Line.from_json(ps_fname)
+        ps_line.build_tracker()
+        twiss_ps = ps_line.twiss() 
+    
+        return ps_line, twiss_ps
+
+    @staticmethod 
+    def get_SPS_line_and_twiss():
+        """Extract Xsuite SPS sequence""" 
+        print('\nLoading SPS sequence...')
+        sps_line = xt.Line.from_json(sps_fname)
+        sps_line.build_tracker()
+        twiss_sps = sps_line.twiss() 
+        
+        return sps_line, twiss_sps
+
+

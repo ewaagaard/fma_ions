@@ -30,7 +30,9 @@ plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
 from PySCRDT import resonance_lines
 import NAFFlib
 
-from .fma_data_classes import BeamParameters_PS, BeamParameters_SPS, PS_Sequence, SPS_Sequence
+from .fma_data_classes import BeamParameters_PS, BeamParameters_SPS, Sequences
+from .sequence_classes_ps import PS_sequence_maker
+from .sequence_classes_sps import SPS_sequence_maker
 
 @dataclass
 class FMA:
@@ -41,6 +43,7 @@ class FMA:
     num_turns - to track in total
     num_spacecharge_interactions - how many interactions per turn
     tol_spacecharge_position - tolerance in placement of SC kicks along line
+    delta0 - relative momentum offset dp/p
     mode - space charge model: 'frozen', 'semi-frozen' or 'pic' (frozen recommended)
     n_theta - number of divisions for theta coordinates for particles in normalized coordinates
     n_r - number of divisions for r coordinates for particles in normalized coordinates
@@ -49,6 +52,7 @@ class FMA:
     num_turns: int = 1200
     num_spacecharge_interactions: int = 160 
     tol_spacecharge_position: float = 1e-2
+    delta0: float = 0.0
     n_theta: int = 50
     n_r: int = 100
     mode: str = 'frozen'
@@ -100,7 +104,7 @@ class FMA:
                                                         nr = self.n_r)
         # Build the particle object
         particles = xp.build_particles(line = line, particle_ref = line.particle_ref,
-                                       x_norm=x_norm, y_norm=y_norm, delta=0,
+                                       x_norm=x_norm, y_norm=y_norm, delta=self.delta0,
                                        nemitt_x = beamParams.exn, nemitt_y = beamParams.eyn)
         print('\nBuilt particle object of size {}...'.format(len(particles.x)))
         
@@ -144,7 +148,7 @@ class FMA:
             return x, y
         except FileNotFoundError:
             print('Tracking data does not exist!')
-            self.tracking_data_exists = True
+            self.tracking_data_exists = False
             pass
         
         
@@ -243,7 +247,7 @@ class FMA:
                 ):
         """Default FMA analysis for SPS Pb ions"""
         beamParams = BeamParameters_SPS
-        line = SPS_Sequence.sps_line
+        line, twiss_sps = Sequences.get_SPS_line_and_twiss()
         
         # Install SC, track particles and observe tune diffusion
         x, y = self.load_tracking_data() if load_tbt_data else self.install_SC_and_track(line, beamParams)
@@ -254,19 +258,42 @@ class FMA:
         Qy += beamParams().Q_int
         
         # Tunes from Twiss
-        Qh_set = SPS_Sequence.twiss_sps['qx']
-        Qv_set = SPS_Sequence.twiss_sps['qy']
+        Qh_set = twiss_sps['qx']
+        Qv_set = twiss_sps['qy']
         
         # Make tune footprint
         plot_range  = [[26.0, 26.35], [26.0, 26.35]]
    
         self.plot_FMA(x, y, d, Qx, Qy, Qh_set, Qv_set,'SPS', plot_range)
-     
+
+
+    def run_custom_beam_SPS(self, ion_type, m_ion, Q_SPS, Q_PS,
+                            qx, qy, Nb, load_tbt_data=False 
+                            ):
+        """
+        FMA analysis for SPS custom beams
         
-    def run_PS(self, load_tbt_data=False):
-        """Default FMA analysis for PS Pb ions"""
-        beamParams = BeamParameters_PS
-        line = PS_Sequence.ps_line
+        Parameters:
+        -----------
+        ion type - which ion (str)
+        m_ion - ion mass in atomic units [u]
+        Q_SPS - SPS ion charge state
+        Q_PS - PS ion charge state
+        qx - horizontal tune
+        qy - vertical tune
+        Nb - bunch intensity (default 'None' will keep default Pb parameters)
+        load_tbt_data - bool if tracking is already done
+        
+        Returns:
+        --------
+        None, but generates plots
+        """
+        beamParams = BeamParameters_SPS
+        if Nb is not None:
+            beamParams.Nb = Nb 
+        s = SPS_sequence_maker(qx0=qx, qy0=qy, m_ion=m_ion, Q_SPS=Q_SPS, Q_PS=Q_PS, ion_type=ion_type)
+        line = s.generate_xsuite_seq()
+        twiss_sps = line.twiss()
         
         # Install SC, track particles and observe tune diffusion
         x, y = self.load_tracking_data() if load_tbt_data else self.install_SC_and_track(line, beamParams)
@@ -277,12 +304,80 @@ class FMA:
         Qy += beamParams().Q_int
         
         # Tunes from Twiss
-        Qh_set = PS_Sequence.twiss_ps['qx']
-        Qv_set = PS_Sequence.twiss_ps['qy']
+        Qh_set = twiss_sps['qx']
+        Qv_set = twiss_sps['qy']
+        
+        # Make tune footprint
+        plot_range  = [[26.0, 26.35], [26.0, 26.35]]
+   
+        self.plot_FMA(x, y, d, Qx, Qy, Qh_set, Qv_set,'SPS', plot_range)
+        
+        
+    def run_PS(self, load_tbt_data=False):
+        """Default FMA analysis for PS Pb ions"""
+        beamParams = BeamParameters_PS
+        line, twiss_ps = Sequences.get_PS_line_and_twiss()
+        
+        # Install SC, track particles and observe tune diffusion
+        x, y = self.load_tracking_data() if load_tbt_data else self.install_SC_and_track(line, beamParams)
+        d, Qx, Qy = self.run_FMA(x, y)
+        
+        # Add interger tunes to fractional tunes 
+        Qx += beamParams().Q_int
+        Qy += beamParams().Q_int
+        
+        # Tunes from Twiss
+        Qh_set = twiss_ps['qx']
+        Qv_set = twiss_ps['qy']
         
         # Make tune footprint
         plot_range  = [[6.0, 6.4], [6.0, 6.4]]
    
         self.plot_FMA(x, y, d, Qx, Qy, Qh_set, Qv_set,'PS', plot_range) 
 
+
+    def run_custom_beam_PS(self, ion_type, m_ion, Q_LEIR, Q_PS,
+                            qx, qy, Nb=None, load_tbt_data=False 
+                            ):
+        """
+        FMA analysis for SPS custom beams
+        
+        Parameters:
+        -----------
+        ion type - which ion (str)
+        m_ion - ion mass in atomic units [u]
+        Q_LEIR - LEIR ion charge state
+        Q_PS - PS ion charge state
+        qx - horizontal tune
+        qy - vertical tune
+        Nb - bunch intensity (default 'None' will keep default Pb parameters)
+        load_tbt_data - bool if tracking is already done
+        
+        Returns:
+        --------
+        None, but generates plots
+        """
+        beamParams = BeamParameters_PS
+        if Nb is not None:
+            beamParams.Nb = Nb 
+        s = PS_sequence_maker(qx0=qx, qy0=qy, m_ion=m_ion, Q_LEIR=Q_LEIR, Q_PS=Q_PS, ion_type=ion_type)
+        line = s.generate_xsuite_seq()
+        twiss_ps = line.twiss()
+        
+        # Install SC, track particles and observe tune diffusion
+        x, y = self.load_tracking_data() if load_tbt_data else self.install_SC_and_track(line, beamParams)
+        d, Qx, Qy = self.run_FMA(x, y)
+        
+        # Add interger tunes to fractional tunes 
+        Qx += beamParams().Q_int
+        Qy += beamParams().Q_int
+        
+        # Tunes from Twiss
+        Qh_set = twiss_ps['qx']
+        Qv_set = twiss_ps['qy']
+        
+        # Make tune footprint
+        plot_range  = [[6.0, 6.4], [6.0, 6.4]]
+   
+        self.plot_FMA(x, y, d, Qx, Qy, Qh_set, Qv_set,'PS', plot_range)
     
