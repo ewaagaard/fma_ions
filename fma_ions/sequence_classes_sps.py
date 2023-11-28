@@ -118,7 +118,10 @@ class SPS_sequence_maker:
                 p0c = p_inj_SPS,
                 q0 = self.Q_SPS,
                 mass0 = m_in_eV)
-        print('\nGenerated {} beam with gamma = {:.3f}\n'.format(self.ion_type, self.particle_sample.gamma0[0]))
+        print('\nGenerated SPS {} beam with gamma = {:.3f}, Qx = {:.3f}, Qy = {:.3f}\n'.format(self.ion_type, 
+                                                                                              self.particle_sample.gamma0[0],
+                                                                                              self.qx0,
+                                                                                              self.qy0))
         
         line.particle_ref = self.particle_sample
         
@@ -152,3 +155,13 @@ class SPS_sequence_maker:
                 
         if return_xsuite_line:
             return line
+
+
+    def generate_xsuite_seq_with_beta_beat(self, beta_beat=0.05,
+                                           save_madx_seq=False, save_xsuite_seq=False, return_xsuite_line=True):
+        """
+        Generate Xsuite line from MADX, then add quadrupole errors
+        """
+        line = self.generate_xsuite_seq()
+        
+        # Introduce beta to arbitrary QD 

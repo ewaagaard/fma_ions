@@ -88,8 +88,8 @@ class PS_sequence_maker:
         # When we perform matching, recall the MADX convention that all chromatic functions are multiplied by relativistic beta factor
         # Thus, when we match for a given chromaticity, need to account for this factor to get correct value in Xsuite and PTC
         beta0 = madx.beam.beta 
-        madx.input("qx = 6.21")
-        madx.input("qy = 6.245")
+        madx.input("qx = {}".format(self.qx0))
+        madx.input("qy = {}".format(self.qy0))
         madx.input(f"qpx = -5.26716824/{beta0}")
         madx.input(f"qpy = -7.199251093/{beta0}")
         
@@ -116,7 +116,10 @@ class PS_sequence_maker:
                 p0c = p_inj_PS,
                 q0 = self.Q_PS,
                 mass0 = m_in_eV)
-        print('\nGenerated PS {} beam with gamma = {:.3f}\n'.format(self.ion_type, self.particle_sample.gamma0[0]))
+        print('\nGenerated PS {} beam with gamma = {:.3f}, Qx = {:.3f}, Qy = {:.3f}\n'.format(self.ion_type, 
+                                                                                              self.particle_sample.gamma0[0],
+                                                                                              self.qx0,
+                                                                                              self.qy0))
         
         line.particle_ref = self.particle_sample
         

@@ -1,4 +1,4 @@
-"""
+"""q
 Main class to perform Frequency Map Analysis
 """
 from dataclasses import dataclass
@@ -11,6 +11,8 @@ import xobjects as xo
 import os 
 
 from scipy.interpolate import griddata
+
+#from statisticalEmittance import statisticalEmittance 
 
 ##### Plot settings 
 import matplotlib.pyplot as plt
@@ -33,6 +35,7 @@ import NAFFlib
 from .fma_data_classes import BeamParameters_PS, BeamParameters_SPS, Sequences
 from .sequence_classes_ps import PS_sequence_maker
 from .sequence_classes_sps import SPS_sequence_maker
+#from .statistical_emittance import StatisticalEmittance
 
 @dataclass
 class FMA:
@@ -48,6 +51,9 @@ class FMA:
     n_theta - number of divisions for theta coordinates for particles in normalized coordinates
     n_r - number of divisions for r coordinates for particles in normalized coordinates
     output_folder - where to save data
+    plot_order - order to include in resonance diagram
+    periodicity - periodicity in tune diagram
+    Q_min_SPS, Q_min_PS - min tune to filter out from synchrotron frequency
     """
     num_turns: int = 1200
     num_spacecharge_interactions: int = 160 
@@ -59,9 +65,9 @@ class FMA:
     output_folder: str = 'output_fma'
     plot_order: int = 4
     periodicity: int = 16
-    tracking_data_exists: bool = False
+    Q_min_SPS: float = 0.05
+    Q_min_PS: float = 0.015
     
-
     def install_SC_and_track(self, line, beamParams, save_data=True):
         """
         Install Space Charge (SC) and tracks particles with provided Xsuite line and beam parameters
@@ -95,6 +101,7 @@ class FMA:
         
         # Build tracker for line
         line.build_tracker(_context = context)
+        twiss_xtrack_with_sc = line.twiss()
 
         ##### Generate particles #####
         x_norm, y_norm, _, _ = xp.generate_2D_polar_grid(
@@ -108,23 +115,33 @@ class FMA:
                                        nemitt_x = beamParams.exn, nemitt_y = beamParams.eyn)
         print('\nBuilt particle object of size {}...'.format(len(particles.x)))
         
+        #### TRACKING #### 
         # Track the particles and return turn-by-turn coordinates
-        print('\nStarting tracking...')
-        #line.track(particles, num_turns = self.num_turns, turn_by_turn_monitor=True, with_progress=True)
         x, y = np.zeros([len(particles.x), self.num_turns]), np.zeros([len(particles.x), self.num_turns])
         
+        # If off-momentum particles are used, need to use betatronic matrices to correct for dispersive components
+        use_betatronic_matrices = False if self.delta0 == 0.0 else True
+    
+        
         i = 0
+        print('\nParticles are off-momentum: {}'.format(use_betatronic_matrices))
+        print('\nStarting tracking...')
         for turn in range(self.num_turns):
             if i % 20 == 0:
                 print('Tracking turn {}'.format(i))
         
-            # Save the turn-by-turn data
+            #else: 
             x[:, i] = particles.x
             y[:, i] = particles.y
 
             # Track the particles
             line.track(particles)
             i += 1
+        
+        # Correct for dispersion if off-momentum, else simple TBT data
+        if use_betatronic_matrices:
+            x_noDP = x - twiss_xtrack_with_sc['dx'][0]*(x.transpose() - self.delta0).transpose()
+            y_noDP = y - twiss_xtrack_with_sc['dy'][0]*(y.transpose() - self.delta0).transpose()
         
         print('Finished tracking.\n')
         print('Average X and Y of tracking: {} and {}'.format(np.mean(x), np.mean(y)))
@@ -133,26 +150,35 @@ class FMA:
             os.makedirs(self.output_folder, exist_ok=True)
             np.save('{}/x.npy'.format(self.output_folder), x)
             np.save('{}/y.npy'.format(self.output_folder), y)
-            self.tracking_data_exists = True
+            if use_betatronic_matrices:
+                np.save('{}/x_noDP.npy'.format(self.output_folder), x_noDP)
+                np.save('{}/y_noDP.npy'.format(self.output_folder), y_noDP)
             print('Saved tracking data.')
-            
-        return x, y
-    
+        
+        if use_betatronic_matrices:
+            return x_noDP, y_noDP 
+        else:
+            return x, y
     
     def load_tracking_data(self):
         """Loads numpy data if tracking has already been made"""
         try:
-            x=np.load('output_fma/x.npy')
-            y=np.load('output_fma/y.npy')
-            self.tracking_data_exists = True
-            return x, y
+            if self.delta0 == 0.0:
+                print('\nLoading on-momentum data!\n')
+                x=np.load('{}/x.npy'.format(self.output_folder))
+                y=np.load('{}/y.npy'.format(self.output_folder))
+                return x, y
+            else:
+                print('\nLoading off-momentum data!\n')
+                x_noDP = np.load('{}/x_noDP.npy'.format(self.output_folder))
+                y_noDP = np.load('{}/y_noDP.npy'.format(self.output_folder))
+                return x_noDP, y_noDP
         except FileNotFoundError:
             print('Tracking data does not exist!')
-            self.tracking_data_exists = False
             pass
         
         
-    def run_FMA(self, x_tbt_data, y_tbt_data):
+    def run_FMA(self, x_tbt_data, y_tbt_data, Qmin=None):
         """
         Run FMA analysis for given turn-by-turn coordinates
         
@@ -165,6 +191,9 @@ class FMA:
         d - numpy array containing diffusion for all particles
         Qx, Qy - numpy arrays containing final tunes of all particles
         """
+        if Qmin is None:
+            Qmin = self.Q_min_SPS 
+        
         # Initialize empty arrays for tunes of particles, during first and second half of run - at split_ind
         Qx_1, Qy_1 = np.zeros(len(x_tbt_data)), np.zeros(len(x_tbt_data))
         Qx_2, Qy_2 = np.zeros(len(x_tbt_data)), np.zeros(len(x_tbt_data))
@@ -174,14 +203,21 @@ class FMA:
         for i_part in range(len(x_tbt_data)):
             
             # Find dominant frequency with NAFFlib - also remember to subtract mean 
-            Qx_1[i_part] = NAFFlib.get_tune(x_tbt_data[i_part, :split_ind] \
-                                            - np.mean(x_tbt_data[i_part, :split_ind]))  
-            Qy_1[i_part] = NAFFlib.get_tune(y_tbt_data[i_part, :split_ind] \
-                                            - np.mean(y_tbt_data[i_part, :split_ind]))
-            Qx_2[i_part] = NAFFlib.get_tune(x_tbt_data[i_part, split_ind:] \
-                                            - np.mean(x_tbt_data[i_part, split_ind:]))  
-            Qy_2[i_part] = NAFFlib.get_tune(y_tbt_data[i_part, :split_ind] \
-                                            - np.mean(y_tbt_data[i_part, :split_ind]))  
+            Qx_1_raw = NAFFlib.get_tunes(x_tbt_data[i_part, :split_ind] \
+                                            - np.mean(x_tbt_data[i_part, :split_ind]), 2)[0]
+            Qx_1[i_part] = Qx_1_raw[np.argmax(Qx_1_raw > Qmin)]  # find most dominant tune larger than this value
+            
+            Qy_1_raw = NAFFlib.get_tunes(y_tbt_data[i_part, :split_ind] \
+                                            - np.mean(y_tbt_data[i_part, :split_ind]), 2)[0]
+            Qy_1[i_part] = Qy_1_raw[np.argmax(Qy_1_raw > Qmin)]
+                
+            Qx_2_raw = NAFFlib.get_tunes(x_tbt_data[i_part, split_ind:] \
+                                            - np.mean(x_tbt_data[i_part, split_ind:]), 2)[0]
+            Qx_2[i_part] = Qx_2_raw[np.argmax(Qx_2_raw > Qmin)]
+                
+            Qy_2_raw = NAFFlib.get_tunes(y_tbt_data[i_part, :split_ind] \
+                                            - np.mean(y_tbt_data[i_part, :split_ind]), 2)[0]
+            Qy_2[i_part] = Qy_2_raw[np.argmax(Qy_2_raw > Qmin)]
         
         # Change all zero-valued tunes to NaN
         Qx_1[Qx_1 == 0.0] = np.nan
@@ -242,6 +278,32 @@ class FMA:
         plt.show()
         
         
+    def plot_centroid_from_tbt_data(self, x_data=None, y_data=None, load_tbt_data=False):
+        """
+        Generate centroid plot from turn-by-turn data to observe e.g. synchrotron motion
+        
+        Parameters:
+        ----------
+        x_tbt_data, y_tbt_data
+        """
+        if load_tbt_data:
+            x_tbt_data, y_tbt_data = self.load_tracking_data()
+        else:
+            x_tbt_data, y_tbt_data = x_data, y_data
+        fig = plt.figure(figsize=(10,7))
+        fig.suptitle('Centroid evolution')
+        ax = fig.add_subplot(2, 1, 1)  # create an axes object in the figure
+        ax.plot(np.mean(x_tbt_data, axis=0), marker='o', color='b', markersize=3)
+        ax.set_ylabel("Centroid $X$ [m]")
+        ax.set_xlabel("#turns")
+        ax = fig.add_subplot(2, 1, 2)  # create a second axes object in the figure
+        ax.plot(np.mean(y_tbt_data, axis=0), marker='o', color='y', markersize=3)
+        ax.set_ylabel("Centroid $Y$ [m]")
+        ax.set_xlabel("#turns")
+        fig.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+        plt.show()
+        
+        
     def run_SPS(self, 
                 load_tbt_data=False,
                 ):
@@ -251,7 +313,7 @@ class FMA:
         
         # Install SC, track particles and observe tune diffusion
         x, y = self.load_tracking_data() if load_tbt_data else self.install_SC_and_track(line, beamParams)
-        d, Qx, Qy = self.run_FMA(x, y)
+        d, Qx, Qy = self.run_FMA(x, y, Qmin=self.Q_min_SPS)
         
         # Add interger tunes to fractional tunes 
         Qx += beamParams().Q_int
@@ -320,7 +382,7 @@ class FMA:
         
         # Install SC, track particles and observe tune diffusion
         x, y = self.load_tracking_data() if load_tbt_data else self.install_SC_and_track(line, beamParams)
-        d, Qx, Qy = self.run_FMA(x, y)
+        d, Qx, Qy = self.run_FMA(x, y, Qmin=self.Q_min_PS)
         
         # Add interger tunes to fractional tunes 
         Qx += beamParams().Q_int
