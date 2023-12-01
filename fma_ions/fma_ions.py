@@ -9,10 +9,8 @@ import xpart as xp
 import xfields as xf
 import xobjects as xo
 import os 
-
 from scipy.interpolate import griddata
 
-#from statisticalEmittance import statisticalEmittance 
 
 ##### Plot settings 
 import matplotlib.pyplot as plt
@@ -28,14 +26,12 @@ plt.rc('ytick', labelsize=MEDIUM_SIZE)   # fontsize of the tick labels
 plt.rc('legend', fontsize=SMALL_SIZE)   # legend fontsize
 plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
 
-# from statisticalEmittance.statisticalEmittance import statisticalEmittance 
 from PySCRDT import resonance_lines
 import NAFFlib
 
 from .fma_data_classes import BeamParameters_PS, BeamParameters_SPS, Sequences
 from .sequence_classes_ps import PS_sequence_maker
 from .sequence_classes_sps import SPS_sequence_maker
-#from .statistical_emittance import StatisticalEmittance
 
 @dataclass
 class FMA:
@@ -43,7 +39,7 @@ class FMA:
     Performs tracking and frequency map analysis
     
     Parameters:
-    use_pencil_beam - if True generate a transverse pencil distribution, otherwise 2D polar grid
+    use_uniform_beam - if True generate a transverse pencil distribution, otherwise 2D polar grid
     num_turns - to track in total
     num_spacecharge_interactions - how many interactions per turn
     tol_spacecharge_position - tolerance in placement of SC kicks along line
@@ -52,12 +48,14 @@ class FMA:
     mode - space charge model: 'frozen', 'semi-frozen' or 'pic' (frozen recommended)
     n_theta - number of divisions for theta coordinates for particles in normalized coordinates
     n_r - number of divisions for r coordinates for particles in normalized coordinates
+    n_linear - default number of points if uniform linear grid for normalized X and Y are used
+    n_sigma - max number of beam sizes sigma to generate particles
     output_folder - where to save data
     plot_order - order to include in resonance diagram
     periodicity - periodicity in tune diagram
     Q_min_SPS, Q_min_PS - min tune to filter out from synchrotron frequency
     """
-    use_pencil_beam: bool = True
+    use_uniform_beam: bool = True
     num_turns: int = 1200
     num_spacecharge_interactions: int = 160 
     tol_spacecharge_position: float = 1e-2
@@ -65,6 +63,8 @@ class FMA:
     z0: float = 0.0
     n_theta: int = 50
     n_r: int = 100
+    n_linear: int = 100
+    n_sigma: float = 10.0
     mode: str = 'frozen'
     output_folder: str = 'output_fma'
     plot_order: int = 4
@@ -72,7 +72,7 @@ class FMA:
     Q_min_SPS: float = 0.05
     Q_min_PS: float = 0.015
     
-    def install_SC_and_generate_particles(self, line, beamParams, pencil_beam=False):
+    def install_SC_and_generate_particles(self, line, beamParams):
         """
         Install Space Charge (SC) and generate particles with provided Xsuite line and beam parameters
         
@@ -109,26 +109,37 @@ class FMA:
         twiss_xtrack_with_sc = line.twiss()
 
         ##### Generate particles #####
-        print('\nGenerating particles with delta = {:.2e} and z = {}:.2e'.format(self.delta0, self.z0))
-        if pencil_beam: 
-            x_norm, y_norm = 1, 2# make uniform distribution that does up to 10 (sigmas)
+        print('\nGenerating particles with delta = {:.2e} and z = {:.2e}'.format(
+            0, self.z0))
+        if self.use_uniform_beam:     
+            print('Making UNIFORM distribution...')
+            # Generate arrays of normalized coordinates 
+            x_values = np.linspace(0.1, self.n_sigma, num=self.n_linear)  
+            y_values = np.linspace(0.1, self.n_sigma, num=self.n_linear)  
+
+            # Create a meshgrid for the uniform beam distribution
+            X, Y = np.meshgrid(x_values, y_values)
+            x_norm, y_norm = X.flatten(), Y.flatten()
+            
         else:
+            print('Making POLAR distribution...')
             x_norm, y_norm, _, _ = xp.generate_2D_polar_grid(
                                                             theta_range=(0.01, np.pi/2-0.01),
                                                             ntheta = self.n_theta,
                                                             r_range = (0.1, 7),
                                                             nr = self.n_r)
-            # Build the particle object
-            particles = xp.build_particles(line = line, particle_ref = line.particle_ref,
-                                           x_norm=x_norm, y_norm=y_norm, delta=self.delta0, zeta=self.z0,
-                                           nemitt_x = beamParams.exn, nemitt_y = beamParams.eyn)
+        # Store normalized coordinates
+        self._x_norm, self._y_norm = x_norm, y_norm
+            
+        # Build the particle object
+        particles = xp.build_particles(line = line, particle_ref = line.particle_ref,
+                                       x_norm=x_norm, y_norm=y_norm, delta=self.delta0, zeta=self.z0,
+                                       nemitt_x = beamParams.exn, nemitt_y = beamParams.eyn)
+        
         print('\nBuilt particle object of size {}...'.format(len(particles.x)))
         
         return line, particles
         
-        
-
-    
     
     def track_particles(self, particles, line, save_tbt_data=True):
         """
@@ -139,39 +150,16 @@ class FMA:
         particles - particles object from xpart
         line - xsuite line to track through, where space charge has been installed 
         
-        
         Returns:
         -------
         x, y - numpy arrays containing turn-by-turn data coordinates
-        """
-         
-            
+        """          
         #### TRACKING #### 
         # Track the particles and return turn-by-turn coordinates
-        x, y = np.zeros([len(particles.x), self.num_turns]), np.zeros([len(particles.x), self.num_turns])
-        
-        
-        
-        # SHOULD WE JUST SCRAP THIS OFF-MOMENTUM PART? 
-        """
-        # If off-momentum particles are used, need to use betatronic matrices to correct for dispersive components
-        off_moment = False if self.delta0 == 0.0 else True 
-        
-        # Correct for dispersion if off-momentum, else simple TBT data
-        if use_betatronic_matrices:
-            x_noDP = x - twiss_xtrack_with_sc['dx'][0]*(x.transpose() - self.delta0).transpose()
-            y_noDP = y - twiss_xtrack_with_sc['dy'][0]*(y.transpose() - self.delta0).transpose()
-        
-        if use_betatronic_matrices:
-            np.save('{}/x_noDP.npy'.format(self.output_folder), x_noDP)
-            np.save('{}/y_noDP.npy'.format(self.output_folder), y_noDP)
-        
-        print('\nParticles are off-momentum: {}'.format(use_betatronic_matrices))
-        
-        if use_betatronic_matrices:
-            return x_noDP, y_noDP 
-        else:
-        """
+        x = np.zeros([len(particles.x), self.num_turns]) 
+        y = np.zeros([len(particles.y), self.num_turns])
+        px = np.zeros([len(particles.px), self.num_turns]) 
+        py = np.zeros([len(particles.py), self.num_turns])
         
         print('\nStarting tracking...')
         i = 0
@@ -182,6 +170,8 @@ class FMA:
             #else: 
             x[:, i] = particles.x
             y[:, i] = particles.y
+            px[:, i] = particles.px
+            py[:, i] = particles.py
         
             # Track the particles
             line.track(particles)
@@ -194,6 +184,10 @@ class FMA:
             os.makedirs(self.output_folder, exist_ok=True)
             np.save('{}/x.npy'.format(self.output_folder), x)
             np.save('{}/y.npy'.format(self.output_folder), y)
+            np.save('{}/px.npy'.format(self.output_folder), px)
+            np.save('{}/py.npy'.format(self.output_folder), py)
+            np.save('{}/x0_norm.npy'.format(self.output_folder), self._x_norm)
+            np.save('{}/y0_norm.npy'.format(self.output_folder), self._y_norm)
             print('Saved tracking data.')
         
 
@@ -202,20 +196,19 @@ class FMA:
     def load_tracking_data(self):
         """Loads numpy data if tracking has already been made"""
         try:
-            if self.delta0 == 0.0:
+            if self.delta0 == 0.0 and self.z0 == 0.0:
                 print('\nLoading on-momentum data!\n')
-                x=np.load('{}/x.npy'.format(self.output_folder))
-                y=np.load('{}/y.npy'.format(self.output_folder))
-                return x, y
             else:
                 print('\nLoading off-momentum data!\n')
-                x_noDP = np.load('{}/x_noDP.npy'.format(self.output_folder))
-                y_noDP = np.load('{}/y_noDP.npy'.format(self.output_folder))
-                return x_noDP, y_noDP
+                                
+            x=np.load('{}/x.npy'.format(self.output_folder))
+            y=np.load('{}/y.npy'.format(self.output_folder))
+            self._x_norm =np.load('{}/x0_norm.npy'.format(self.output_folder))
+            self._y_norm =np.load('{}/y0_norm.npy'.format(self.output_folder))
+            return x, y
+
         except FileNotFoundError:
-            print('Tracking data does not exist!')
-            pass
-        
+            raise FileNotFoundError('Tracking data does not exist - set correct path or generate the data!')
         
     def run_FMA(self, x_tbt_data, y_tbt_data, Qmin=None):
         """
@@ -294,7 +287,7 @@ class FMA:
         # Unpack the sorted data
         sorted_Qx, sorted_Qy, sorted_d = zip(*sorted_data)
 
-        plt.scatter(sorted_Qx, sorted_Qy, s=5.5, c=sorted_d, marker='o', lw = 0.1, zorder=10, cmap=plt.cm.jet) #, alpha=0.55)
+        plt.scatter(sorted_Qx, sorted_Qy, s=5.0, c=sorted_d, marker='o', lw = 0.1, zorder=10, cmap=plt.cm.jet) #, alpha=0.55)
         plt.plot(Qh_set, Qv_set, 'ro', markersize=11, label="Set tune")
         plt.xlabel('$Q_{x}$')
         plt.ylabel('$Q_{y}$')
@@ -307,7 +300,8 @@ class FMA:
         fig.savefig('{}/FMA_plot_{}.png'.format(self.output_folder, case_name), dpi=250)
         
         
-    def plot_initial_distribution(self, x, y, d, case_name, interpolate_initial_distribution=False): 
+    def plot_initial_distribution(self, x, y, d, case_name, use_normalized_coordinates=True,
+                                  interpolate_initial_distribution=False): 
         """
         Plot initial distribution, interpolating between discrete points
         
@@ -321,7 +315,14 @@ class FMA:
         fig2.suptitle('Initial Distribution', fontsize='18')
         
         # Combine Qx, Qy, and d into a single array for sorting
-        data = list(zip(x[:,0], y[:,0], d))
+        if use_normalized_coordinates:
+            data = list(zip(self._x_norm, self._y_norm, d))
+            x_string = '$\sigma_{x}$'
+            y_string = '$\sigma_{y}$'
+        else:
+            data = list(zip(x[:,0], y[:,0], d))
+            x_string = 'x [m]'
+            y_string = 'y [m]'
         
         # Sort the data based on the 'd' values
         sorted_data = sorted(data, key=lambda x: x[2], reverse=False)
@@ -334,11 +335,11 @@ class FMA:
             Zm = np.ma.masked_invalid(Z)
             plt.pcolormesh(XX,YY,Zm,cmap=plt.cm.jet)
         else:
-            plt.scatter(sorted_x, sorted_y, s=6, c=sorted_d, marker='o', lw = 0.1, zorder=10, cmap=plt.cm.jet)  # without interpolation
+            plt.scatter(sorted_x, sorted_y, s=5.5, c=sorted_d, marker='o', lw = 0.1, zorder=10, cmap=plt.cm.jet)  # without interpolation
         
         plt.tick_params(axis='both', labelsize='18')
-        plt.xlabel('x [m]', fontsize='20')
-        plt.ylabel('y [m]', fontsize='20')
+        plt.xlabel('{}'.format(x_string), fontsize='20')
+        plt.ylabel('{}'.format(y_string), fontsize='20')
         plt.clim(-20.5,-4.5)
         cbar=plt.colorbar()
         cbar.set_label('d',fontsize='18')
@@ -383,8 +384,12 @@ class FMA:
         line, twiss_sps = Sequences.get_SPS_line_and_twiss()
         
         # Install SC, track particles and observe tune diffusion
-        if load_tbt_data: 
-            x, y = self.load_tracking_data()
+        if load_tbt_data:
+            try:
+                x, y = self.load_tracking_data()
+            except FileExistsError:
+                line, particles = self.install_SC_and_generate_particles(line, beamParams)
+                x, y = self.track_particles(particles, line)
         else:
             line, particles = self.install_SC_and_generate_particles(line, beamParams)
             x, y = self.track_particles(particles, line)
@@ -436,8 +441,12 @@ class FMA:
         twiss_sps = line.twiss()
         
         # Install SC, track particles and observe tune diffusion
-        if load_tbt_data: 
-            x, y = self.load_tracking_data()
+        if load_tbt_data:
+            try:
+                x, y = self.load_tracking_data()
+            except FileExistsError:
+                line, particles = self.install_SC_and_generate_particles(line, beamParams)
+                x, y = self.track_particles(particles, line)
         else:
             line, particles = self.install_SC_and_generate_particles(line, beamParams)
             x, y = self.track_particles(particles, line)
@@ -465,11 +474,16 @@ class FMA:
         line, twiss_ps = Sequences.get_PS_line_and_twiss()
         
         # Install SC, track particles and observe tune diffusion
-        if load_tbt_data: 
-            x, y = self.load_tracking_data()
+        if load_tbt_data:
+            try:
+                x, y = self.load_tracking_data()
+            except FileExistsError:
+                line, particles = self.install_SC_and_generate_particles(line, beamParams)
+                x, y = self.track_particles(particles, line)
         else:
             line, particles = self.install_SC_and_generate_particles(line, beamParams)
             x, y = self.track_particles(particles, line)
+            
         d, Qx, Qy = self.run_FMA(x, y, Qmin=self.Q_min_PS)
         
         # Add interger tunes to fractional tunes 
@@ -516,11 +530,16 @@ class FMA:
         twiss_ps = line.twiss()
         
         # Install SC, track particles and observe tune diffusion
-        if load_tbt_data: 
-            x, y = self.load_tracking_data()
+        if load_tbt_data:
+            try:
+                x, y = self.load_tracking_data()
+            except FileExistsError:
+                line, particles = self.install_SC_and_generate_particles(line, beamParams)
+                x, y = self.track_particles(particles, line)
         else:
             line, particles = self.install_SC_and_generate_particles(line, beamParams)
             x, y = self.track_particles(particles, line)
+              
         d, Qx, Qy = self.run_FMA(x, y)
         
         # Add interger tunes to fractional tunes 
