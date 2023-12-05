@@ -1,4 +1,4 @@
-"""q
+"""
 Main class to perform Frequency Map Analysis
 """
 from dataclasses import dataclass
@@ -301,7 +301,7 @@ class FMA:
         
         
     def plot_initial_distribution(self, x, y, d, case_name, use_normalized_coordinates=True,
-                                  interpolate_initial_distribution=False): 
+                                  interpolate_initial_distribution=False, also_show_plot=False): 
         """
         Plot initial distribution, interpolating between discrete points
         
@@ -347,10 +347,11 @@ class FMA:
         plt.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
         fig2.savefig('{}/{}_Initial_distribution.png'.format(self.output_folder, case_name), dpi=250)
         
-        plt.show()
+        if also_show_plot:
+            plt.show()
         
         
-    def plot_centroid_from_tbt_data(self, x_data=None, y_data=None, load_tbt_data=False):
+    def plot_centroid_from_tbt_data(self, x_data=None, y_data=None, load_tbt_data=False, also_show_plot=False):
         """
         Generate centroid plot from turn-by-turn data to observe e.g. synchrotron motion
         
@@ -373,7 +374,9 @@ class FMA:
         ax.set_ylabel("Centroid $Y$ [m]")
         ax.set_xlabel("#turns")
         fig.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
-        plt.show()
+        
+        if also_show_plot:
+            plt.show()
         
         
     def run_SPS(self, 
@@ -405,7 +408,7 @@ class FMA:
         Qh_set = twiss_sps['qx']
         Qv_set = twiss_sps['qy']
         
-        # Make tune footprint
+        # Make tune footprint, need plot range
         plot_range  = [[26.0, 26.35], [26.0, 26.35]]
    
         self.plot_FMA(d, Qx, Qy, Qh_set, Qv_set,'SPS', plot_range)
@@ -465,7 +468,8 @@ class FMA:
         # Make tune footprint
         plot_range  = [[26.0, 26.35], [26.0, 26.35]]
    
-        self.plot_FMA(x, y, d, Qx, Qy, Qh_set, Qv_set,'SPS', plot_range)
+        self.plot_FMA(d, Qx, Qy, Qh_set, Qv_set,'SPS', plot_range)
+        self.plot_initial_distribution(x, y, d, case_name='SPS')
         
         
     def run_PS(self, load_tbt_data=False):
@@ -553,5 +557,7 @@ class FMA:
         # Make tune footprint
         plot_range  = [[6.0, 6.4], [6.0, 6.4]]
    
-        self.plot_FMA(x, y, d, Qx, Qy, Qh_set, Qv_set,'PS', plot_range)
+        self.plot_FMA(d, Qx, Qy, Qh_set, Qv_set,'PS', plot_range)
+        self.plot_initial_distribution(x, y, d, case_name='PS')
+        
     

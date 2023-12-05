@@ -20,10 +20,13 @@ class BeamParameters_SPS :
     
 @dataclass
 class BeamParameters_PS :
-    """Data Container for PS Pb default beam parameters"""
-    Nb: float = 8.1e8
-    sigma_z: float = 4.74
-    exn: float = 0.8e-6
+    """
+    Data Container for PS Pb default beam parameters
+    -> updated to 2023 values observed during PS MDs
+    """
+    Nb: float = 6.0e8  # 6.5e10 charges over two bunches
+    sigma_z: float = 6.0  # injection bunch length in PS, but fluctuates if bunch splitting happens  
+    exn: float = 0.75e-6
     eyn: float = 0.5e-6    
     Q_int: float = 6.
 
