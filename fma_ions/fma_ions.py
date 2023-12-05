@@ -39,6 +39,7 @@ class FMA:
     Performs tracking and frequency map analysis
     
     Parameters:
+    ----------
     use_uniform_beam - if True generate a transverse pencil distribution, otherwise 2D polar grid
     num_turns - to track in total
     num_spacecharge_interactions - how many interactions per turn
@@ -80,7 +81,6 @@ class FMA:
         ----------
         line - xsuite line to track through
         beamParams - beam parameters (data class containing Nb, sigma_z, exn, eyn)
-        pencil_beam - make uniform distribution in normal coordinates X Y, otherwise create 2D polar grid 
         
         Returns:
         -------
@@ -210,21 +210,20 @@ class FMA:
         except FileNotFoundError:
             raise FileNotFoundError('Tracking data does not exist - set correct path or generate the data!')
         
-    def run_FMA(self, x_tbt_data, y_tbt_data, Qmin=None):
+    def run_FMA(self, x_tbt_data, y_tbt_data, Qmin=0.0):
         """
         Run FMA analysis for given turn-by-turn coordinates
         
         Parameters:
         ----------
         x_tbt_data, y_tbt_data - numpy arrays of turn-by-turn data for particles 
+        Qmin - if desired, filter out some lower frequencies
         
         Returns: 
         -------
         d - numpy array containing diffusion for all particles
         Qx, Qy - numpy arrays containing final tunes of all particles
         """
-        if Qmin is None:
-            Qmin = self.Q_min_SPS 
         
         # Initialize empty arrays for tunes of particles, during first and second half of run - at split_ind
         Qx_1, Qy_1 = np.zeros(len(x_tbt_data)), np.zeros(len(x_tbt_data))
@@ -233,6 +232,9 @@ class FMA:
         
         # Iterate over particles to find tune
         for i_part in range(len(x_tbt_data)):
+            
+            if i_part % 2000 == 0:
+                print('NAFF algorithm of particle {}'.format(i_part))
             
             # Find dominant frequency with NAFFlib - also remember to subtract mean 
             Qx_1_raw = NAFFlib.get_tunes(x_tbt_data[i_part, :split_ind] \
@@ -288,7 +290,7 @@ class FMA:
         sorted_Qx, sorted_Qy, sorted_d = zip(*sorted_data)
 
         plt.scatter(sorted_Qx, sorted_Qy, s=5.0, c=sorted_d, marker='o', lw = 0.1, zorder=10, cmap=plt.cm.jet) #, alpha=0.55)
-        plt.plot(Qh_set, Qv_set, 'ro', markersize=11, label="Set tune")
+        plt.plot(Qh_set, Qv_set, 'o', color='k', markerfacecolor='red', zorder=20, markersize=11, label="Set tune")
         plt.xlabel('$Q_{x}$')
         plt.ylabel('$Q_{y}$')
         cbar=plt.colorbar()
@@ -464,6 +466,7 @@ class FMA:
         # Tunes from Twiss
         Qh_set = twiss_sps['qx']
         Qv_set = twiss_sps['qy']
+        print('\nSet tune is located at {:.4f}, {:.4f}\n'.format(Qh_set, Qv_set))
         
         # Make tune footprint
         plot_range  = [[26.0, 26.35], [26.0, 26.35]]
@@ -497,7 +500,7 @@ class FMA:
         # Tunes from Twiss
         Qh_set = twiss_ps['qx']
         Qv_set = twiss_ps['qy']
-        
+       
         # Make tune footprint
         plot_range  = [[6.0, 6.4], [6.0, 6.4]]
    
@@ -553,6 +556,7 @@ class FMA:
         # Tunes from Twiss
         Qh_set = twiss_ps['qx']
         Qv_set = twiss_ps['qy']
+        print('\nSet tune is located at {:.4f}, {:.4f}\n'.format(Qh_set, Qv_set))
         
         # Make tune footprint
         plot_range  = [[6.0, 6.4], [6.0, 6.4]]
