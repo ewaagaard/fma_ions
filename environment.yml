@@ -125,6 +125,7 @@ dependencies:
       - nafflib==1.0.2
       - pycparser==2.21
       - pynaff==1.1.5
+      - sequence-maker==0.1.0
       - statisticalemittance==0.1.0
       - sympy==1.12
       - xdeps==0.4.3
@@ -133,3 +134,4 @@ dependencies:
       - xpart==0.16.1
       - xsuite==0.5.1
       - xtrack==0.46.3
+prefix: /home/elwaagaa/anaconda3/envs/fma_xsuite_env
