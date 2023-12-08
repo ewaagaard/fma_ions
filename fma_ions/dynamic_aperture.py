@@ -35,7 +35,7 @@ class Dynamic_Aperture:
     qx, qy - horizontal and vertical tunes, if customized tune is desired
     """
     use_uniform_beam: bool = False
-    num_turns: int = 10000
+    num_turns: int = 20000
     delta0: float = 0.0
     z0: float = 0.0
     r_range: float = 50.
@@ -158,6 +158,7 @@ class Dynamic_Aperture:
         """
         os.makedirs(self.output_folder, exist_ok=True)
         
+        plt.close('all')
         plt.figure(1)
         plt.scatter(self._x_norm, self._y_norm, c=particles.at_turn)
         plt.xlabel(r'$A_x [\sigma]$')
