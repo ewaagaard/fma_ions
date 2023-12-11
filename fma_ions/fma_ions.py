@@ -30,9 +30,9 @@ from PySCRDT import resonance_lines
 import NAFFlib
 
 from .fma_data_classes import BeamParameters_PS, BeamParameters_SPS, Sequences
-from sequence_maker import PS_sequence_maker, SPS_sequence_maker
-#from .sequence_classes_ps import PS_sequence_maker
-#from .sequence_classes_sps import SPS_sequence_maker
+#from sequence_maker import PS_sequence_maker, SPS_sequence_maker
+from .sequence_classes_ps import PS_sequence_maker
+from .sequence_classes_sps import SPS_sequence_maker
 
 @dataclass
 class FMA:
