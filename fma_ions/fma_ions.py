@@ -26,13 +26,13 @@ plt.rc('ytick', labelsize=MEDIUM_SIZE)   # fontsize of the tick labels
 plt.rc('legend', fontsize=SMALL_SIZE)   # legend fontsize
 plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
 
-from PySCRDT import resonance_lines
+
 import NAFFlib
 
 from .fma_data_classes import BeamParameters_PS, BeamParameters_SPS, Sequences
-#from sequence_maker import PS_sequence_maker, SPS_sequence_maker
 from .sequence_classes_ps import PS_sequence_maker
 from .sequence_classes_sps import SPS_sequence_maker
+from .resonance_lines import resonance_lines
 
 @dataclass
 class FMA:
@@ -404,8 +404,8 @@ class FMA:
         d, Qx, Qy = self.run_FMA(x, y, Qmin=self.Q_min_SPS)
         
         # Add interger tunes to fractional tunes 
-        Qx += beamParams().Q_int
-        Qy += beamParams().Q_int
+        Qx += beamParams().Qx_int
+        Qy += beamParams().Qy_int
         
         # Tunes from Twiss
         Qh_set = twiss_sps['qx']
@@ -461,8 +461,8 @@ class FMA:
         d, Qx, Qy = self.run_FMA(x, y)
         
         # Add interger tunes to fractional tunes 
-        Qx += beamParams().Q_int
-        Qy += beamParams().Q_int
+        Qx += beamParams().Qx_int
+        Qy += beamParams().Qy_int
         
         # Tunes from Twiss
         Qh_set = twiss_sps['qx']
@@ -495,8 +495,8 @@ class FMA:
         d, Qx, Qy = self.run_FMA(x, y, Qmin=self.Q_min_PS)
         
         # Add interger tunes to fractional tunes 
-        Qx += beamParams().Q_int
-        Qy += beamParams().Q_int
+        Qx += beamParams().Qx_int
+        Qy += beamParams().Qy_int
         
         # Tunes from Twiss
         Qh_set = twiss_ps['qx']
@@ -551,8 +551,8 @@ class FMA:
         d, Qx, Qy = self.run_FMA(x, y)
         
         # Add interger tunes to fractional tunes 
-        Qx += beamParams().Q_int
-        Qy += beamParams().Q_int
+        Qx += beamParams().Qx_int
+        Qy += beamParams().Qy_int
         
         # Tunes from Twiss
         Qh_set = twiss_ps['qx']

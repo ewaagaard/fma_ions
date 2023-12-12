@@ -16,7 +16,8 @@ class BeamParameters_SPS :
     sigma_z: float = 0.225
     exn: float = 1.3e-6
     eyn: float = 0.9e-6
-    Q_int: float = 26.
+    Qx_int: float = 26.
+    Qy_int: float = 26.
     
 @dataclass
 class BeamParameters_PS :
@@ -28,7 +29,8 @@ class BeamParameters_PS :
     sigma_z: float = 6.0  # injection bunch length in PS, but fluctuates if bunch splitting happens  
     exn: float = 0.75e-6
     eyn: float = 0.5e-6    
-    Q_int: float = 6.
+    Qx_int: float = 6.
+    Qy_int: float = 6.
 
   
 class Sequences: 
