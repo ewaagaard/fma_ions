@@ -15,7 +15,10 @@ dependencies = [
     "matplotlib",
     "pandas",
     "scipy",
-    "NAFFlib"
+    "NAFFlib",
+    "xtrack",
+    "xfields",
+    "xpart"
 ]
 
 [tool.setuptools]
