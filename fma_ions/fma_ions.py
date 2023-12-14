@@ -29,9 +29,9 @@ plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
 
 import NAFFlib
 
-from .fma_data_classes import BeamParameters_PS, BeamParameters_SPS, Sequences
-from .sequence_classes_ps import PS_sequence_maker
-from .sequence_classes_sps import SPS_sequence_maker
+#from .fma_data_classes import BeamParameters_PS, BeamParameters_SPS, Sequences
+from .sequence_classes_ps import PS_sequence_maker, BeamParameters_PS
+from .sequence_classes_sps import SPS_sequence_maker, BeamParameters_SPS
 from .resonance_lines import resonance_lines
 
 @dataclass
@@ -387,7 +387,7 @@ class FMA:
                 ):
         """Default FMA analysis for SPS Pb ions"""
         beamParams = BeamParameters_SPS
-        line, twiss_sps = Sequences.get_SPS_line_and_twiss()
+        line, twiss_sps =  SPS_sequence_maker.load_xsuite_line_and_twiss() #Sequences.get_SPS_line_and_twiss()
         
         # Install SC, track particles and observe tune diffusion
         if load_tbt_data:
@@ -479,7 +479,9 @@ class FMA:
     def run_PS(self, load_tbt_data=False):
         """Default FMA analysis for PS Pb ions"""
         beamParams = BeamParameters_PS
-        line, twiss_ps = Sequences.get_PS_line_and_twiss()
+        ps_seq = PS_sequence_maker()
+        
+        line, twiss_ps = PS_sequence_maker.load_xsuite_line_and_twiss()  #Sequences.get_PS_line_and_twiss()
         
         # Install SC, track particles and observe tune diffusion
         if load_tbt_data:

@@ -19,6 +19,16 @@ optics =  Path(__file__).resolve().parent.joinpath('../acc-models-sps').absolute
 sequence_path = Path(__file__).resolve().parent.joinpath('../data/sps_sequences').absolute()
 
 @dataclass
+class BeamParameters_SPS :
+    """Data Container for SPS Pb default beam parameters"""
+    Nb:  float = 2.2e8 #3.5e8
+    sigma_z: float = 0.225
+    exn: float = 1.3e-6
+    eyn: float = 0.9e-6
+    Qx_int: float = 26.
+    Qy_int: float = 26.
+
+@dataclass
 class SPS_sequence_maker:
     """ 
     Data class to generate Xsuite line from SPS optics repo, selecting
@@ -31,7 +41,7 @@ class SPS_sequence_maker:
     - optics: absolute path to optics repository -> cloned from https://gitlab.cern.ch/acc-models
     """
     qx0: float = 26.30
-    qy0: float = 26.25
+    qy0: float = 26.19
     dq1: float = -3.460734474533172e-09 
     dq2: float = -3.14426538905229e-09
     # Default SPS PB ION CHROMA VALUES: not displayed on acc-model, extracted from PTC Twiss 

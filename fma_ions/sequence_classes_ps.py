@@ -21,6 +21,19 @@ sequence_path = Path(__file__).resolve().parent.joinpath('../data/ps_sequences')
 optics =  Path(__file__).resolve().parent.joinpath('../acc-models-ps').absolute()
 
 @dataclass
+class BeamParameters_PS :
+    """
+    Data Container for PS Pb default beam parameters
+    -> updated to 2023 values observed during PS MDs
+    """
+    Nb: float = 6.0e8  # 6.5e10 charges over two bunches
+    sigma_z: float = 6.0  # injection bunch length in PS, but fluctuates if bunch splitting happens  
+    exn: float = 0.75e-6
+    eyn: float = 0.5e-6    
+    Qx_int: float = 6.
+    Qy_int: float = 6.
+
+@dataclass
 class PS_sequence_maker:
     """ 
     Data class to generate Xsuite line from PS optics repo, selecting
