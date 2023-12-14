@@ -1,9 +1,11 @@
 """
 Main module for sequence generator container classes for SPS 
 """
+import numpy as np
 from dataclasses import dataclass
-
+from pathlib import Path
 import os 
+from scipy.optimize import minimize
 
 import xobjects as xo
 import xtrack as xt
@@ -13,6 +15,8 @@ from scipy import constants
 from cpymad.madx import Madx
 import json
 
+optics =  Path(__file__).resolve().parent.joinpath('../acc-models-sps').absolute()
+sequence_path = Path(__file__).resolve().parent.joinpath('../data/sps_sequences').absolute()
 
 @dataclass
 class SPS_sequence_maker:
@@ -40,8 +44,47 @@ class SPS_sequence_maker:
     Q_PS: float = 54.
     Q_SPS: float = 82.
     m_ion: float = 207.98
-    optics: 'str' = '/home/elwaagaa/cernbox/PhD/Projects/acc-models-sps'
+    #optics: 'str' = '/home/elwaagaa/cernbox/PhD/Projects/acc-models-sps'
     
+    def load_xsuite_line_and_twiss(self, Qy_frac=19, beta_beat=None):
+        """
+        Method to load pre-generated SPS lattice files for Xsuite
+        
+        Parameters:
+        -----------
+        Qy_fractional - fractional vertical tune. "19"" means fractional tune Qy = 0.19
+        beta_beat - relative beta beat, i.e. relative difference between max beta function and max original beta function
+        
+        Returns:
+        -------
+        xsuite line
+        twiss - twiss table from xtrack 
+        """
+        # Update fractional vertical tune 
+        self.qy0 = int(self.qy0) + Qy_frac / 100 
+        print('\nTrying to load sequence with Qx, Qy = ({}, {}) and beta-beat = {}!\n'.format(self.qx0, self.qy0, beta_beat))
+        
+        # Check if pre-generated sequence exists 
+        if beta_beat is None or beta_beat == 0.0:
+            sps_fname = '{}/qy_dot{}/SPS_2021_{}_nominal.json'.format(sequence_path, Qy_frac, self.ion_type)
+        else:                                                  
+            sps_fname = '{}/qy_dot{}/SPS_2021_{}_{}_percent_beta_beat.json'.format(sequence_path, Qy_frac, self.ion_type, int(beta_beat*100))
+            
+        try:
+            sps_line = xt.Line.from_json(sps_fname)
+        except FileNotFoundError:
+            print('\nPre-made SPS sequence does not exists, generating new sequence with Qx, Qy = ({}, {}) and beta-beat = {}!\n'.format(self.qx0, 
+                                                                                                                                         self.qy0, 
+                                                                                                                                         beta_beat))
+            sps_line = self.generate_xsuite_seq() if beta_beat is None else self.generate_xsuite_seq_with_beta_beat(beta_beat)
+            
+        # Build tracker and Twiss
+        sps_line.build_tracker()
+        twiss_sps = sps_line.twiss() 
+        
+        return sps_line, twiss_sps
+
+
 
     def generate_SPS_beam(self):
         """
@@ -71,13 +114,13 @@ class SPS_sequence_maker:
         
         #### Initiate MADX sequence and call the sequence and optics file ####
         madx = Madx()
-        madx.call("{}/sps.seq".format(self.optics))
-        madx.call("{}/strengths/lhc_ion.str".format(self.optics))
+        madx.call("{}/sps.seq".format(optics))
+        madx.call("{}/strengths/lhc_ion.str".format(optics))
         
         # Generate SPS beam - use default Pb or make custom beam
         m_in_eV, p_inj_SPS = self.generate_SPS_beam()
         
-        #madx.call("{}/beams/beam_lhc_ion_injection.madx".format(self.optics))
+        #madx.call("{}/beams/beam_lhc_ion_injection.madx".format(optics))
         madx.input(" \
                    Beam, particle=ion, mass={}, charge={}, pc = {}, sequence='sps'; \
                    DPP:=BEAM->SIGE*(BEAM->ENERGY/BEAM->PC)^2;  \
@@ -93,7 +136,7 @@ class SPS_sequence_maker:
         madx.input("makethin, sequence=sps, style=teapot, makedipedge=True;")
         
         # Use correct tune and chromaticity matching macros
-        madx.call("{}/toolkit/macro.madx".format(self.optics))
+        madx.call("{}/toolkit/macro.madx".format(optics))
         madx.use('sps')
         madx.exec(f"sps_match_tunes({self.qx0}, {self.qy0});")
         madx.exec("sps_define_sext_knobs();")
@@ -158,10 +201,87 @@ class SPS_sequence_maker:
 
 
     def generate_xsuite_seq_with_beta_beat(self, beta_beat=0.05,
-                                           save_madx_seq=False, save_xsuite_seq=False, return_xsuite_line=True):
+                                           save_xsuite_seq=False):
         """
-        Generate Xsuite line from MADX, then add quadrupole errors
+        Generate Xsuite line with desired beta beat, optimizer quadrupole errors finds
+        quadrupole error in first slice of last SPS quadrupole to emulate desired beta_beat
+        
+        Parameters:
+        -----------
+        beta_beat - desired beta beat, i.e. relative difference between max beta function and max original beta function
+        save_xsuite_seq - flag to save xsuite sequence in desired location
+        
+        Returns:
+        -------
+        line - xsuite line for tracking
         """
-        line = self.generate_xsuite_seq()
+        self._line = self.generate_xsuite_seq()
+        self._line0 = self._line.copy()
+        self._twiss0 = self._line0.twiss()
         
         # Introduce beta to arbitrary QD 
+        print('\nFinding optimal QD error for chosen beta-beat {}...\n'.format(beta_beat))
+        
+        # Initial guess: small perturbation to initial value, then minimize loss function
+        dqd0 = self._line0['qd.63510..1'].knl[1] + 1e-5
+        result = minimize(self._loss_function_beta_beat, dqd0, args=(beta_beat), 
+                          method='nelder-mead', tol=1e-5, options={'maxiter':100})
+        print(result)
+        self._line['qd.63510..1'].knl[1] = result.x[0] 
+        twiss2 = self._line.twiss()
+        
+        # Compare difference in Twiss
+        print('\nOptimization terminated:')
+        print('Twiss max betx difference: {:.3f} vs {:.3f} with QD error'.format(np.max(self._twiss0['betx']),
+                                                                                        np.max(twiss2['betx'])))
+        print('Twiss max bety difference: {:.3f} vs {:.3f} with QD error'.format(np.max(self._twiss0['bety']),
+                                                                                        np.max(twiss2['bety'])))
+
+        # Show beta-beat 
+        print('\nX beta-beat: {:.5f}'.format( (np.max(twiss2['betx']) - np.max(self._twiss0['betx']))/np.max(self._twiss0['betx']) ))
+        print('Y beta-beat: {:.5f}'.format( (np.max(twiss2['bety']) - np.max(self._twiss0['bety']))/np.max(self._twiss0['bety']) ))
+        print('Generated sequence with Qx, Qy = ({}, {}) and beta-beat = {}!\n'.format(self.qx0, self.qy0, beta_beat))
+        
+        # Save Xsuite sequence
+        if save_xsuite_seq:
+            with open('{}/SPS_2021_{}_{}_percent_beta_beat.json'.format(self.seq_folder, 
+                                                                           self.ion_type,
+                                                                           int(beta_beat*100)), 'w') as fid:
+                json.dump(self._line.to_dict(), fid, cls=xo.JEncoder)
+                
+        return self._line              
+
+
+    def _loss_function_beta_beat(self, dqd, beta_beat):
+        """
+        Loss function to optimize to find correct beta-beat
+        
+        Parameters:
+        ----------
+        dqd - quadrupolar strength for first slice of last SPS quadrupoles
+        beta_beat - beta beat, i.e. relative difference between max beta function and max original beta function
+        
+        Returns:
+        --------
+        loss - loss function value, np.abs(beta_beat - desired beta beat)
+        """
+        
+        
+        # Try with new quadrupole error, otherwise return high value (square of error)
+        try:
+            # Copy the line, adjust QD strength of last sliced quadrupole by dqd 
+            self._line['qd.63510..1'].knl[1] = dqd
+            
+            twiss2 = self._line.twiss()
+        
+            # Vertical plane beta-beat
+            Y_beat = (np.max(twiss2['bety']) - np.max(self._twiss0['bety']))/np.max(self._twiss0['bety'])
+            print('Setting QD error to {:.3e} with Ybeat {:.3e}'.format(dqd[0], Y_beat))
+            
+            loss = np.abs(beta_beat - Y_beat)
+        except ValueError:
+            loss = dqd**2 
+            self._line = self._line0.copy()
+            print('Resetting line...')
+        
+        return loss 
