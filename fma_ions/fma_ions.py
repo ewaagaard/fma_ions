@@ -11,7 +11,6 @@ import xobjects as xo
 import os 
 from scipy.interpolate import griddata
 
-
 ##### Plot settings 
 import matplotlib.pyplot as plt
 SMALL_SIZE = 18
@@ -26,9 +25,7 @@ plt.rc('ytick', labelsize=MEDIUM_SIZE)   # fontsize of the tick labels
 plt.rc('legend', fontsize=SMALL_SIZE)   # legend fontsize
 plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
 
-
 import NAFFlib
-
 from .sequence_classes_ps import PS_sequence_maker, BeamParameters_PS
 from .sequence_classes_sps import SPS_sequence_maker, BeamParameters_SPS
 from .resonance_lines import resonance_lines
@@ -49,6 +46,7 @@ class FMA:
     mode - space charge model: 'frozen', 'semi-frozen' or 'pic' (frozen recommended)
     n_theta - number of divisions for theta coordinates for particles in normalized coordinates
     n_r - number of divisions for r coordinates for particles in normalized coordinates
+    r_min - minimum radial distance from beam center to generate particles, to avoid zero amplitude oscillations for FMA
     n_linear - default number of points if uniform linear grid for normalized X and Y are used
     n_sigma - max number of beam sizes sigma to generate particles
     output_folder - where to save data
@@ -64,6 +62,7 @@ class FMA:
     z0: float = 0.0
     n_theta: int = 50
     n_r: int = 100
+    r_min: float = 0.1
     n_linear: int = 100
     n_sigma: float = 10.0
     mode: str = 'frozen'
@@ -135,8 +134,8 @@ class FMA:
         if self.use_uniform_beam:     
             print('Making UNIFORM distribution...')
             # Generate arrays of normalized coordinates 
-            x_values = np.linspace(0.1, self.n_sigma, num=self.n_linear)  
-            y_values = np.linspace(0.1, self.n_sigma, num=self.n_linear)  
+            x_values = np.linspace(self.r_min, self.n_sigma, num=self.n_linear)  
+            y_values = np.linspace(self.r_min, self.n_sigma, num=self.n_linear)  
 
             # Create a meshgrid for the uniform beam distribution
             X, Y = np.meshgrid(x_values, y_values)
