@@ -9,7 +9,7 @@ sps_fma = fma_ions.FMA(num_turns=120, n_linear=25, output_folder='Output_beta_be
 
 # Test generating a sequence with beta-beat
 sps_seq = fma_ions.SPS_sequence_maker()
-sps_line, twiss = sps_seq.load_xsuite_line_and_twiss()
+sps_line, twiss = sps_seq.load_xsuite_line_and_twiss(Qy_frac=19)
 
 # Test installing space charge on this line
 line_SC = sps_fma.install_SC_and_get_line(sps_line, fma_ions.BeamParameters_SPS)
