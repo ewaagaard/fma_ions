@@ -18,7 +18,7 @@ import json
 
 ps_madx_macro = Path(__file__).resolve().parent.joinpath('../helpers/PS_match_tunes_and_chroma.madx').absolute()
 sequence_path = Path(__file__).resolve().parent.joinpath('../data/ps_sequences').absolute()
-optics =  Path(__file__).resolve().parent.joinpath('../acc-models-ps').absolute()
+optics =  Path(__file__).resolve().parent.joinpath('../data/acc-models-ps').absolute()
 
 @dataclass
 class BeamParameters_PS :

@@ -15,7 +15,7 @@ from scipy import constants
 from cpymad.madx import Madx
 import json
 
-optics =  Path(__file__).resolve().parent.joinpath('../acc-models-sps').absolute()
+optics =  Path(__file__).resolve().parent.joinpath('../data/acc-models-sps').absolute()
 sequence_path = Path(__file__).resolve().parent.joinpath('../data/sps_sequences').absolute()
 
 @dataclass

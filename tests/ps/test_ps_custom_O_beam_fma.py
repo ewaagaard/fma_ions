@@ -4,7 +4,7 @@ Generate PS FMA plot - with O ions at different tune
 import fma_ions
 
 # Initialize FMA object
-fma_ps = fma_ions.FMA(num_turns=120, n_theta=30, n_r=50)
+fma_ps = fma_ions.FMA(num_turns=120, n_theta=30, n_r=30)
 
 # Test Twiss and tune adjustments of PS 
 ps = fma_ions.PS_sequence_maker(ion_type='O', m_ion=15.99, Q_LEIR=4., Q_PS=4., qx0=6.19, qy0=6.14)

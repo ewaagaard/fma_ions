@@ -1,0 +1,6 @@
+[submodule "data/acc-models-sps"]
+	path = data/acc-models-sps
+	url = ssh://git@gitlab.cern.ch:7999/acc-models/acc-models-sps.git
+[submodule "data/acc-models-ps"]
+	path = data/acc-models-ps
+	url = ssh://git@gitlab.cern.ch:7999/acc-models/acc-models-ps.git
