@@ -233,14 +233,18 @@ class FMA:
             py=np.load('{}/py.npy'.format(self.output_folder))
             self._x_norm =np.load('{}/x0_norm.npy'.format(self.output_folder))
             self._y_norm =np.load('{}/y0_norm.npy'.format(self.output_folder))
-            self._kill_ind = np.load('{}/state.npy'.format(self.output_folder))
             return x, y, px, py
 
         except FileNotFoundError:
             raise FileNotFoundError('Tracking data does not exist - set correct path or generate the data!')
      
+        try:
+            self._kill_ind = np.load('{}/state.npy'.format(self.output_folder))
+        except FileNotFoundError:
+            print('Kill index does not exist - proceeding')
         
-    def plot_normalized_phase_space(self, twiss, plot_up_to_particle=50, also_show_plot=True):
+        
+    def plot_normalized_phase_space(self, twiss, plot_up_to_particle=50, start_particle=0, also_show_plot=True):
         """
         Generate phase space plots in X and Y from generated turn-by-turn data
         
@@ -248,8 +252,9 @@ class FMA:
         -----------
         twiss - twiss table from xtrack
         plot_up_to_particle - index up to which particle from tracking data to include 
+        start_particle - which particle index to start from
         """
-        i = np.arange(1, plot_up_to_particle) # particle index
+        i = np.arange(start_particle, plot_up_to_particle) # particle index
         x, y, px, py  = self.load_tracking_data()
 
         fig, ax = plt.subplots(1, 2, figsize=(12,6))
@@ -260,8 +265,8 @@ class FMA:
         Y = y / np.sqrt(twiss['bety'][0]) 
         PY = twiss['alfy'][0] / np.sqrt(twiss['bety'][0]) * y + np.sqrt(twiss['bety'][0]) * py
 
-        ax[0].plot(X[i, :], PX[i, :], 'o', color='b', alpha=0.6, markersize=2)
-        ax[1].plot(Y[i, :], PY[i, :], 'o', color='r', alpha=0.6, markersize=2)
+        ax[0].plot(X[i, :], PX[i, :], 'o', color='b', alpha=0.5, markersize=1.5)
+        ax[1].plot(Y[i, :], PY[i, :], 'o', color='r', alpha=0.5, markersize=1.5)
         
         ax[0].set_ylabel(r"$P_{x}$")
         ax[0].set_xlabel(r"$X$")
