@@ -218,6 +218,7 @@ class FMA:
 
         return x, y
     
+    
     def load_tracking_data(self):
         """Loads numpy data if tracking has already been made"""
         try:
@@ -228,14 +229,51 @@ class FMA:
                                 
             x=np.load('{}/x.npy'.format(self.output_folder))
             y=np.load('{}/y.npy'.format(self.output_folder))
+            px=np.load('{}/px.npy'.format(self.output_folder))
+            py=np.load('{}/py.npy'.format(self.output_folder))
             self._x_norm =np.load('{}/x0_norm.npy'.format(self.output_folder))
             self._y_norm =np.load('{}/y0_norm.npy'.format(self.output_folder))
             self._kill_ind = np.load('{}/state.npy'.format(self.output_folder))
-            return x, y
+            return x, y, px, py
 
         except FileNotFoundError:
             raise FileNotFoundError('Tracking data does not exist - set correct path or generate the data!')
+     
         
+    def plot_normalized_phase_space(self, twiss, plot_up_to_particle=50, also_show_plot=True):
+        """
+        Generate phase space plots in X and Y from generated turn-by-turn data
+        
+        Parameters:
+        -----------
+        twiss - twiss table from xtrack
+        plot_up_to_particle - index up to which particle from tracking data to include 
+        """
+        i = np.arange(1, plot_up_to_particle) # particle index
+        x, y, px, py  = self.load_tracking_data()
+
+        fig, ax = plt.subplots(1, 2, figsize=(12,6))
+        fig.suptitle('Phase space')
+
+        X = x / np.sqrt(twiss['betx'][0]) 
+        PX = twiss['alfx'][0] / np.sqrt(twiss['betx'][0]) * x + np.sqrt(twiss['betx'][0]) * px
+        Y = y / np.sqrt(twiss['bety'][0]) 
+        PY = twiss['alfy'][0] / np.sqrt(twiss['bety'][0]) * y + np.sqrt(twiss['bety'][0]) * py
+
+        ax[0].plot(X[i, :], PX[i, :], 'o', color='b', alpha=0.6, markersize=2)
+        ax[1].plot(Y[i, :], PY[i, :], 'o', color='r', alpha=0.6, markersize=2)
+        
+        ax[0].set_ylabel(r"$P_{x}$")
+        ax[0].set_xlabel(r"$X$")
+        ax[1].set_ylabel(r"$P_{y}$")
+        ax[1].set_xlabel(r"$Y$")
+        
+        fig.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+        
+        if also_show_plot:
+            plt.show()
+        
+    
     def run_FMA(self, x_tbt_data, y_tbt_data, Qmin=0.0, remove_dead_particles=True):
         """
         Run FMA analysis for given turn-by-turn coordinates
@@ -309,7 +347,7 @@ class FMA:
         Qx_set, Qy_set - input data from Twiss
         case_name - name string for scenario
         """
-        fig = plt.figure(figsize=(8,6))
+        fig = plt.figure(figsize=(9,6))
         tune_diagram = resonance_lines(plot_range[0],
                     plot_range[1], np.arange(1, self.plot_order+1), self.periodicity)
         tune_diagram.plot_resonance(figure_object = fig, interactive=False)
@@ -332,7 +370,7 @@ class FMA:
         cbar.ax.tick_params(labelsize='18')
         plt.legend(loc='upper left')
         plt.clim(-20.5,-4.5)
-        plt.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+        fig.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
         fig.savefig('{}/FMA_plot_{}.png'.format(self.output_folder, case_name), dpi=250)
         
         
@@ -380,7 +418,7 @@ class FMA:
         cbar=plt.colorbar()
         cbar.set_label('d',fontsize='18')
         cbar.ax.tick_params(labelsize='18')
-        plt.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+        fig2.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
         fig2.savefig('{}/{}_Initial_distribution.png'.format(self.output_folder, case_name), dpi=250)
         
         if also_show_plot:
@@ -396,7 +434,7 @@ class FMA:
         x_tbt_data, y_tbt_data
         """
         if load_tbt_data:
-            x_tbt_data, y_tbt_data = self.load_tracking_data()
+            x_tbt_data, y_tbt_data, _, _ = self.load_tracking_data()
         else:
             x_tbt_data, y_tbt_data = x_data, y_data
         fig = plt.figure(figsize=(10,7))
@@ -438,7 +476,7 @@ class FMA:
         # Install SC, track particles and observe tune diffusion
         if load_tbt_data:
             try:
-                x, y = self.load_tracking_data()
+                x, y, _, _ = self.load_tracking_data()
             except FileExistsError:
                 line = self.install_SC_and_get_line(line0, beamParams)
                 particles = self.generate_particles(line, beamParams)
@@ -497,7 +535,7 @@ class FMA:
         # Install SC, track particles and observe tune diffusion
         if load_tbt_data:
             try:
-                x, y = self.load_tracking_data()
+                x, y, _, _ = self.load_tracking_data()
             except FileExistsError:
                 line = self.install_SC_and_get_line(line0, beamParams)
                 particles = self.generate_particles(line, beamParams)
@@ -547,7 +585,7 @@ class FMA:
         # Install SC, track particles and observe tune diffusion
         if load_tbt_data:
             try:
-                x, y = self.load_tracking_data()
+                x, y, _, _ = self.load_tracking_data()
             except FileExistsError:
                 line = self.install_SC_and_get_line(line0, beamParams)
                 particles = self.generate_particles(line, beamParams)
@@ -605,7 +643,7 @@ class FMA:
         # Install SC, track particles and observe tune diffusion
         if load_tbt_data:
             try:
-                x, y = self.load_tracking_data()
+                x, y, _, _ = self.load_tracking_data()
             except FileExistsError:
                 line = self.install_SC_and_get_line(line0, beamParams)
                 particles = self.generate_particles(line, beamParams)
