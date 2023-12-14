@@ -65,7 +65,7 @@ class FMA:
     r_min: float = 0.1
     n_linear: int = 100
     n_sigma: float = 10.0
-    mode: str = 'frozen'
+    mode: str = 'frozen'  # for now, only frozen space charge is available
     output_folder: str = 'output_fma'
     plot_order: int = 4
     periodicity: int = 16
@@ -88,6 +88,7 @@ class FMA:
         """
         context = xo.ContextCpu()  # to be upgrade to GPU if needed 
         
+        print('\nInstalling space charge on line...\n')
         # Initialize longitudinal profile for beams 
         lprofile = xf.LongitudinalProfileQGaussian(
                 number_of_particles = beamParams.Nb,

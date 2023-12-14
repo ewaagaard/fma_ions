@@ -211,7 +211,7 @@ class SPS_sequence_maker:
 
 
     def generate_xsuite_seq_with_beta_beat(self, beta_beat=0.05,
-                                           save_xsuite_seq=False):
+                                           save_xsuite_seq=False, line=None):
         """
         Generate Xsuite line with desired beta beat, optimizer quadrupole errors finds
         quadrupole error in first slice of last SPS quadrupole to emulate desired beta_beat
@@ -220,12 +220,13 @@ class SPS_sequence_maker:
         -----------
         beta_beat - desired beta beat, i.e. relative difference between max beta function and max original beta function
         save_xsuite_seq - flag to save xsuite sequence in desired location
+        line - can provide generated line, otherwise generate new
         
         Returns:
         -------
         line - xsuite line for tracking
         """
-        self._line = self.generate_xsuite_seq()
+        self._line = self.generate_xsuite_seq() if line is None else line
         self._line0 = self._line.copy()
         self._twiss0 = self._line0.twiss()
         
