@@ -481,7 +481,7 @@ class FMA:
         beamParams = BeamParameters_PS
         ps_seq = PS_sequence_maker()
         
-        line, twiss_ps = PS_sequence_maker.load_xsuite_line_and_twiss()  #Sequences.get_PS_line_and_twiss()
+        line, twiss_ps = ps_seq.load_xsuite_line_and_twiss()  #Sequences.get_PS_line_and_twiss()
         
         # Install SC, track particles and observe tune diffusion
         if load_tbt_data:
