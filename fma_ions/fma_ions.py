@@ -56,7 +56,7 @@ class FMA:
     """
     use_uniform_beam: bool = True
     num_turns: int = 1200
-    num_spacecharge_interactions: int = 160 
+    num_spacecharge_interactions: int = 400 
     tol_spacecharge_position: float = 1e-2
     delta0: float = 0.0
     z0: float = 0.0
@@ -458,17 +458,13 @@ class FMA:
             plt.show()
         
         
-    def run_SPS(self, 
-                load_tbt_data=False,
-                beta_beat=None
-                ):
+    def run_SPS(self, load_tbt_data=False):
         """
         Default FMA analysis for SPS Pb ions, plot final results and tune diffusion in initial distribution
         
         Parameters
         ----------
         load_tbt_data: if turn-by-turn data from tracking is already saved
-        beta_beat : relative difference in beta functions
         
         Returns
         -------
@@ -476,7 +472,7 @@ class FMA:
         """
         beamParams = BeamParameters_SPS
         sps_seq = SPS_sequence_maker()
-        line0, twiss_sps =  sps_seq.load_xsuite_line_and_twiss(beta_beat=beta_beat)
+        line0, twiss_sps =  sps_seq.load_xsuite_line_and_twiss()
         
         # Install SC, track particles and observe tune diffusion
         if load_tbt_data:
@@ -508,6 +504,58 @@ class FMA:
         self.plot_FMA(d, Qx, Qy, Qh_set, Qv_set,'SPS', plot_range)
         self.plot_initial_distribution(x, y, d, case_name='SPS')
 
+
+    def run_SPS_with_beta_beat(self, load_tbt_data=False, Qy_frac=19, beta_beat=0.05):
+        """
+        Default FMA analysis for SPS Pb ions, plot final results and tune diffusion in initial distribution
+        
+        Parameters
+        ----------
+        load_tbt_data: if turn-by-turn data from tracking is already saved
+        Qy_frac - fractional vertical tune
+        beta_beat : relative difference in beta functions (Y for SPS)
+        
+        Returns
+        -------
+        None
+        """
+        beamParams = BeamParameters_SPS
+        sps_seq = SPS_sequence_maker()
+        line0, twiss_sps =  sps_seq.load_xsuite_line_and_twiss(Qy_frac=Qy_frac)
+        
+        # Install SC, track particles and observe tune diffusion
+        if load_tbt_data:
+            try:
+                x, y, _, _ = self.load_tracking_data()
+            except FileExistsError:
+                line = self.install_SC_and_get_line(line0, beamParams)
+                line_SC_beat = sps_seq.generate_xsuite_seq_with_beta_beat(beta_beat=beta_beat, line=line)
+                particles = self.generate_particles(line_SC_beat, beamParams)
+                x, y = self.track_particles(particles, line_SC_beat)
+        else:
+            line = self.install_SC_and_get_line(line0, beamParams)
+            line_SC_beat = sps_seq.generate_xsuite_seq_with_beta_beat(beta_beat=beta_beat, line=line)
+            particles = self.generate_particles(line_SC_beat, beamParams)
+            x, y = self.track_particles(particles, line_SC_beat)
+  
+        # Extract diffusion coefficient from FMA of turn-by-turn data
+        d, Qx, Qy = self.run_FMA(x, y, Qmin=self.Q_min_SPS)
+         
+        # Tunes from Twiss
+        Qh_set = twiss_sps['qx']
+        Qv_set = twiss_sps['qy']
+        
+        # Add interger tunes to fractional tunes 
+        Qx += int(twiss_sps['qx'])
+        Qy += int(twiss_sps['qy'])
+        
+        # Make tune footprint, need plot range
+        plot_range  = [[26.0, 26.35], [26.0, 26.35]]
+   
+        self.plot_FMA(d, Qx, Qy, Qh_set, Qv_set,'SPS', plot_range)
+        self.plot_initial_distribution(x, y, d, case_name='SPS_beta_beat')
+        
+        
 
     def run_custom_beam_SPS(self, ion_type, m_ion, Q_SPS, Q_PS,
                             qx, qy, Nb, load_tbt_data=False, beta_beat=None 
@@ -615,6 +663,56 @@ class FMA:
    
         self.plot_FMA(d, Qx, Qy, Qh_set, Qv_set,'PS', plot_range) 
         self.plot_initial_distribution(x, y, d, case_name='PS')
+
+
+    def run_PS_with_beta_beat(self, load_tbt_data=False, beta_beat=0.02):
+        """
+        Default FMA analysis for PS Pb ions, plot final results and tune diffusion in initial distribution
+        
+        Parameters
+        ----------
+        load_tbt_data: if turn-by-turn data from tracking is already saved
+        beta_beat : relative difference in beta functions (X for PS)
+        
+        Returns
+        -------
+        None
+        """
+        beamParams = BeamParameters_PS
+        ps_seq = PS_sequence_maker()
+        line0, twiss_ps =  ps_seq.load_xsuite_line_and_twiss()
+        
+        # Install SC, track particles and observe tune diffusion
+        if load_tbt_data:
+            try:
+                x, y, _, _ = self.load_tracking_data()
+            except FileExistsError:
+                line = self.install_SC_and_get_line(line0, beamParams)
+                line_SC_beat = ps_seq.generate_xsuite_seq_with_beta_beat(beta_beat=beta_beat, line=line)
+                particles = self.generate_particles(line_SC_beat, beamParams)
+                x, y = self.track_particles(particles, line_SC_beat)
+        else:
+            line = self.install_SC_and_get_line(line0, beamParams)
+            line_SC_beat = ps_seq.generate_xsuite_seq_with_beta_beat(beta_beat=beta_beat, line=line)
+            particles = self.generate_particles(line_SC_beat, beamParams)
+            x, y = self.track_particles(particles, line_SC_beat)
+  
+        # Extract diffusion coefficient from FMA of turn-by-turn data
+        d, Qx, Qy = self.run_FMA(x, y, Qmin=self.Q_min_PS)
+         
+        # Tunes from Twiss
+        Qh_set = twiss_ps['qx']
+        Qv_set = twiss_ps['qy']
+        
+        # Add interger tunes to fractional tunes 
+        Qx += int(twiss_ps['qx'])
+        Qy += int(twiss_ps['qy'])
+        
+        # Make tune footprint, need plot range
+        plot_range  = [[6.0, 6.4], [6.0, 6.4]]
+   
+        self.plot_FMA(d, Qx, Qy, Qh_set, Qv_set,'PS', plot_range)
+        self.plot_initial_distribution(x, y, d, case_name='PS_beta_beat')
 
 
     def run_custom_beam_PS(self, ion_type, m_ion, Q_LEIR, Q_PS,
