@@ -13,6 +13,7 @@ authors = [
 dependencies = [
     "numpy",
     "matplotlib",
+    "cpymad",
     "pandas",
     "scipy",
     "NAFFlib",
