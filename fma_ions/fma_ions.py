@@ -13,6 +13,8 @@ from scipy.interpolate import griddata
 
 ##### Plot settings 
 import matplotlib.pyplot as plt
+
+"""
 SMALL_SIZE = 18
 MEDIUM_SIZE = 21
 BIGGER_SIZE = 26
@@ -24,6 +26,21 @@ plt.rc('xtick', labelsize=MEDIUM_SIZE)   # fontsize of the tick labels
 plt.rc('ytick', labelsize=MEDIUM_SIZE)   # fontsize of the tick labels
 plt.rc('legend', fontsize=SMALL_SIZE)   # legend fontsize
 plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
+"""
+
+plt.rcParams.update(
+    {
+        "font.family": "serif",
+        "font.size": 20,
+        "axes.titlesize": 20,
+        "axes.labelsize": 20,
+        "xtick.labelsize": 20,
+        "ytick.labelsize": 20,
+        "legend.fontsize": 15,
+        "figure.titlesize": 20,
+    }
+)
+
 
 import NAFFlib
 from .sequence_classes_ps import PS_sequence_maker, BeamParameters_PS
@@ -130,8 +147,7 @@ class FMA:
         """
         
         ##### Generate particles #####
-        print('\nGenerating particles with delta = {:.2e} and z = {:.2e}'.format(
-            0, self.z0))
+        print('\nGenerating particles with delta = {:.2e} and z = {:.2e}'.format(self.delta0, self.z0))
         if self.use_uniform_beam:     
             print('Making UNIFORM distribution...')
             # Generate arrays of normalized coordinates 

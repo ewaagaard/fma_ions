@@ -20,7 +20,7 @@ sequence_path = Path(__file__).resolve().parent.joinpath('../data/sps_sequences'
 error_file_path = Path(__file__).resolve().parent.joinpath('../data/sps_sequences/magnet_errors').absolute()
 
 @dataclass
-class BeamParameters_SPS :
+class BeamParameters_SPS:
     """Data Container for SPS Pb default beam parameters"""
     Nb:  float = 2.2e8 #3.5e8
     sigma_z: float = 0.225
@@ -94,6 +94,35 @@ class SPS_sequence_maker:
         twiss_sps = sps_line.twiss() 
         
         return sps_line, twiss_sps
+
+
+    @staticmethod
+    def generate_SPS_gaussian_beam(line, n_part):
+        """ 
+        Class method to generate matched Gaussian beam for SPS
+        
+        Parameters:
+        -----------
+        line - xtrack line object
+        n_part - number of macroparticles
+        
+        Returns:
+        --------
+        particles - xpart particles object 
+        
+        """
+        particles = xp.generate_matched_gaussian_bunch(
+                                 num_particles=n_part, total_intensity_particles = BeamParameters_SPS.Nb,
+                                 nemitt_x = BeamParameters_SPS.exn, nemitt_y = BeamParameters_SPS.eyn, 
+                                 sigma_z = BeamParameters_SPS.sigma_z,
+                                 particle_ref = line.particle_ref, line=line)
+        print('\nGenerated Gaussian beam') 
+        print('with Nb = {:.3e}, exn = {:.4e}, \neyn = {:.4e}, sigma_z = {:.3e} m \n{} macroparticles\n'.format(BeamParameters_SPS.Nb,
+                                                                                                                BeamParameters_SPS.exn,
+                                                                                                                BeamParameters_SPS.eyn,
+                                                                                                                BeamParameters_SPS.sigma_z,
+                                                                                                                n_part))
+        return particles
 
 
     def generate_SPS_beam(self):
