@@ -2,7 +2,7 @@
 
 Non-linear effects can enhance chaotic motion and limit the performance of accelerators. Frequency Map Analysis (FMA) is a method that probes tune diffusion from particle tracking simulations and identify resonances that are excited. FMA can be used to detect chaotic behaviour in particle acceelerators, by looking at the tune diffusion $d$ 
 
-$$d =  \sqrt{ (Q_{x, 2} - Q_{x, 1})^2 + (Q_{y, 2} - Q_{y, 1})^2}$$
+$$d =  \log \sqrt{ (Q_{x, 2} - Q_{x, 1})^2 + (Q_{y, 2} - Q_{y, 1})^2}$$
 
 where $Q_{x, y, 1}$ is the particle tunes in the first number of turns (e.g. first 600 turns) and $Q_{x, y, 2}$ is the tunes of the subsequent turn block (e.g. the next 600 turns).  
 
