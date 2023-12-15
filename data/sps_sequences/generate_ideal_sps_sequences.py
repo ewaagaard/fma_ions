@@ -1,7 +1,7 @@
 """
 Generate standard sequences SPS sequence for different tunes
 """
-from sequence_maker import SPS_sequence_maker
+from fma_ions import SPS_sequence_maker
 
 
 # Instantiate SPS sequence makers with different tunes 

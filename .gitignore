@@ -11,7 +11,10 @@ __pycache__/
 *.png
 *.seq
 *.json
+
+# MADX files
 internal_mag_pot.txt
+err.out
 
 # Distribution / packaging
 .Python

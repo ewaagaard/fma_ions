@@ -17,6 +17,7 @@ import json
 
 optics =  Path(__file__).resolve().parent.joinpath('../data/acc-models-sps').absolute()
 sequence_path = Path(__file__).resolve().parent.joinpath('../data/sps_sequences').absolute()
+error_file_path = Path(__file__).resolve().parent.joinpath('../data/sps_sequences/magnet_errors').absolute()
 
 @dataclass
 class BeamParameters_SPS :
@@ -95,7 +96,6 @@ class SPS_sequence_maker:
         return sps_line, twiss_sps
 
 
-
     def generate_SPS_beam(self):
         """
         Generate correct injection parameters for SPS beam
@@ -115,17 +115,33 @@ class SPS_sequence_maker:
         return m_in_eV, p_inj_SPS
 
 
-    def generate_xsuite_seq(self, save_madx_seq=False, save_xsuite_seq=False, return_xsuite_line=True):
+    def generate_xsuite_seq(self, save_madx_seq=False, 
+                            save_xsuite_seq=False, 
+                            return_xsuite_line=True, 
+                            add_non_linear_magnet_errors=False):
         """
         Load MADX line, match tunes and chroma, add RF and generate Xsuite line
+        
+        Parameters:
+        -----------
+        save_madx_seq - save madx sequence to directory 
+        save_xsuite_seq - save xtrack sequence to directory  
+        return_xsuite_line - return generated xtrack line
+        add_non_linear_magnet_errors - add non-linear chromaticity errors (from Xavier buffat)
+        
         """
         os.makedirs(self.seq_folder, exist_ok=True)
         print('\nGenerating sequence for {} with qx = {}, qy = {}\n'.format(self.ion_type, self.qx0, self.qy0))
         
         #### Initiate MADX sequence and call the sequence and optics file ####
         madx = Madx()
-        madx.call("{}/sps.seq".format(optics))
-        madx.call("{}/strengths/lhc_ion.str".format(optics))
+        #madx.call("{}/sps.seq".format(optics))
+        #madx.call("{}/strengths/lhc_ion.str".format(optics))
+        #madx.call("{}/beams/beam_lhc_ion_injection.madx".format(optics))  # attach beam just in case, otherwise error table will be empty
+        madx.call("{}/madx/SPS_2021_Pb_nominal.seq".format(sequence_path))
+        
+        #madx.call('/home/elwaagaa/cernbox/PhD/Projects/xsuite-sps-ps-sequence-benchmarker/SPS_sequence/SPS_2021_Pb_ions_matched_with_RF.seq')
+
         
         # Generate SPS beam - use default Pb or make custom beam
         m_in_eV, p_inj_SPS = self.generate_SPS_beam()
@@ -136,6 +152,17 @@ class SPS_sequence_maker:
                    DPP:=BEAM->SIGE*(BEAM->ENERGY/BEAM->PC)^2;  \
                    ".format(m_in_eV/1e9, self.Q_SPS, p_inj_SPS/1e9))   # convert mass to GeV/c^2
          
+        # Add the magnet errors if
+        if add_non_linear_magnet_errors:
+            madx.use(sequence='sps')
+            madx.call('{}/sps_setMultipoles_upto7.cmd'.format(error_file_path))
+            madx.input('exec, set_Multipoles_26GeV;')
+            madx.call('{}/sps_assignMultipoles_upto7.cmd'.format(error_file_path))
+            madx.input('exec, AssignMultipoles;')
+            errtab_ions = madx.table.errtab
+            
+            self.seq_name += '_with_magnet_errors'
+
         # Flatten line
         madx.use(sequence='sps')
         madx.input("seqedit, sequence=SPS;")
@@ -144,7 +171,7 @@ class SPS_sequence_maker:
         madx.use("sps")
         madx.input("select, flag=makethin, slice=5, thick=false;")
         madx.input("makethin, sequence=sps, style=teapot, makedipedge=True;")
-        
+
         # Use correct tune and chromaticity matching macros
         madx.call("{}/toolkit/macro.madx".format(optics))
         madx.use('sps')

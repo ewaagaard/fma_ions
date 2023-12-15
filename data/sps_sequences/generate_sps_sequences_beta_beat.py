@@ -1,7 +1,7 @@
 """
 Generate standard sequences with beta beat in SPS sequence 
 """
-from sequence_maker import SPS_sequence_maker
+from fma_ions import SPS_sequence_maker
 import numpy as np
 
 # Create beta-beat vectors 
