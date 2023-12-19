@@ -207,7 +207,8 @@ class Dynamic_Aperture:
         
         # Load SPS lattice with default tunes, or custom tunes
         if use_default_tunes:
-            line, twiss_sps = Sequences.get_SPS_line_and_twiss()
+            sps_seq = SPS_sequence_maker()
+            line, twiss_sps =  sps_seq.load_xsuite_line_and_twiss()
         else:
             s = SPS_sequence_maker(qx0=self.qx, qy0=self.qy)
             line = s.generate_xsuite_seq()
