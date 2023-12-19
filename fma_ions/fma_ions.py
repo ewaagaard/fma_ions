@@ -260,15 +260,15 @@ class FMA:
             print('Kill index does not exist - proceeding')
         
         
-    def plot_normalized_phase_space(self, twiss, plot_up_to_particle=50, start_particle=0, also_show_plot=True):
+    def plot_normalized_phase_space(self, twiss, start_particle=0, plot_up_to_particle=50, also_show_plot=True):
         """
         Generate phase space plots in X and Y from generated turn-by-turn data
         
         Parameters:
         -----------
         twiss - twiss table from xtrack
-        plot_up_to_particle - index up to which particle from tracking data to include 
         start_particle - which particle index to start from
+        plot_up_to_particle - index up to which particle from tracking data to include 
         """
         i = np.arange(start_particle, plot_up_to_particle) # particle index
         x, y, px, py  = self.load_tracking_data()
@@ -633,14 +633,13 @@ class FMA:
         self.plot_initial_distribution(x, y, d, case_name='SPS')
         
         
-    def run_PS(self, load_tbt_data=False, beta_beat=None):
+    def run_PS(self, load_tbt_data=False):
         """
         Default FMA analysis for SPS Pb ions, plot final results and tune diffusion in initial distribution
         
         Parameters
         ----------
         load_tbt_data: if turn-by-turn data from tracking is already saved
-        beta_beat : relative difference in beta functions
         
         Returns
         -------
@@ -649,7 +648,7 @@ class FMA:
         beamParams = BeamParameters_PS
         ps_seq = PS_sequence_maker()
         
-        line0, twiss_ps = ps_seq.load_xsuite_line_and_twiss(beta_beat=beta_beat)
+        line0, twiss_ps = ps_seq.load_xsuite_line_and_twiss()
         
         # Install SC, track particles and observe tune diffusion
         if load_tbt_data:

@@ -97,6 +97,34 @@ class PS_sequence_maker:
         
         return ps_line, twiss_ps
     
+    
+    @staticmethod
+    def generate_PS_gaussian_beam(line, n_part):
+        """ 
+        Class method to generate matched Gaussian beam for PS
+        
+        Parameters:
+        -----------
+        line - xtrack line object
+        n_part - number of macroparticles
+        
+        Returns:
+        --------
+        particles - xpart particles object 
+        
+        """
+        particles = xp.generate_matched_gaussian_bunch(
+                                 num_particles=n_part, total_intensity_particles = BeamParameters_PS.Nb,
+                                 nemitt_x = BeamParameters_PS.exn, nemitt_y = BeamParameters_PS.eyn, 
+                                 sigma_z = BeamParameters_PS.sigma_z,
+                                 particle_ref = line.particle_ref, line=line)
+        print('\nGenerated Gaussian beam') 
+        print('with Nb = {:.3e}, exn = {:.4e}, \neyn = {:.4e}, sigma_z = {:.3e} m \n{} macroparticles\n'.format(BeamParameters_PS.Nb,
+                                                                                                                BeamParameters_PS.exn,
+                                                                                                                BeamParameters_PS.eyn,
+                                                                                                                BeamParameters_PS.sigma_z,
+                                                                                                                n_part))
+        return particles    
 
     def generate_PS_beam(self):
         """
