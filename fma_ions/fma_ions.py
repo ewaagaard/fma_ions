@@ -131,7 +131,7 @@ class FMA:
         line.build_tracker(_context = context)
         twiss_xtrack_with_sc = line.twiss()
 
-        # Find integer tunes from Twiss - BEFORE installing space cahrge
+        # Find integer tunes from Twiss - BEFORE installing space charge
         self._Qx_int = int(twiss_xtrack['qx'])
         self._Qy_int = int(twiss_xtrack['qy'])
 
