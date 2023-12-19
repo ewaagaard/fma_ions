@@ -17,8 +17,8 @@ When using Python for scientific computing, it is important to be aware of depen
 To directly start calculating different ion performances with the `fma_ions`, create an isolated virtual environment and perform a local install to use the `fma_ions` freely. Once the repository is cloned and from **inside** the `fma_ions` repository, run in the terminal:
 
 ```
-conda create --name test_venv python=3.11 numpy pandas scipy matplotlib
-conda activate test_venv
+conda env create -f environment.yml
+conda activate fma_xsuite_env
 python -m pip install -e fma_ions
 ```
 The virtual environment can also be installed directly from the `requirements.txt`: `python -m pip install -r requirements.txt`
@@ -35,7 +35,7 @@ fma = fma_ions.FMA()
 Optional arguments can be added, such as specific output destinations for turn-by-turn (TBT) data and plots, number of turns to track, shape of particle object, longitudinal position offset `z0` and so on. Arbitrary [Xsuite](https://xsuite.readthedocs.io/en/latest/) lines can be used, although helper classes provide standard PS and SPS lattice models. 
 
 The FMA happens in several steps: 
-1) first a line with space charge (SC) is returned, and the particle object to be tracked. Input is an Xsuite line (without space charge) and `beamParams`, which is a data class containing bunch intensity `Nb`, bunch length `sigma_z`, normalized emittances `exn` and `eyn`, and the integer tune of the accelerator `Q_int`, since this technique can only detect fractional tunes. An example structure is found in `fma_ions.BeamParameters_SPS()`. 
+1) first a line with space charge (SC) is returned, and the particle object to be tracked. Input is an Xsuite line (without space charge) and `beamParams`, which is a data class containing bunch intensity `Nb`, bunch length `sigma_z`, normalized emittances `exn` and `eyn`, and the integer tune of the accelerator `Q_int`, since this technique can only detect fractional tunes. An example structure for this `beamParams` class is found in `fma_ions.BeamParameters_SPS()`. 
 2) TBT `x` and `y` data are returned, tracking for the specified attribute `num_turns` (default 1200) in the FMA class.
 3) The diffusion coefficient `d` and individual particle tunes `Qx` and `Qy` are returned from the NAFF algorithm used in the FMA method
 4) `Qx`, `Qy` and `d` can be plotted in the initial particle distribution and in the final tune diagram of the particles. 
