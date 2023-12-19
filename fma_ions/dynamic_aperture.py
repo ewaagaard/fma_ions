@@ -152,36 +152,48 @@ class Dynamic_Aperture:
         return particles
     
     
-    def plot_DA(self, particles, case_name, save_fig=True):
+    def plot_DA(self, particles, case_name, save_fig=True, show_plot=False):
         """
         Plot dynamic aperture results from particle object that has been tracked
+        Example inspired by: https://xsuite.readthedocs.io/en/latest/dynamic_aperture.html
+        
+        Parameters:
+        ----------
+        case_name: string for naming of plot
+        save_fig: boolean to save figure
+        show_plot: boolean to make matplotlib open figure - not recommended if many cases are run in parallel
         """
         os.makedirs(self.output_folder, exist_ok=True)
         
-        plt.close('all')
-        plt.figure(1)
-        plt.scatter(self._x_norm, self._y_norm, c=particles.at_turn)
-        plt.xlabel(r'$A_x [\sigma]$')
-        plt.ylabel(r'$A_y [\sigma]$')
-        cb = plt.colorbar()
-        cb.set_label('Lost at turn')
-        plt.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
-        if save_fig:
-            plt.savefig('{}/DA_plot_{}.png'.format(self.output_folder, case_name), dpi=250)
+        # If uniform beam is used, create scatter plot directly. If polar beam is used, reshape coordinates first
+        # and interpolate 
+        if self.use_uniform_beam:
+            plt.close('all')
+            plt.figure(1)
+            plt.scatter(self._x_norm, self._y_norm, c=particles.at_turn)
+            plt.xlabel(r'$A_x [\sigma]$')
+            plt.ylabel(r'$A_y [\sigma]$')
+            cb = plt.colorbar()
+            cb.set_label('Lost at turn')
+            plt.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+            if save_fig:
+                plt.savefig('{}/DA_plot_{}.png'.format(self.output_folder, case_name), dpi=250)
         
-        plt.figure(2)
-        plt.pcolormesh(
-            self._x_norm.reshape(self.n_r, self.n_theta), self._y_norm.reshape(self.n_r, self.n_theta),
-            particles.at_turn.reshape(self.n_r, self.n_theta), shading='gouraud')
-        plt.xlabel(r'$A_x [\sigma]$')
-        plt.ylabel(r'$A_y [\sigma]$')
-        ax = plt.colorbar()
-        ax.set_label('Lost at turn')
-        plt.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
-        if save_fig:
-            plt.savefig('{}/DA_plot_interpolated_{}.png'.format(self.output_folder, case_name), dpi=250)
+        else:
+            plt.figure(2)
+            plt.pcolormesh(
+                self._x_norm.reshape(self.n_r, self.n_theta), self._y_norm.reshape(self.n_r, self.n_theta),
+                particles.at_turn.reshape(self.n_r, self.n_theta), shading='gouraud')
+            plt.xlabel(r'$A_x [\sigma]$')
+            plt.ylabel(r'$A_y [\sigma]$')
+            ax = plt.colorbar()
+            ax.set_label('Lost at turn')
+            plt.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+            if save_fig:
+                plt.savefig('{}/DA_plot_interpolated_{}.png'.format(self.output_folder, case_name), dpi=250)
         
-        #plt.show()
+        if show_plot:
+            plt.show()
         
 
     def run_SPS(self, 
