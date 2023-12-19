@@ -105,6 +105,11 @@ class FMA:
         """
         context = xo.ContextCpu()  # to be upgrade to GPU if needed 
         
+        # Extract Twiss table from before installing space charge
+        line0 = line.copy()
+        line0.build_tracker(_context = context)
+        twiss_xtrack = line0.twiss()
+        
         print('\nInstalling space charge on line...\n')
         # Initialize longitudinal profile for beams 
         lprofile = xf.LongitudinalProfileQGaussian(
@@ -126,9 +131,9 @@ class FMA:
         line.build_tracker(_context = context)
         twiss_xtrack_with_sc = line.twiss()
 
-        # Find integer tunes from Twiss
-        self._Qx_int = int(twiss_xtrack_with_sc['qx'])
-        self._Qy_int = int(twiss_xtrack_with_sc['qy'])
+        # Find integer tunes from Twiss - BEFORE installing space cahrge
+        self._Qx_int = int(twiss_xtrack['qx'])
+        self._Qy_int = int(twiss_xtrack['qy'])
 
         return line
 
