@@ -55,7 +55,6 @@ class SPS_sequence_maker:
     Q_PS: float = 54.
     Q_SPS: float = 82.
     m_ion: float = 207.98
-    #optics: 'str' = '/home/elwaagaa/cernbox/PhD/Projects/acc-models-sps'
     
     def load_xsuite_line_and_twiss(self, Qy_frac=19, beta_beat=None):
         """
@@ -97,24 +96,33 @@ class SPS_sequence_maker:
 
 
     @staticmethod
-    def generate_SPS_gaussian_beam(line, n_part):
+    def generate_SPS_gaussian_beam(line, n_part, exn=None, eyn=None, Nb=None, sigma_z=None):
         """ 
-        Class method to generate matched Gaussian beam for SPS
+        Class method to generate matched Gaussian beam for SPS. Can provide custom parameters, otherwise default values
         
         Parameters:
         -----------
         line - xtrack line object
         n_part - number of macroparticles
+        exn, eyn: horizontal and vertical normalized emittances
+        Nb: bunch intensity, number of ions per bunch
+        sigma_z: bunch length in meters 
         
         Returns:
         --------
         particles - xpart particles object 
         
         """
+        # If no values are provided, use default values
+        n_emitt_x = BeamParameters_SPS.exn if exn is None else exn
+        n_emitt_y = BeamParameters_SPS.exn if eyn is None else eyn
+        Nb_SPS = BeamParameters_SPS.Nb if Nb is None else Nb
+        sigma_z_SPS = BeamParameters_SPS.sigma_z if sigma_z is None else sigma_z
+        
         particles = xp.generate_matched_gaussian_bunch(
-                                 num_particles=n_part, total_intensity_particles = BeamParameters_SPS.Nb,
-                                 nemitt_x = BeamParameters_SPS.exn, nemitt_y = BeamParameters_SPS.eyn, 
-                                 sigma_z = BeamParameters_SPS.sigma_z,
+                                 num_particles=n_part, total_intensity_particles = Nb_SPS,
+                                 nemitt_x = n_emitt_x, nemitt_y = n_emitt_y, 
+                                 sigma_z = sigma_z_SPS,
                                  particle_ref = line.particle_ref, line=line)
         print('\nGenerated Gaussian beam') 
         print('with Nb = {:.3e}, exn = {:.4e}, \neyn = {:.4e}, sigma_z = {:.3e} m \n{} macroparticles\n'.format(BeamParameters_SPS.Nb,
@@ -146,7 +154,7 @@ class SPS_sequence_maker:
 
     def generate_xsuite_seq(self, save_madx_seq=False, 
                             save_xsuite_seq=False, 
-                            return_xsuite_line=True):
+                            return_xsuite_line=True, voltage=3.0e6):
         """
         Load MADX line, match tunes and chroma, add RF and generate Xsuite line
         
@@ -155,6 +163,7 @@ class SPS_sequence_maker:
         save_madx_seq - save madx sequence to directory 
         save_xsuite_seq - save xtrack sequence to directory  
         return_xsuite_line - return generated xtrack line
+        voltage - RF voltage
         
         Returns:
         --------
@@ -235,8 +244,10 @@ class SPS_sequence_maker:
         
         # Xsuite sequence 
         line[nn].lag = 0  # 0 if below transition
-        line[nn].voltage =  3.0e6 # In Xsuite for ions, do not multiply by charge as in MADX
+        line[nn].voltage = voltage # In Xsuite for ions, do not multiply by charge as in MADX
         line[nn].frequency = madx.sequence['sps'].beam.freq0*1e6*harmonic_nb
+        
+        print('\nSet RF voltage to {:.3e} V\n'.format(voltage))
         
         # Save MADX sequence
         if save_madx_seq:
