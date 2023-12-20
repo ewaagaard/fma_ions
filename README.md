@@ -24,7 +24,13 @@ python -m pip install -e fma_ions
 ```
 The virtual environment can also be installed directly from the `requirements.txt`: `python -m pip install -r requirements.txt`
 
-Or within conda: `conda env create -f environment.yml`
+#### Submodules for PS and SPS sequences
+
+The `fma_ions` come with pre-built sequence generator for PS and SPS ions, relying on [git submodules](https://git-scm.com/book/en/v2/Git-Tools-Submodules) from [acc-models](https://gitlab.cern.ch/acc-models). In order to retrieve the latest version of these submodules, run from inside the `fma_ions` repository:
+```
+git submodule update --init --recursive
+```
+If this command is executed correctly, two repositories `acc-models-ps` and `acc-models-sps` should appear inside the `data` folder. 
 
 ## FMA class
 
