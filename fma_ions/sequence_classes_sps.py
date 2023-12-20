@@ -89,7 +89,7 @@ class SPS_sequence_maker:
             sps_line = self.generate_xsuite_seq() if beta_beat is None else self.generate_xsuite_seq_with_beta_beat(beta_beat)
             
         # Build tracker and Twiss
-        sps_line.build_tracker()
+        #sps_line.build_tracker()  # tracker is already built when loading
         twiss_sps = sps_line.twiss() 
         
         return sps_line, twiss_sps
