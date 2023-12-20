@@ -1,4 +1,4 @@
-name: fma_xsuite_env2
+name: fma_xsuite_env
 channels:
   - defaults
 dependencies:
