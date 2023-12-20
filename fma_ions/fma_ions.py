@@ -42,7 +42,6 @@ class FMA:
     use_uniform_beam - if True generate a transverse pencil distribution, otherwise 2D polar grid
     num_turns - to track in total
     num_spacecharge_interactions - how many interactions per turn
-    tol_spacecharge_position - tolerance in placement of SC kicks along line
     delta0 - relative momentum offset dp/p
     z0 - initial longitudinal offset zeta
     mode - space charge model: 'frozen', 'semi-frozen' or 'pic' (frozen recommended)
@@ -59,7 +58,6 @@ class FMA:
     use_uniform_beam: bool = True
     num_turns: int = 1200
     num_spacecharge_interactions: int = 400 
-    tol_spacecharge_position: float = 1e-2
     delta0: float = 0.0
     z0: float = 0.0
     n_theta: int = 50
@@ -109,11 +107,11 @@ class FMA:
                            longitudinal_profile = lprofile,
                            nemitt_x = beamParams.exn, nemitt_y = beamParams.eyn,
                            sigma_z = beamParams.sigma_z,
-                           num_spacecharge_interactions = self.num_spacecharge_interactions,
-                           tol_spacecharge_position = self.tol_spacecharge_position)
+                           num_spacecharge_interactions = self.num_spacecharge_interactions)
         
         # Build tracker for line
         line.build_tracker(_context = context)
+        line.optimize_for_tracking()
         twiss_xtrack_with_sc = line.twiss()
 
         # Find integer tunes from Twiss - BEFORE installing space charge
