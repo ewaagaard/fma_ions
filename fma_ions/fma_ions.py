@@ -73,9 +73,9 @@ class FMA:
     Q_min_PS: float = 0.015
     
     
-    def install_SC_and_get_line(self, line, beamParams):
+    def install_SC_and_get_line(self, line, beamParams, mode='frozen'):
         """
-        Install Space Charge (SC) and generate particles with provided Xsuite line and beam parameters
+        Install frozen Space Charge (SC) and generate particles with provided Xsuite line and beam parameters
         
         Parameters:
         ----------
@@ -86,13 +86,15 @@ class FMA:
         -------
         line - xtrack line with space charge installed 
         """
+        # Choose context, and remove tracker if already exists 
         context = xo.ContextCpu()  # to be upgrade to GPU if needed 
+        line.discard_tracker()
         
         # Extract Twiss table from before installing space charge
-        line0 = line.copy()
-        line0.build_tracker(_context = context)
-        twiss_xtrack = line0.twiss()
-        
+        line.build_tracker(_context=context, compile=False)
+        #line.optimize_for_tracking()
+        twiss_xtrack = line.twiss()
+
         print('\nInstalling space charge on line...\n')
         # Initialize longitudinal profile for beams 
         lprofile = xf.LongitudinalProfileQGaussian(
@@ -109,9 +111,19 @@ class FMA:
                            sigma_z = beamParams.sigma_z,
                            num_spacecharge_interactions = self.num_spacecharge_interactions)
         
+        # Select mode - frozen is default
+        if mode == 'frozen':
+            pass # Already configured in line
+        elif mode == 'quasi-frozen':
+            xf.replace_spacecharge_with_quasi_frozen(
+                                            line,
+                                            update_mean_x_on_track=True,
+                                            update_mean_y_on_track=True)
+        else:
+            raise ValueError(f'Invalid mode: {mode}')
+
         # Build tracker for line
         line.build_tracker(_context = context)
-        line.optimize_for_tracking()
         twiss_xtrack_with_sc = line.twiss()
 
         # Find integer tunes from Twiss - BEFORE installing space charge
