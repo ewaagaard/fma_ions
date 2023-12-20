@@ -42,7 +42,6 @@ class FMA:
     use_uniform_beam - if True generate a transverse pencil distribution, otherwise 2D polar grid
     num_turns - to track in total
     num_spacecharge_interactions - how many interactions per turn
-    tol_spacecharge_position - tolerance in placement of SC kicks along line
     delta0 - relative momentum offset dp/p
     z0 - initial longitudinal offset zeta
     mode - space charge model: 'frozen', 'semi-frozen' or 'pic' (frozen recommended)
@@ -59,7 +58,6 @@ class FMA:
     use_uniform_beam: bool = True
     num_turns: int = 1200
     num_spacecharge_interactions: int = 400 
-    tol_spacecharge_position: float = 1e-2
     delta0: float = 0.0
     z0: float = 0.0
     n_theta: int = 50
@@ -75,9 +73,9 @@ class FMA:
     Q_min_PS: float = 0.015
     
     
-    def install_SC_and_get_line(self, line, beamParams):
+    def install_SC_and_get_line(self, line, beamParams, mode='frozen'):
         """
-        Install Space Charge (SC) and generate particles with provided Xsuite line and beam parameters
+        Install frozen Space Charge (SC) and generate particles with provided Xsuite line and beam parameters
         
         Parameters:
         ----------
@@ -88,13 +86,15 @@ class FMA:
         -------
         line - xtrack line with space charge installed 
         """
+        # Choose context, and remove tracker if already exists 
         context = xo.ContextCpu()  # to be upgrade to GPU if needed 
+        line.discard_tracker()
         
         # Extract Twiss table from before installing space charge
-        line0 = line.copy()
-        line0.build_tracker(_context = context)
-        twiss_xtrack = line0.twiss()
-        
+        line.build_tracker(_context=context, compile=False)
+        #line.optimize_for_tracking()
+        twiss_xtrack = line.twiss()
+
         print('\nInstalling space charge on line...\n')
         # Initialize longitudinal profile for beams 
         lprofile = xf.LongitudinalProfileQGaussian(
@@ -109,9 +109,19 @@ class FMA:
                            longitudinal_profile = lprofile,
                            nemitt_x = beamParams.exn, nemitt_y = beamParams.eyn,
                            sigma_z = beamParams.sigma_z,
-                           num_spacecharge_interactions = self.num_spacecharge_interactions,
-                           tol_spacecharge_position = self.tol_spacecharge_position)
+                           num_spacecharge_interactions = self.num_spacecharge_interactions)
         
+        # Select mode - frozen is default
+        if mode == 'frozen':
+            pass # Already configured in line
+        elif mode == 'quasi-frozen':
+            xf.replace_spacecharge_with_quasi_frozen(
+                                            line,
+                                            update_mean_x_on_track=True,
+                                            update_mean_y_on_track=True)
+        else:
+            raise ValueError(f'Invalid mode: {mode}')
+
         # Build tracker for line
         line.build_tracker(_context = context)
         twiss_xtrack_with_sc = line.twiss()
