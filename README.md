@@ -19,6 +19,7 @@ To directly start calculating different ion performances with the `fma_ions`, cr
 ```
 conda env create -f environment.yml
 conda activate fma_xsuite_env
+cd ..
 python -m pip install -e fma_ions
 ```
 The virtual environment can also be installed directly from the `requirements.txt`: `python -m pip install -r requirements.txt`
