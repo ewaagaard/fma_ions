@@ -57,7 +57,7 @@ class FMA:
     """
     use_uniform_beam: bool = True
     num_turns: int = 1200
-    num_spacecharge_interactions: int = 400 
+    num_spacecharge_interactions: int = 1080 
     delta0: float = 0.0
     z0: float = 0.0
     n_theta: int = 50

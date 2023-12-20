@@ -2,7 +2,7 @@
 Test loading pre-made SPS sequences 
 """
 import numpy as np
-from sequence_maker import SPS_sequence_maker
+from fma_ions import SPS_sequence_maker
 
 # instantiate sps sequence object and load pre-made files
 sps = SPS_sequence_maker(26.30, 26.19)
