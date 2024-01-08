@@ -260,6 +260,37 @@ class FMA:
             print('Kill index does not exist - proceeding')
         
         
+    def plot_tune_over_action(self, twiss):
+        
+        """
+        Loads generated turn-by-turn data and plots tune over action Jx, Jy
+        
+        Parameters:
+        -----------
+        twiss - twiss table from xtrack
+        """
+        # Load tracking data 
+        x, y, px, py  = self.load_tracking_data()
+
+        # Calculate normalized coordinates
+        X = x / np.sqrt(twiss['betx'][0]) 
+        PX = twiss['alfx'][0] / np.sqrt(twiss['betx'][0]) * x + np.sqrt(twiss['betx'][0]) * px
+        Y = y / np.sqrt(twiss['bety'][0]) 
+        PY = twiss['alfy'][0] / np.sqrt(twiss['bety'][0]) * y + np.sqrt(twiss['bety'][0]) * py
+        
+        # Calculate action for each particle
+        Jx = X**2 + PX **2
+        Jy = Y**2 + PY **2
+        
+        # Find tunes of particles
+        d, Qx, Qy = self.run_FMA(x, y)
+        
+        return Jx, Qx 
+        
+        
+        
+        
+        
     def plot_normalized_phase_space(self, twiss, start_particle=0, plot_up_to_particle=50, also_show_plot=True):
         """
         Generate phase space plots in X and Y from generated turn-by-turn data
