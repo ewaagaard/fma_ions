@@ -92,7 +92,7 @@ class FMA:
         
         # Extract Twiss table from before installing space charge
         line.build_tracker(_context=context, compile=False)
-        #line.optimize_for_tracking()
+        line.optimize_for_tracking()
         twiss_xtrack = line.twiss()
 
         print('\nInstalling space charge on line...\n')
@@ -218,7 +218,7 @@ class FMA:
         
         # Set particle trajectories of dead particles that got lost in tracking
         self._kill_ind = particles.state < 1
-
+        self._kill_ind_exists = True
         
         if save_tbt_data:
             os.makedirs(self.output_folder, exist_ok=True)
@@ -574,7 +574,7 @@ class FMA:
             plt.show()
         
         
-    def run_SPS(self, load_tbt_data=False):
+    def run_SPS(self, load_tbt_data=False, save_tune_data=True):
         """
         Default FMA analysis for SPS Pb ions, plot final results and tune diffusion in initial distribution
         
@@ -606,6 +606,12 @@ class FMA:
         # Extract diffusion coefficient from FMA of turn-by-turn data
         d, Qx, Qy = self.run_FMA(x, y, Qmin=self.Q_min_SPS)
          
+        if save_tune_data:
+            os.makedirs(self.output_folder, exist_ok=True)
+            np.save('{}/Qx.npy'.format(self.output_folder), Qx)
+            np.save('{}/Qy.npy'.format(self.output_folder), Qy)
+            np.save('{}/d.npy'.format(self.output_folder), d)
+        
         # Tunes from Twiss
         Qh_set = twiss_sps['qx']
         Qv_set = twiss_sps['qy']
@@ -733,7 +739,7 @@ class FMA:
         self.plot_initial_distribution(x, y, d, case_name='SPS')
         
         
-    def run_PS(self, load_tbt_data=False):
+    def run_PS(self, load_tbt_data=False, save_tune_data=True):
         """
         Default FMA analysis for SPS Pb ions, plot final results and tune diffusion in initial distribution
         
@@ -764,6 +770,13 @@ class FMA:
             x, y = self.track_particles(particles, line)
             
         d, Qx, Qy = self.run_FMA(x, y, Qmin=self.Q_min_PS)
+
+        if save_tune_data:
+            os.makedirs(self.output_folder, exist_ok=True)
+            np.save('{}/Qx.npy'.format(self.output_folder), Qx)
+            np.save('{}/Qy.npy'.format(self.output_folder), Qy)
+            np.save('{}/d.npy'.format(self.output_folder), d)
+
 
         # Tunes from Twiss
         Qh_set = twiss_ps['qx']
