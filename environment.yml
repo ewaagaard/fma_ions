@@ -118,7 +118,6 @@ dependencies:
       - cffi==1.16.0
       - cpymad==1.15.0
       - cython==3.0.7
-      - fma-ions==0.1.0
       - lark==1.1.8
       - minrpc==0.1.0
       - nafflib==1.0.2
@@ -129,4 +128,4 @@ dependencies:
       - xpart==0.16.3
       - xsuite==0.5.2
       - xtrack==0.48.1
-prefix: /home/elwaagaa/anaconda3/envs/fma_xsuite_env2
+prefix: /home/elwaagaa/anaconda3/envs/fma_xsuite_env
