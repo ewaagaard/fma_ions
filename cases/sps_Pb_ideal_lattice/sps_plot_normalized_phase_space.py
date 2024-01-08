@@ -1,5 +1,5 @@
 """
-SPS Pb ions: plot tune over action from generated turn-by-turn data
+Generate SPS phase space plot from generated turn-by-turn data
 """
 import fma_ions
 
@@ -11,11 +11,10 @@ fma_sps = fma_ions.FMA(output_folder='output_Pb_on_momentum_ideal_lattice')
 sps_seq = fma_ions.SPS_sequence_maker()
 sps_line, twiss_sps = sps_seq.load_xsuite_line_and_twiss(Qy_frac=25)
 
-Jx_avg, Jy_avg, Qx, Qy = fma_sps.plot_tune_over_action(twiss_sps, also_show_plot=False, case_name='z0 = 0')
-
+fma_sps.plot_normalized_phase_space(twiss_sps, start_particle=1, plot_up_to_particle=200, also_show_plot=False,
+                                    case_name='z0 = 0')
 
 # Off-momentum case
 
 fma_sps2 = fma_ions.FMA(output_folder='output_Pb_off_momentum_ideal_lattice_z0_0dot1')
-
-Jx_avg2, Jy_avg2, Qx2, Qy2 = fma_sps2.plot_tune_over_action(twiss_sps, also_show_plot=True, case_name='z0 = 0.1')
+fma_sps2.plot_normalized_phase_space(twiss_sps, start_particle=1, plot_up_to_particle=200, case_name='z0 = 0.1')

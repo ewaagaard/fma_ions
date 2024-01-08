@@ -249,49 +249,116 @@ class FMA:
             py=np.load('{}/py.npy'.format(self.output_folder))
             self._x_norm =np.load('{}/x0_norm.npy'.format(self.output_folder))
             self._y_norm =np.load('{}/y0_norm.npy'.format(self.output_folder))
+            
+            # If index with killed particles exist, raise flag for FMA analysis
+            try:
+                self._kill_ind_exists = True
+                self._kill_ind = np.load('{}/state.npy'.format(self.output_folder))
+            except FileNotFoundError:
+                print('\nKill index does not exist - proceeding with all particles\n')
+                self._kill_ind_exists = False
+            
             return x, y, px, py
 
         except FileNotFoundError:
             raise FileNotFoundError('Tracking data does not exist - set correct path or generate the data!')
-     
+
+    
+    def load_tune_data(self):
+        """Loads numpy data of tunes if FMA has already been done"""
         try:
-            self._kill_ind = np.load('{}/state.npy'.format(self.output_folder))
+            Qx = np.load('{}/Qx.npy'.format(self.output_folder))
+            Qy = np.load('{}/Qy.npy'.format(self.output_folder))
+            d = np.load('{}/d.npy'.format(self.output_folder))
+            return Qx, Qy, d
         except FileNotFoundError:
-            print('Kill index does not exist - proceeding')
-        
-        
-    def plot_tune_over_action(self, twiss):
+            raise FileNotFoundError('Tune data does not exist - set correct path or perform FMA!')
+
+  
+    def plot_tune_over_action(self, twiss, also_show_plot=True, resonance_order=5, case_name=None):
         
         """
-        Loads generated turn-by-turn data and plots tune over action Jx, Jy
+        Loads generated turn-by-turn data and plots tunes Qx, Qy over action Jx, Jy
         
         Parameters:
         -----------
         twiss - twiss table from xtrack
+        also_show_plot - boolean to include "plt.show()"
+        resonance_order - integer, order up to which resonance should be plotted
         """
         # Load tracking data 
         x, y, px, py  = self.load_tracking_data()
 
-        # Calculate normalized coordinates
-        X = x / np.sqrt(twiss['betx'][0]) 
-        PX = twiss['alfx'][0] / np.sqrt(twiss['betx'][0]) * x + np.sqrt(twiss['betx'][0]) * px
-        Y = y / np.sqrt(twiss['bety'][0]) 
-        PY = twiss['alfy'][0] / np.sqrt(twiss['bety'][0]) * y + np.sqrt(twiss['bety'][0]) * py
+        # Try to load tunes and action if already exists, otherwise perform FMA again
+        try:
+            Qx = np.load('{}/Qx.npy'.format(self.output_folder))
+            Qy = np.load('{}/Qy.npy'.format(self.output_folder))
+            Jx = np.load('{}/Jx.npy'.format(self.output_folder))
+            Jy = np.load('{}/Jy.npy'.format(self.output_folder))
+            print('\nLoaded existing tune and action data!\n')
+
+        except FileNotFoundError:
+            print('\nDid not find existing tune and action data - initializing FMA!\n')
+            
+            # Calculate normalized coordinates
+            X = x / np.sqrt(twiss['betx'][0]) 
+            PX = twiss['alfx'][0] / np.sqrt(twiss['betx'][0]) * x + np.sqrt(twiss['betx'][0]) * px
+            Y = y / np.sqrt(twiss['bety'][0]) 
+            PY = twiss['alfy'][0] / np.sqrt(twiss['bety'][0]) * y + np.sqrt(twiss['bety'][0]) * py
+            
+            # Calculate action for each particle
+            Jx = X**2 + PX **2
+            Jy = Y**2 + PY **2
+            
+            # Find tunes of particles
+            d, Qx, Qy = self.run_FMA(x, y)
+            
+            # Save the tunes and action, if possible
+            os.makedirs(self.output_folder, exist_ok=True)
+            np.save('{}/Qx.npy'.format(self.output_folder), Qx)
+            np.save('{}/Qy.npy'.format(self.output_folder), Qy)
+            np.save('{}/d.npy'.format(self.output_folder), d)
+            np.save('{}/Jx.npy'.format(self.output_folder), Jx)
+            np.save('{}/Jy.npy'.format(self.output_folder), Jy)
         
-        # Calculate action for each particle
-        Jx = X**2 + PX **2
-        Jy = Y**2 + PY **2
+            print('Saved tune and action data.\n')
         
-        # Find tunes of particles
-        d, Qx, Qy = self.run_FMA(x, y)
+        # Contours are not perfect circles in normalized phase space - find average action
+        Jx_avg = np.mean(Jx, axis=1)
+        Jy_avg = np.mean(Jy, axis=1)
         
-        return Jx, Qx 
+        # Plot average 
+        fig, ax = plt.subplots(1, 2, figsize=(12,6))
+        name_str = 'Tune over action' if case_name is None else 'Tune over action - {}'.format(case_name)
+        fig.suptitle(name_str)
+
+        ax[0].plot(Jx_avg, Qx, 'o', color='b', alpha=0.5, markersize=1.5)
+        ax[1].plot(Jy_avg, Qy, 'o', color='r', alpha=0.5, markersize=1.5)
+        
+        ax[0].set_ylabel(r"$Q_{x}$")
+        ax[0].set_xlabel(r"$J_{x}$")
+        ax[1].set_ylabel(r"$Q_{y}$")
+        ax[1].set_xlabel(r"$J_{y}$")
+        
+        ax[0].set_xscale('log')
+        ax[1].set_xscale('log')
+        
+        fig.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+        
+        if also_show_plot:
+            plt.show()
+
+        return Jx_avg, Jy_avg, Qx, Qy
         
         
         
         
-        
-    def plot_normalized_phase_space(self, twiss, start_particle=0, plot_up_to_particle=50, also_show_plot=True):
+    def plot_normalized_phase_space(self, twiss, 
+                                    start_particle=0, 
+                                    plot_up_to_particle=50, 
+                                    also_show_plot=True,
+                                    case_name=None
+                                    ):
         """
         Generate phase space plots in X and Y from generated turn-by-turn data
         
@@ -305,15 +372,17 @@ class FMA:
         x, y, px, py  = self.load_tracking_data()
 
         fig, ax = plt.subplots(1, 2, figsize=(12,6))
-        fig.suptitle('Phase space')
+        name_str = 'Normalized phase space' if case_name is None else 'Normalized phase space - {}'.format(case_name)
+        fig.suptitle(name_str, fontsize=16)
 
         X = x / np.sqrt(twiss['betx'][0]) 
         PX = twiss['alfx'][0] / np.sqrt(twiss['betx'][0]) * x + np.sqrt(twiss['betx'][0]) * px
         Y = y / np.sqrt(twiss['bety'][0]) 
         PY = twiss['alfy'][0] / np.sqrt(twiss['bety'][0]) * y + np.sqrt(twiss['bety'][0]) * py
 
-        ax[0].plot(X[i, :], PX[i, :], 'o', color='b', alpha=0.5, markersize=1.5)
-        ax[1].plot(Y[i, :], PY[i, :], 'o', color='r', alpha=0.5, markersize=1.5)
+        for particle in i:
+            ax[0].plot(X[particle, :], PX[particle, :], 'o', alpha=0.5, markersize=1.5)
+            ax[1].plot(Y[particle, :], PY[particle, :], 'o', alpha=0.5, markersize=1.5)
         
         ax[0].set_ylabel(r"$P_{x}$")
         ax[0].set_xlabel(r"$X$")
@@ -375,8 +444,8 @@ class FMA:
         Qx_2[Qx_2 == 0.0] = np.nan
         Qy_2[Qy_2 == 0.0] = np.nan
         
-        # Remove dead particles from particle index
-        if remove_dead_particles:
+        # Remove dead particles from particle index - if exists
+        if remove_dead_particles and self._kill_ind_exists:
             Qx_1[self._kill_ind] = np.nan
             Qy_1[self._kill_ind] = np.nan
             Qx_2[self._kill_ind] = np.nan
