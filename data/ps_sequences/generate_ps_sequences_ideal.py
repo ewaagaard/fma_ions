@@ -1,7 +1,7 @@
 """
 Generate ideal sequences for PS sequence 
 """
-from sequence_maker import PS_sequence_maker
+from fma_ions import PS_sequence_maker
 
 # Instantiate SPS sequence makers with different tunes 
 ps0 = PS_sequence_maker(6.15, 6.245, seq_folder='qx_dot15')

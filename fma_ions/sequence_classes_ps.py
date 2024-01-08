@@ -16,7 +16,6 @@ from scipy import constants
 from cpymad.madx import Madx
 import json
 
-ps_madx_macro = Path(__file__).resolve().parent.joinpath('../helpers/PS_match_tunes_and_chroma.madx').absolute()
 sequence_path = Path(__file__).resolve().parent.joinpath('../data/ps_sequences').absolute()
 optics =  Path(__file__).resolve().parent.joinpath('../data/acc-models-ps').absolute()
 
@@ -144,6 +143,10 @@ class PS_sequence_maker:
     def generate_xsuite_seq(self, save_madx_seq=False, save_xsuite_seq=True, return_xsuite_line=True):
         """
         Load MADX line, match tunes and chroma, add RF and generate Xsuite line
+        
+        Parameters:
+        -----------
+        - flags to save / return xsuite or madx lines
         """
         os.makedirs(self.seq_folder, exist_ok=True)
         print('\nGenerating sequence for {} with qx = {}, qy = {}\n'.format(self.ion_type, self.qx0, self.qy0))
@@ -151,12 +154,10 @@ class PS_sequence_maker:
         #### Initiate MADX sequence and call the sequence and optics file ####
         madx = Madx()
         madx.call("{}/_scripts/macros.madx".format(optics))
-        
-        #madx.call("{}/ps_mu.seq".format(optics))
-        #madx.call("{}/ps_ss.seq".format(optics))
         madx.call("{}/ps.seq".format(optics))
         madx.call("{}/scenarios/lhc_ion/1_flat_bottom/ps_fb_ion.str".format(optics))
-        madx.call('{}'.format(ps_madx_macro))
+        
+        
         
         # Generate PS beam - use default Pb or make custom beam
         m_in_eV, p_inj_PS = self.generate_PS_beam()
@@ -169,11 +170,17 @@ class PS_sequence_maker:
         
         # When we perform matching, recall the MADX convention that all chromatic functions are multiplied by relativistic beta factor
         # Thus, when we match for a given chromaticity, need to account for this factor to get correct value in Xsuite and PTC
-        beta0 = madx.beam.beta 
-        madx.input("qx = {}".format(self.qx0))
-        madx.input("qy = {}".format(self.qy0))
-        madx.input(f"qpx = -5.26716824/{beta0}")
-        madx.input(f"qpy = -7.199251093/{beta0}")
+        self.particle_sample = xp.Particles(
+                p0c = p_inj_PS,
+                q0 = self.Q_PS,
+                mass0 = m_in_eV)
+        beta0 = self.particle_sample.beta0[0]
+        
+        
+        madx.input("Qx := {}".format(self.qx0 % 1))  # fractional part of tune
+        madx.input("Qy := {}".format(self.qy0 % 1))
+        madx.input(f"dqx := -5.26716824/{beta0}")
+        madx.input(f"dqy := -7.199251093/{beta0}")
         
         # Flatten line
         madx.use("ps")
@@ -184,7 +191,13 @@ class PS_sequence_maker:
         madx.input("select, flag=makethin, slice=5, thick=false;")
         madx.input("makethin, sequence=ps, style=teapot, makedipedge=True;")
         madx.use('ps')
-        madx.input("exec, match_tunes_and_chroma(qx, qy, qpx, qpy);")
+        
+        # Match tunes with PTC, not with custom macro
+        madx.use("ps")
+        madx.input('exec, match_tunes(Qx, Qy, dqx, dqy);')
+        madx.input('exec, tunes_leq_knob_factors(Qx, Qy);')
+
+        # madx.input("exec, match_tunes_and_chroma(qx, qy, qpx, qpy);")
         
         # Create Xsuite line, check that Twiss command works 
         madx.use(sequence='ps')
@@ -192,16 +205,13 @@ class PS_sequence_maker:
         
         line = xt.Line.from_madx_sequence(madx.sequence['ps'])
         line.build_tracker()
-        #madx_beam = madx.sequence['ps'].beam
         
-        self.particle_sample = xp.Particles(
-                p0c = p_inj_PS,
-                q0 = self.Q_PS,
-                mass0 = m_in_eV)
-        print('\nGenerated PS {} beam with gamma = {:.3f}, Qx = {:.3f}, Qy = {:.3f}\n'.format(self.ion_type, 
+        print('\nGenerated PS {} beam with gamma = {:.3f}, Qx = {:.3f}, Qy = {:.3f}\ndq1 = {:.4f}, dq2 = {:.4f}\n'.format(self.ion_type, 
                                                                                               self.particle_sample.gamma0[0],
-                                                                                              self.qx0,
-                                                                                              self.qy0))
+                                                                                              twiss_thin.summary['q1'],
+                                                                                              twiss_thin.summary['q2'],
+                                                                                              twiss_thin.summary['dq1']*beta0,
+                                                                                              twiss_thin.summary['dq2']*beta0))
         
         line.particle_ref = self.particle_sample
         
@@ -233,6 +243,7 @@ class PS_sequence_maker:
                 json.dump(line.to_dict(), fid, cls=xo.JEncoder)
                 
         if return_xsuite_line:
+            print('\nReturned Xsuite line\n')
             return line
         
         
@@ -252,7 +263,7 @@ class PS_sequence_maker:
         -------
         line - xsuite line for tracking
         """
-        self._line = self.generate_xsuite_seq() if line is None else line
+        self._line = self.generate_xsuite_seq(return_xsuite_line=True) if line is None else line
         self._line0 = self._line.copy()
         self._twiss0 = self._line0.twiss()
         

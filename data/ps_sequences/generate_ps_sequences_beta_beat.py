@@ -1,7 +1,7 @@
 """
 Generate standard sequences with beta beat in PS sequence 
 """
-from sequence_maker import PS_sequence_maker
+from fma_ions import PS_sequence_maker
 import numpy as np
 
 # Create beta-beat vectors 
