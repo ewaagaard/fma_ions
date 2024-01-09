@@ -124,7 +124,7 @@ class FMA:
 
         # Build tracker for line
         line.build_tracker(_context = context)
-        twiss_xtrack_with_sc = line.twiss()
+        #twiss_xtrack_with_sc = line.twiss()  # --> better to do Twiss before installing SC, if enough SC interactions
 
         # Find integer tunes from Twiss - BEFORE installing space charge
         self._Qx_int = int(twiss_xtrack['qx'])
@@ -133,14 +133,20 @@ class FMA:
         return line
 
 
-    def generate_particles(self, line, beamParams):
+    def generate_particles(self, line, beamParams, 
+                           make_single_Jy_trace=False,
+                           y_norm0=0.05):
         """
         Generate xpart particle object from beam parameters 
     
         Parameters
         ----------
+        line - xtrack line object 
         beamParams - beam parameters (data class containing Nb, sigma_z, exn, eyn)
-
+        make_single_Jy_trace - flag to create single trace with unique vertical action
+        Jy, with varying action Jx. "Trace" instead of "grid", if uniform beam is used
+        y_norm0 - starting normalized Y coordinate for the single Jy trace 
+        
         Returns
         -------
         particles : xpart particles object 
@@ -153,11 +159,15 @@ class FMA:
             # Generate arrays of normalized coordinates 
             x_values = np.linspace(self.r_min, self.n_sigma, num=self.n_linear)  
             y_values = np.linspace(self.r_min, self.n_sigma, num=self.n_linear)  
-
-            # Create a meshgrid for the uniform beam distribution
-            X, Y = np.meshgrid(x_values, y_values)
-            x_norm, y_norm = X.flatten(), Y.flatten()
-            
+        
+            # Select single trace, or create a meshgrid for the uniform beam distribution
+            if make_single_Jy_trace: 
+                x_norm = x_values
+                y_norm = y_norm0 * np.ones(len(x_norm))
+                print('Making single-trace particles object with length {}\n'.format(len(y_norm)))
+            else:
+                X, Y = np.meshgrid(x_values, y_values)
+                x_norm, y_norm = X.flatten(), Y.flatten()
         else:
             print('Making POLAR distribution...')
             x_norm, y_norm, _, _ = xp.generate_2D_polar_grid(
@@ -275,7 +285,12 @@ class FMA:
             raise FileNotFoundError('Tune data does not exist - set correct path or perform FMA!')
 
   
-    def plot_tune_over_action(self, twiss, also_show_plot=True, resonance_order=5, case_name=None):
+    def plot_tune_over_action(self, twiss, 
+                              load_tune_data=False,
+                              also_show_plot=True, 
+                              resonance_order=5, 
+                              case_name=None,
+                              plane='X'):
         
         """
         Loads generated turn-by-turn data and plots tunes Qx, Qy over action Jx, Jy
@@ -283,23 +298,27 @@ class FMA:
         Parameters:
         -----------
         twiss - twiss table from xtrack
+        load_tbt_data - load tune data if FMA has already been done
         also_show_plot - boolean to include "plt.show()"
         resonance_order - integer, order up to which resonance should be plotted
+        case_name - additional string to add to figure heading 
+        plane - 'X' or 'Y'
         """
         # Load tracking data 
         x, y, px, py  = self.load_tracking_data()
 
         # Try to load tunes and action if already exists, otherwise perform FMA again
-        try:
-            Qx = np.load('{}/Qx.npy'.format(self.output_folder))
-            Qy = np.load('{}/Qy.npy'.format(self.output_folder))
-            Jx = np.load('{}/Jx.npy'.format(self.output_folder))
-            Jy = np.load('{}/Jy.npy'.format(self.output_folder))
-            print('\nLoaded existing tune and action data!\n')
-
-        except FileNotFoundError:
-            print('\nDid not find existing tune and action data - initializing FMA!\n')
-            
+        if load_tune_data:
+            try:
+                Qx = np.load('{}/Qx.npy'.format(self.output_folder))
+                Qy = np.load('{}/Qy.npy'.format(self.output_folder))
+                Jx = np.load('{}/Jx.npy'.format(self.output_folder))
+                Jy = np.load('{}/Jy.npy'.format(self.output_folder))
+                print('\nLoaded existing tune and action data!\n')
+    
+            except FileNotFoundError:
+                raise FileNotFoundError('\nDid not find existing tune and action data - initializing FMA!\n')
+        else:
             # Calculate normalized coordinates
             X = x / np.sqrt(twiss['betx'][0]) 
             PX = twiss['alfx'][0] / np.sqrt(twiss['betx'][0]) * x + np.sqrt(twiss['betx'][0]) * px
@@ -322,18 +341,14 @@ class FMA:
             np.save('{}/Jy.npy'.format(self.output_folder), Jy)
         
             print('Saved tune and action data.\n')
-        
-        # Contours are not perfect circles in normalized phase space - find average action
-        Jx_avg = np.mean(Jx, axis=1)
-        Jy_avg = np.mean(Jy, axis=1)
-        
-        # Plot average 
+                
+        # Plot initial action 
         fig, ax = plt.subplots(1, 2, figsize=(12,6))
         name_str = 'Tune over action' if case_name is None else 'Tune over action - {}'.format(case_name)
         fig.suptitle(name_str)
 
-        ax[0].plot(Jx_avg, Qx, 'o', color='b', alpha=0.5, markersize=1.5)
-        ax[1].plot(Jy_avg, Qy, 'o', color='r', alpha=0.5, markersize=1.5)
+        ax[0].plot(Jx[:, 0], Qx, 'o', color='b', alpha=0.5, markersize=2.5)
+        ax[1].plot(Jy[:, 0], Qy, 'o', color='r', alpha=0.5, markersize=2.5)
         
         ax[0].set_ylabel(r"$Q_{x}$")
         ax[0].set_xlabel(r"$J_{x}$")
@@ -344,18 +359,34 @@ class FMA:
         ax[1].set_xscale('log')
         
         fig.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+        fig.savefig('{}/{}_Tune_over_action.png'.format(self.output_folder, case_name), dpi=250)
+        
+        # Plot tune over normalized beam size, in horizontal
+        fig2, ax2 = plt.subplots(figsize=(6,6))
+        if plane == 'X':
+            ax2.plot(self._x_norm, Qx, 'o', color='b', alpha=0.5, markersize=2.5)
+            ax2.set_ylabel("$Q_{x}$")
+            ax2.set_xlabel("$\sigma_{x}$")
+        elif plane == 'Y':
+            ax2.plot(self._y_norm, Qy, 'o', color='r', alpha=0.5, markersize=2.5)       
+            ax2.set_ylabel("$\Q_{y}$")
+            ax2.set_xlabel("$\sigma_{y}$")
+        else:
+            raise ValueError('\nInvalid plane specified!\n')
+        
+        fig2.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+        fig2.savefig('{}/{}_Tune_over_normalized_{}.png'.format(self.output_folder, case_name, plane), dpi=250)
         
         if also_show_plot:
             plt.show()
 
-        return Jx_avg, Jy_avg, Qx, Qy
+        return Jx, Jy, Qx, Qy, d
         
         
         
         
     def plot_normalized_phase_space(self, twiss, 
-                                    start_particle=0, 
-                                    plot_up_to_particle=50, 
+                                    particle_index=None,
                                     also_show_plot=True,
                                     case_name=None
                                     ):
@@ -368,9 +399,13 @@ class FMA:
         start_particle - which particle index to start from
         plot_up_to_particle - index up to which particle from tracking data to include 
         """
-        i = np.arange(start_particle, plot_up_to_particle) # particle index
         x, y, px, py  = self.load_tracking_data()
-
+        
+        if particle_index is not None:
+            i = particle_index
+        else:
+            i = np.arange(1, len(x)) # particle index
+        
         fig, ax = plt.subplots(1, 2, figsize=(12,6))
         name_str = 'Normalized phase space' if case_name is None else 'Normalized phase space - {}'.format(case_name)
         fig.suptitle(name_str, fontsize=16)
@@ -504,6 +539,9 @@ class FMA:
         ----------
         x, y, d - input data generated from self.run_FMA
         case_name - name string for scenario
+        use_normalized_coordinates - flag whether to normalize coordinates w.r.t beam size
+        interpolate_initial_distribution - interpolate initial particle distribution into colormesh, or keep the points as they are 
+        also_show_plot - run plt.show()
         """ 
         fig2=plt.figure(figsize=(8,6))
         XX,YY = np.meshgrid(np.unique(x[:,0]), np.unique(y[:,0]))
@@ -574,13 +612,21 @@ class FMA:
             plt.show()
         
         
-    def run_SPS(self, load_tbt_data=False, save_tune_data=True):
+    def run_SPS(self, load_tbt_data=False, 
+                save_tune_data=True, 
+                Qy_frac=25,
+                make_single_Jy_trace=False
+                ):
         """
         Default FMA analysis for SPS Pb ions, plot final results and tune diffusion in initial distribution
         
         Parameters
         ----------
         load_tbt_data: if turn-by-turn data from tracking is already saved
+        save_tune_data - store results Qx, Qy, d from FMA
+        Qy_frac - fractional vertical tune 
+        make_single_Jy_trace - flag to create single trace with unique vertical action
+        Jy, with varying action Jx. "Trace" instead of "grid", if uniform beam is used
         
         Returns
         -------
@@ -588,7 +634,7 @@ class FMA:
         """
         beamParams = BeamParameters_SPS
         sps_seq = SPS_sequence_maker()
-        line0, twiss_sps =  sps_seq.load_xsuite_line_and_twiss()
+        line0, twiss_sps =  sps_seq.load_xsuite_line_and_twiss(Qy_frac=Qy_frac)
         
         # Install SC, track particles and observe tune diffusion
         if load_tbt_data:
@@ -596,11 +642,11 @@ class FMA:
                 x, y, _, _ = self.load_tracking_data()
             except FileExistsError:
                 line = self.install_SC_and_get_line(line0, beamParams)
-                particles = self.generate_particles(line, beamParams)
+                particles = self.generate_particles(line, beamParams, make_single_Jy_trace)
                 x, y = self.track_particles(particles, line)
         else:
             line = self.install_SC_and_get_line(line0, beamParams)
-            particles = self.generate_particles(line, beamParams)
+            particles = self.generate_particles(line, beamParams, make_single_Jy_trace)
             x, y = self.track_particles(particles, line)
   
         # Extract diffusion coefficient from FMA of turn-by-turn data
