@@ -13,6 +13,7 @@ from scipy.interpolate import griddata
 
 ##### Plot settings 
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 plt.rcParams.update(
     {
         "font.family": "serif",
@@ -362,9 +363,9 @@ class FMA:
         fig.savefig('{}/{}_Tune_over_action.png'.format(self.output_folder, case_name), dpi=250)
         
         # Plot tune over normalized beam size, in horizontal
-        fig2, ax2 = plt.subplots(figsize=(6,6))
+        fig2, ax2 = plt.subplots(figsize=(8, 6))
         if plane == 'X':
-            ax2.plot(self._x_norm, Qx, 'o', color='b', alpha=0.5, markersize=2.5)
+            ax2.scatter(self._x_norm, Qx, s=5.5, c=self._x_norm, marker='o', zorder=10, cmap=plt.cm.cool)
             ax2.set_ylabel("$Q_{x}$")
             ax2.set_xlabel("$\sigma_{x}$")
         elif plane == 'Y':
@@ -373,6 +374,10 @@ class FMA:
             ax2.set_xlabel("$\sigma_{y}$")
         else:
             raise ValueError('\nInvalid plane specified!\n')
+        
+        # Add colorbar, normalized to beam size (in sigmas)
+        fig.colorbar(mpl.cm.ScalarMappable(norm=mpl.colors.Normalize(min(self._x_norm), max(self._x_norm)), cmap='cool'),
+             ax=ax2, orientation='vertical', label='$\sigma_{x}$')
         
         fig2.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
         fig2.savefig('{}/{}_Tune_over_normalized_{}.png'.format(self.output_folder, case_name, plane), dpi=250)
@@ -388,7 +393,8 @@ class FMA:
     def plot_normalized_phase_space(self, twiss, 
                                     particle_index=None,
                                     also_show_plot=True,
-                                    case_name=None
+                                    case_name=None,
+                                    plane='X'
                                     ):
         """
         Generate phase space plots in X and Y from generated turn-by-turn data
@@ -398,6 +404,7 @@ class FMA:
         twiss - twiss table from xtrack
         start_particle - which particle index to start from
         plot_up_to_particle - index up to which particle from tracking data to include 
+        plane - 'X' or 'Y'
         """
         x, y, px, py  = self.load_tracking_data()
         
@@ -406,7 +413,7 @@ class FMA:
         else:
             i = np.arange(1, len(x)) # particle index
         
-        fig, ax = plt.subplots(1, 2, figsize=(12,6))
+        fig, ax = plt.subplots(1, 1, figsize=(8,6))
         name_str = 'Normalized phase space' if case_name is None else 'Normalized phase space - {}'.format(case_name)
         fig.suptitle(name_str, fontsize=16)
 
@@ -415,15 +422,26 @@ class FMA:
         Y = y / np.sqrt(twiss['bety'][0]) 
         PY = twiss['alfy'][0] / np.sqrt(twiss['bety'][0]) * y + np.sqrt(twiss['bety'][0]) * py
 
+        # Take colors from colormap of normalized phase space
+        colors = plt.cm.cool(np.linspace(0, 1, len(self._x_norm)))
+
         for particle in i:
-            ax[0].plot(X[particle, :], PX[particle, :], 'o', alpha=0.5, markersize=1.5)
-            ax[1].plot(Y[particle, :], PY[particle, :], 'o', alpha=0.5, markersize=1.5)
-        
-        ax[0].set_ylabel(r"$P_{x}$")
-        ax[0].set_xlabel(r"$X$")
-        ax[1].set_ylabel(r"$P_{y}$")
-        ax[1].set_xlabel(r"$Y$")
-        
+            
+            # Mix black and colorbar 
+            color=colors[particle] if particle % 2 == 0 else 'k'
+                
+            if plane == 'X':
+                ax.plot(X[particle, :], PX[particle, :], 'o', color=color, alpha=0.5, markersize=1.5)
+                ax.set_ylabel(r"$P_{x}$")
+                ax.set_xlabel(r"$X$")
+            elif plane == 'Y':
+                ax.plot(Y[particle, :], PY[particle, :], 'o', color=color, alpha=0.5, markersize=1.5)
+                ax.set_ylabel(r"$P_{y}$")
+                ax.set_xlabel(r"$Y$")
+                
+        # Add colorbar, normalized to beam size (in sigmas)
+        fig.colorbar(mpl.cm.ScalarMappable(norm=mpl.colors.Normalize(min(self._x_norm), max(self._x_norm)), cmap='cool'),
+             ax=ax, orientation='vertical', label='$\sigma_{x}$')
         fig.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
         
         if also_show_plot:
