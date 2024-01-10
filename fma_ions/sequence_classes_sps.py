@@ -152,25 +152,8 @@ class SPS_sequence_maker:
         return m_in_eV, p_inj_SPS
 
 
-    def generate_xsuite_seq(self, save_madx_seq=False, 
-                            save_xsuite_seq=False, 
-                            return_xsuite_line=True, voltage=3.0e6):
-        """
-        Load MADX line, match tunes and chroma, add RF and generate Xsuite line
-        
-        Parameters:
-        -----------
-        save_madx_seq - save madx sequence to directory 
-        save_xsuite_seq - save xtrack sequence to directory  
-        return_xsuite_line - return generated xtrack line
-        voltage - RF voltage
-        
-        Returns:
-        --------
-        None
-        """
-        os.makedirs(self.seq_folder, exist_ok=True)
-        print('\nGenerating sequence for {} with qx = {}, qy = {}\n'.format(self.ion_type, self.qx0, self.qy0))
+    def load_madx_SPS(self):
+        """Loads default SPS Pb sequence at flat bottom, and matches the tunes. Returns madx sequence"""
         
         #### Initiate MADX sequence and call the sequence and optics file ####
         madx = Madx()
@@ -179,13 +162,13 @@ class SPS_sequence_maker:
         madx.call("{}/beams/beam_lhc_ion_injection.madx".format(optics))  # attach beam just in case, otherwise error table will be empty
         
         # Generate SPS beam - use default Pb or make custom beam
-        m_in_eV, p_inj_SPS = self.generate_SPS_beam()
+        self.m_in_eV, self.p_inj_SPS = self.generate_SPS_beam()
         
         #madx.call("{}/beams/beam_lhc_ion_injection.madx".format(optics))
         madx.input(" \
                    Beam, particle=ion, mass={}, charge={}, pc = {}, sequence='sps'; \
                    DPP:=BEAM->SIGE*(BEAM->ENERGY/BEAM->PC)^2;  \
-                   ".format(m_in_eV/1e9, self.Q_SPS, p_inj_SPS/1e9))   # convert mass to GeV/c^2
+                   ".format(self.m_in_eV/1e9, self.Q_SPS, self.p_inj_SPS/1e9))   # convert mass to GeV/c^2
 
         # Flatten line
         madx.use(sequence='sps')
@@ -209,6 +192,31 @@ class SPS_sequence_maker:
         vary, name=qpv_setvalue;
         jacobian, calls=10, tolerance=1e-25;
         endmatch;""")
+
+        return madx
+
+    def generate_xsuite_seq(self, save_madx_seq=False, 
+                            save_xsuite_seq=False, 
+                            return_xsuite_line=True, voltage=3.0e6):
+        """
+        Load MADX line, match tunes and chroma, add RF and generate Xsuite line
+        
+        Parameters:
+        -----------
+        save_madx_seq - save madx sequence to directory 
+        save_xsuite_seq - save xtrack sequence to directory  
+        return_xsuite_line - return generated xtrack line
+        voltage - RF voltage
+        
+        Returns:
+        --------
+        None
+        """
+        os.makedirs(self.seq_folder, exist_ok=True)
+        print('\nGenerating sequence for {} with qx = {}, qy = {}\n'.format(self.ion_type, self.qx0, self.qy0))
+        
+        # Load madx instance with SPS sequence
+        madx = self.load_madx_SPS()
         
         # Create Xsuite line, check that Twiss command works 
         madx.use(sequence='sps')
@@ -219,15 +227,17 @@ class SPS_sequence_maker:
         #madx_beam = madx.sequence['sps'].beam
         
         self.particle_sample = xp.Particles(
-                p0c = p_inj_SPS,
+                p0c = self.p_inj_SPS,
                 q0 = self.Q_SPS,
-                mass0 = m_in_eV)
+                mass0 = self.m_in_eV)
         print('\nGenerated SPS {} beam with gamma = {:.3f}, Qx = {:.3f}, Qy = {:.3f}\n'.format(self.ion_type, 
                                                                                               self.particle_sample.gamma0[0],
                                                                                               self.qx0,
                                                                                               self.qy0))
         
         line.particle_ref = self.particle_sample
+        
+        ############## ADD RF VOLTAGE FOR LONGITUDINAL - DIFFERENT FOR MADX AND XSUITE ##############
         
         #### SET CAVITY VOLTAGE - with info from Hannes
         # 6x200 MHz cavities: actcse, actcsf, actcsh, actcsi (3 modules), actcsg, actcsj (4 modules)
