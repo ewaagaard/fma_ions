@@ -56,7 +56,7 @@ class SPS_sequence_maker:
     Q_SPS: float = 82.
     m_ion: float = 207.98
     
-    def load_xsuite_line_and_twiss(self, Qy_frac=19, beta_beat=None):
+    def load_xsuite_line_and_twiss(self, Qy_frac=25, beta_beat=None):
         """
         Method to load pre-generated SPS lattice files for Xsuite
         
