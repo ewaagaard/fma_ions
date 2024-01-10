@@ -12,7 +12,7 @@ import numpy as np
 d_min = -11.0
 
 # On-momentum case - Qy = 0.25
-fma_sps = fma_ions.FMA(output_folder='output_Pb_on_momentum_ideal_lattice_0dot25', num_turns=2400, n_linear=5000, z0=0.)
+fma_sps = fma_ions.FMA(output_folder='output_Pb_on_momentum_ideal_lattice_0dot25', num_turns=1200, n_linear=5000, z0=0.)
 fma_sps.run_SPS(load_tbt_data=False, make_single_Jy_trace=True)
 
 # Load Twiss and plot normalized phase space
