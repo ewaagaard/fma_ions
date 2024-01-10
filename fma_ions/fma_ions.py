@@ -666,7 +666,8 @@ class FMA:
     def run_SPS(self, load_tbt_data=False, 
                 save_tune_data=True, 
                 Qy_frac=25,
-                make_single_Jy_trace=False
+                make_single_Jy_trace=False,
+                use_symmetric_lattice=False
                 ):
         """
         Default FMA analysis for SPS Pb ions, plot final results and tune diffusion in initial distribution
@@ -678,6 +679,7 @@ class FMA:
         Qy_frac - fractional vertical tune 
         make_single_Jy_trace - flag to create single trace with unique vertical action
         Jy, with varying action Jx. "Trace" instead of "grid", if uniform beam is used
+        use_symmetric_lattice - flag to use symmetric lattice without QFA and QDA
         
         Returns
         -------
@@ -685,7 +687,7 @@ class FMA:
         """
         beamParams = BeamParameters_SPS
         sps_seq = SPS_sequence_maker()
-        line0, twiss_sps =  sps_seq.load_xsuite_line_and_twiss(Qy_frac=Qy_frac)
+        line0, twiss_sps =  sps_seq.load_xsuite_line_and_twiss(Qy_frac=Qy_frac, use_symmetric_lattice=use_symmetric_lattice)
         
         # Install SC, track particles and observe tune diffusion
         if load_tbt_data:
