@@ -313,27 +313,27 @@ class FMA:
         # Load tracking data 
         x, y, px, py  = self.load_tracking_data()
 
+        # Calculate normalized coordinates
+        X = x / np.sqrt(twiss['betx'][0]) 
+        PX = twiss['alfx'][0] / np.sqrt(twiss['betx'][0]) * x + np.sqrt(twiss['betx'][0]) * px
+        Y = y / np.sqrt(twiss['bety'][0]) 
+        PY = twiss['alfy'][0] / np.sqrt(twiss['bety'][0]) * y + np.sqrt(twiss['bety'][0]) * py
+        
+        # Calculate action for each particle
+        Jx = X**2 + PX **2
+        Jy = Y**2 + PY **2
+
         # Try to load tunes and action if already exists, otherwise perform FMA again
         if load_tune_data:
             try:
                 Qx = np.load('{}/Qx.npy'.format(self.output_folder))
                 Qy = np.load('{}/Qy.npy'.format(self.output_folder))
-                Jx = np.load('{}/Jx.npy'.format(self.output_folder))
-                Jy = np.load('{}/Jy.npy'.format(self.output_folder))
+                d = np.load('{}/d.npy'.format(self.output_folder))
                 print('\nLoaded existing tune and action data!\n')
     
             except FileNotFoundError:
                 raise FileNotFoundError('\nDid not find existing tune and action data - initializing FMA!\n')
         else:
-            # Calculate normalized coordinates
-            X = x / np.sqrt(twiss['betx'][0]) 
-            PX = twiss['alfx'][0] / np.sqrt(twiss['betx'][0]) * x + np.sqrt(twiss['betx'][0]) * px
-            Y = y / np.sqrt(twiss['bety'][0]) 
-            PY = twiss['alfy'][0] / np.sqrt(twiss['bety'][0]) * y + np.sqrt(twiss['bety'][0]) * py
-            
-            # Calculate action for each particle
-            Jx = X**2 + PX **2
-            Jy = Y**2 + PY **2
             
             # Find tunes of particles up to desired turn
             Qx, Qy, d = self.run_FMA(x[:, :load_up_to_turn], y[:, :load_up_to_turn])
@@ -343,8 +343,6 @@ class FMA:
             np.save('{}/Qx.npy'.format(self.output_folder), Qx)
             np.save('{}/Qy.npy'.format(self.output_folder), Qy)
             np.save('{}/d.npy'.format(self.output_folder), d)
-            np.save('{}/Jx.npy'.format(self.output_folder), Jx)
-            np.save('{}/Jy.npy'.format(self.output_folder), Jy)
         
             print('Saved tune and action data.\n')
                 
@@ -418,15 +416,32 @@ class FMA:
         else:
             i = np.arange(1, len(x)) # particle index
         
-        fig, ax = plt.subplots(1, 1, figsize=(8,6))
-        name_str = 'Normalized phase space' if case_name is None else 'Normalized phase space - {}'.format(case_name)
-        fig.suptitle(name_str, fontsize=16)
-
         X = x / np.sqrt(twiss['betx'][0]) 
         PX = twiss['alfx'][0] / np.sqrt(twiss['betx'][0]) * x + np.sqrt(twiss['betx'][0]) * px
         Y = y / np.sqrt(twiss['bety'][0]) 
         PY = twiss['alfy'][0] / np.sqrt(twiss['bety'][0]) * y + np.sqrt(twiss['bety'][0]) * py
 
+        # Calculate action for each particle
+        Jx = X**2 + PX **2
+        Jy = Y**2 + PY **2
+
+        # Generate two figures - one in normalized phase space, one in polar action space (Jx, phi)
+        fig, ax = plt.subplots(1, 1, figsize=(8,6))
+        fig.suptitle('Normalized phase space' if case_name is None else 'Normalized phase space - {}'.format(case_name), 
+                     fontsize=16)
+
+        fig2, ax2 = plt.subplots(1, 1, figsize=(8,6))
+        fig2.suptitle('Polar action space' if case_name is None else 'Polar action space - {}'.format(case_name), 
+                     fontsize=16)
+
+        # Calculate phase space angle
+        if plane == 'X':
+            phi = np.arctan2(X, PX)          
+        elif plane == 'Y':
+            phi = np.arctan2(Y, PY)
+        else:
+            raise ValueError('Plane invalid - has to be "X" or "Y"')
+            
         # Take colors from colormap of normalized phase space
         colors = plt.cm.cool(np.linspace(0, 1, len(self._x_norm)))
 
@@ -435,19 +450,32 @@ class FMA:
             # Mix black and colorbar 
             color=colors[particle] if particle % 2 == 0 else 'k'
                 
+            # Plot normalized phase space and action space
             if plane == 'X':
                 ax.plot(X[particle, :], PX[particle, :], 'o', color=color, alpha=0.5, markersize=1.5)
                 ax.set_ylabel(r"$P_{x}$")
                 ax.set_xlabel(r"$X$")
+                
+                ax2.plot(phi[particle, :], Jx[particle, :], 'o', color=color, alpha=0.5, markersize=1.5)
+                ax2.set_ylabel(r"$J_{x}$")
+                ax2.set_xlabel(r"$\phi$ [rad]")
             elif plane == 'Y':
                 ax.plot(Y[particle, :], PY[particle, :], 'o', color=color, alpha=0.5, markersize=1.5)
                 ax.set_ylabel(r"$P_{y}$")
                 ax.set_xlabel(r"$Y$")
                 
+                ax2.plot(phi[particle, :], Jy[particle, :], 'o', color=color, alpha=0.5, markersize=1.5)
+                ax2.set_ylabel(r"$J_{y}$")
+                ax2.set_xlabel(r"$\phi$ [rad]")
+                
         # Add colorbar, normalized to beam size (in sigmas)
         fig.colorbar(mpl.cm.ScalarMappable(norm=mpl.colors.Normalize(min(self._x_norm), max(self._x_norm)), cmap='cool'),
              ax=ax, orientation='vertical', label='$\sigma_{x}$')
         fig.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+        
+        fig2.colorbar(mpl.cm.ScalarMappable(norm=mpl.colors.Normalize(min(self._x_norm), max(self._x_norm)), cmap='cool'),
+             ax=ax2, orientation='vertical', label='$\sigma_{x}$')
+        fig2.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
         
         if also_show_plot:
             plt.show()
