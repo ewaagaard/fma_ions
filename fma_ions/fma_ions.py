@@ -19,9 +19,9 @@ plt.rcParams.update(
         "font.family": "serif",
         "font.size": 20,
         "axes.titlesize": 20,
-        "axes.labelsize": 20,
-        "xtick.labelsize": 20,
-        "ytick.labelsize": 20,
+        "axes.labelsize": 18,
+        "xtick.labelsize": 18,
+        "ytick.labelsize": 18,
         "legend.fontsize": 15,
         "figure.titlesize": 20,
     }
@@ -288,6 +288,7 @@ class FMA:
   
     def plot_tune_over_action(self, twiss, 
                               load_tune_data=False,
+                              load_up_to_turn=None,
                               also_show_plot=True, 
                               resonance_order=5, 
                               case_name=None,
@@ -300,11 +301,15 @@ class FMA:
         -----------
         twiss - twiss table from xtrack
         load_tbt_data - load tune data if FMA has already been done
+        load_up_to_turn - turn up to which to load tbt data
         also_show_plot - boolean to include "plt.show()"
         resonance_order - integer, order up to which resonance should be plotted
         case_name - additional string to add to figure heading 
         plane - 'X' or 'Y'
         """
+        if load_up_to_turn is None:
+            load_up_to_turn = self.num_turns
+        
         # Load tracking data 
         x, y, px, py  = self.load_tracking_data()
 
@@ -330,8 +335,8 @@ class FMA:
             Jx = X**2 + PX **2
             Jy = Y**2 + PY **2
             
-            # Find tunes of particles
-            d, Qx, Qy = self.run_FMA(x, y)
+            # Find tunes of particles up to desired turn
+            Qx, Qy, d = self.run_FMA(x[:, :load_up_to_turn], y[:, :load_up_to_turn])
             
             # Save the tunes and action, if possible
             os.makedirs(self.output_folder, exist_ok=True)
@@ -507,7 +512,7 @@ class FMA:
         # Find FMA diffusion of tunes
         d = np.log(np.sqrt( (Qx_2 - Qx_1)**2 + (Qy_2 - Qy_1)**2))
     
-        return d, Qx_2, Qy_2
+        return Qx_2, Qy_2, d
        
         
     def plot_FMA(self, d, Qx, Qy, Qh_set, Qv_set, case_name, 
@@ -544,7 +549,7 @@ class FMA:
         cbar.ax.tick_params(labelsize='18')
         plt.legend(loc='upper left')
         plt.clim(-20.5,-4.5)
-        fig.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+        fig.tight_layout(pad=0.6, w_pad=0.5, h_pad=1.0)
         fig.savefig('{}/FMA_plot_{}.png'.format(self.output_folder, case_name), dpi=250)
         
         
@@ -640,7 +645,7 @@ class FMA:
         
         Parameters
         ----------
-        load_tbt_data: if turn-by-turn data from tracking is already saved
+        load_tbt_data: if turn-by-turn (TBT) data from tracking is already saved
         save_tune_data - store results Qx, Qy, d from FMA
         Qy_frac - fractional vertical tune 
         make_single_Jy_trace - flag to create single trace with unique vertical action
@@ -668,9 +673,12 @@ class FMA:
             x, y = self.track_particles(particles, line)
   
         # Extract diffusion coefficient from FMA of turn-by-turn data
-        d, Qx, Qy = self.run_FMA(x, y, Qmin=self.Q_min_SPS)
-         
-        if save_tune_data:
+        if load_tbt_data:
+            Qx, Qy, d = self.load_tune_data()
+        else:
+            Qx, Qy, d = self.run_FMA(x, y, Qmin=self.Q_min_SPS)
+            
+        if save_tune_data and not load_tbt_data:
             os.makedirs(self.output_folder, exist_ok=True)
             np.save('{}/Qx.npy'.format(self.output_folder), Qx)
             np.save('{}/Qy.npy'.format(self.output_folder), Qy)
@@ -725,7 +733,7 @@ class FMA:
             x, y = self.track_particles(particles, line_SC_beat)
   
         # Extract diffusion coefficient from FMA of turn-by-turn data
-        d, Qx, Qy = self.run_FMA(x, y, Qmin=self.Q_min_SPS)
+        Qx, Qy, d = self.run_FMA(x, y, Qmin=self.Q_min_SPS)
          
         # Tunes from Twiss
         Qh_set = twiss_sps['qx']
@@ -785,7 +793,7 @@ class FMA:
             x, y = self.track_particles(particles, line)
   
         # Extract diffusion coefficient from FMA of turn-by-turn data
-        d, Qx, Qy = self.run_FMA(x, y)
+        Qx, Qy, d = self.run_FMA(x, y)
          
         # Tunes from Twiss
         Qh_set = twiss_sps['qx']
@@ -833,7 +841,7 @@ class FMA:
             particles = self.generate_particles(line, beamParams)
             x, y = self.track_particles(particles, line)
             
-        d, Qx, Qy = self.run_FMA(x, y, Qmin=self.Q_min_PS)
+        Qx, Qy, d = self.run_FMA(x, y, Qmin=self.Q_min_PS)
 
         if save_tune_data:
             os.makedirs(self.output_folder, exist_ok=True)
@@ -890,7 +898,7 @@ class FMA:
             x, y = self.track_particles(particles, line_SC_beat)
   
         # Extract diffusion coefficient from FMA of turn-by-turn data
-        d, Qx, Qy = self.run_FMA(x, y, Qmin=self.Q_min_PS)
+        Qx, Qy, d = self.run_FMA(x, y, Qmin=self.Q_min_PS)
          
         # Tunes from Twiss
         Qh_set = twiss_ps['qx']
@@ -948,7 +956,7 @@ class FMA:
             particles = self.generate_particles(line, beamParams)
             x, y = self.track_particles(particles, line)
               
-        d, Qx, Qy = self.run_FMA(x, y)
+        Qx, Qy, d = self.run_FMA(x, y)
         
         # Tunes from Twiss
         Qh_set = twiss_ps['qx']
