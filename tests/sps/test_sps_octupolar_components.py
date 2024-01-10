@@ -8,8 +8,7 @@ fma_ps = fma_ions.FMA()
 
 # Test Twiss and tune adjustments of SPS 
 sps = fma_ions.SPS_sequence_maker()
-line = sps.generate_xsuite_seq()
-twiss = line.twiss()
+line, twiss = sps.load_xsuite_line_and_twiss()
 print('\nSPS beam: new tunes Qx = {:.4f}, Qy = {:.4f}\n'.format(twiss['qx'], twiss['qy']))
  
 my_dict = line.to_dict()
