@@ -8,7 +8,7 @@ where $Q_{x, y, 1}$ is the particle tunes in the first number of turns (e.g. fir
 
 This repository contains FMA classes for ion beams in the CERN accelerator complex, but can also be used for other protons and other set-ups.  
 
-![FMA_plot_SPS](https://github.com/ewaagaard/fma_ions/assets/68541324/9c28a013-16f9-4130-aa1b-3d9663a5f39c)
+![FMA_plot_SPS](https://github.com/ewaagaard/fma_ions/assets/68541324/ed6676c6-9812-486e-81c6-6f6ea0b411de)
 
 ### Quick set-up
 
