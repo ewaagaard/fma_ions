@@ -42,7 +42,7 @@ class SPS_sequence_maker:
     - optics: absolute path to optics repository -> cloned from https://gitlab.cern.ch/acc-models
     """
     qx0: float = 26.30
-    qy0: float = 26.19
+    qy0: float = 26.25
     dq1: float = -3.460734474533172e-09 
     dq2: float = -3.14426538905229e-09
     # Default SPS PB ION CHROMA VALUES: not displayed on acc-model, extracted from PTC Twiss 
@@ -56,7 +56,7 @@ class SPS_sequence_maker:
     Q_SPS: float = 82.
     m_ion: float = 207.98
     
-    def load_xsuite_line_and_twiss(self, Qy_frac=25, beta_beat=None):
+    def load_xsuite_line_and_twiss(self, Qy_frac=25, beta_beat=None, use_symmetric_lattice=False):
         """
         Method to load pre-generated SPS lattice files for Xsuite
         
@@ -64,19 +64,24 @@ class SPS_sequence_maker:
         -----------
         Qy_fractional - fractional vertical tune. "19"" means fractional tune Qy = 0.19
         beta_beat - relative beta beat, i.e. relative difference between max beta function and max original beta function
+        use_symmetric_lattice - flag to use symmetric lattice without QFA and QDA
         
         Returns:
         -------
         xsuite line
         twiss - twiss table from xtrack 
         """
+        symmetric_string = '_symmetric' if use_symmetric_lattice else ''
+        if use_symmetric_lattice:
+            print('\nLoading symmetric SPS lattice\n')
+        
         # Update fractional vertical tune 
         self.qy0 = int(self.qy0) + Qy_frac / 100 
         print('\nTrying to load sequence with Qx, Qy = ({}, {}) and beta-beat = {}!\n'.format(self.qx0, self.qy0, beta_beat))
         
         # Check if pre-generated sequence exists 
         if beta_beat is None or beta_beat == 0.0:
-            sps_fname = '{}/qy_dot{}/SPS_2021_{}_nominal.json'.format(sequence_path, Qy_frac, self.ion_type)
+            sps_fname = '{}/qy_dot{}/SPS_2021_{}_nominal{}.json'.format(sequence_path, Qy_frac, self.ion_type, symmetric_string)
         else:                                                  
             sps_fname = '{}/qy_dot{}/SPS_2021_{}_{}_percent_beta_beat.json'.format(sequence_path, Qy_frac, self.ion_type, int(beta_beat*100))
             
@@ -152,8 +157,18 @@ class SPS_sequence_maker:
         return m_in_eV, p_inj_SPS
 
 
-    def load_madx_SPS(self):
-        """Loads default SPS Pb sequence at flat bottom, and matches the tunes. Returns madx sequence"""
+    def load_madx_SPS(self, make_thin=True):
+        """
+        Loads default SPS Pb sequence at flat bottom, and matches the tunes. 
+        
+        Parameters:
+        -----------
+        make_thin - flag to slice sequence or not
+        
+        Returns: 
+        --------    
+        madx - madx instance with SPS sequence    
+        """
         
         #### Initiate MADX sequence and call the sequence and optics file ####
         madx = Madx()
@@ -170,14 +185,15 @@ class SPS_sequence_maker:
                    DPP:=BEAM->SIGE*(BEAM->ENERGY/BEAM->PC)^2;  \
                    ".format(self.m_in_eV/1e9, self.Q_SPS, self.p_inj_SPS/1e9))   # convert mass to GeV/c^2
 
-        # Flatten line
-        madx.use(sequence='sps')
-        madx.input("seqedit, sequence=SPS;")
-        madx.input("flatten;")
-        madx.input("endedit;")
-        madx.use("sps")
-        madx.input("select, flag=makethin, slice=5, thick=false;")
-        madx.input("makethin, sequence=sps, style=teapot, makedipedge=True;")
+        # Flatten and slice line
+        if make_thin:
+            madx.use(sequence='sps')
+            madx.input("seqedit, sequence=SPS;")
+            madx.input("flatten;")
+            madx.input("endedit;")
+            madx.use("sps")
+            madx.input("select, flag=makethin, slice=5, thick=false;")
+            madx.input("makethin, sequence=sps, style=teapot, makedipedge=True;")
 
         # Use correct tune and chromaticity matching macros
         madx.call("{}/toolkit/macro.madx".format(optics))
@@ -194,6 +210,7 @@ class SPS_sequence_maker:
         endmatch;""")
 
         return madx
+
 
     def generate_xsuite_seq(self, save_madx_seq=False, 
                             save_xsuite_seq=False, 
@@ -458,3 +475,143 @@ class SPS_sequence_maker:
             print('Resetting line...')
         
         return loss 
+    
+    def generate_symmetric_SPS_lattice(self, 
+                                       save_madx_seq=False, save_xsuite_seq=False, 
+                                       return_xsuite_line=True,
+                                       make_thin=True, voltage=3.0e6):
+        """
+        Replace all QFA magnets in SPS with QF, to make it fully symmetric
+        
+        Parameters:
+        -----------
+        save_madx_seq - save madx sequence to directory 
+        save_xsuite_seq - save xtrack sequence to directory  
+        return_xsuite_line - return generated xtrack line
+        make_thin - flag to slice sequence or not
+        voltage - RF voltage        
+        
+        Returns:
+        --------
+        line_symmetric - SPS xsuite line whose QFAs are replaced with QF 
+        """
+        
+        # Load MADX instance
+        madx = self.load_madx_SPS(make_thin=False)
+        
+        #Print all QFA and QDA elements
+        dash = '-' * 65
+        header = '\n{:<27} {:>12} {:>15} {:>8}\n{}'.format("Element", "Location", "Type", "Length", dash)
+        print(header)
+        for ele in madx.sequence['sps'].elements:
+            if ele.name[:3] == 'qfa' or ele.name[:3] == 'qda':   
+                print('{:<27} {:>12.6f} {:>15} {:>8.3}'.format(ele.name, ele.at, ele.base_type.name, ele.length))
+        print(dash)
+        print('Printed all QFA and QDA magnets\n')
+
+        # Reference quadrupoles
+        ref_qf = madx.sequence['sps'].elements['qf.11010']
+        ref_qd = madx.sequence['sps'].elements['qd.10110']
+
+        # Initiate seqedit and replace all QFA and QDA magnets with a given QF
+        madx.command.seqedit(sequence='sps')
+        madx.command.flatten()
+        for ele in madx.sequence['sps'].elements:
+            if ele.name[:3] == 'qfa': 
+                madx.command.replace(element=ele.name, by=ref_qf.name)
+                print('Replacing {} by {}'.format(ele, ref_qf))
+            elif ele.name[:3] == 'qda':   
+                madx.command.replace(element=ele.name, by=ref_qd.name)
+                print('Replacing {} by {}'.format(ele, ref_qd))
+        madx.command.endedit()
+
+        print('\nNew sequence quadrupoles:')
+        print(header)
+        for ele in madx.sequence['sps'].elements:
+            if ele.name[:2] == 'qf' or ele.name[:2] == 'qd': 
+                print('{:<27} {:>12.6f} {:>15} {:>8.3}'.format(ele.name, ele.at, ele.base_type.name, ele.length))
+        print(dash)
+
+        # Check if remaining QFAs or QDAs
+        print("\nRemaining QFAs or QDAs")
+        print(header)
+        for ele in madx.sequence['sps'].elements:
+            if ele.name[:3] == 'qfa' or ele.name[:3] == 'qda':   
+                print('{:<27} {:>12.6f} {:>15} {:>8.3}'.format(ele.name, ele.at, ele.base_type.name, ele.length))
+        print(dash)
+
+        # Flatten and slice line
+        if make_thin:
+            madx.use(sequence='sps')
+            madx.input("seqedit, sequence=SPS;")
+            madx.input("flatten;")
+            madx.input("endedit;")
+            madx.use("sps")
+            madx.input("select, flag=makethin, slice=5, thick=false;")
+            madx.input("makethin, sequence=sps, style=teapot, makedipedge=True;")
+        
+        # Use correct tune and chromaticity matching macros
+        madx.call("{}/toolkit/macro.madx".format(optics))
+        madx.use('sps')
+        madx.exec(f"sps_match_tunes({self.qx0}, {self.qy0});")
+        madx.exec("sps_define_sext_knobs();")
+        madx.exec("sps_set_chroma_weights_q26();")
+        madx.input(f"""match;
+        global, dq1={self.dq1};
+        global, dq2={self.dq2};
+        vary, name=qph_setvalue;
+        vary, name=qpv_setvalue;
+        jacobian, calls=10, tolerance=1e-25;
+        endmatch;""")
+        
+        # Create Xsuite line, check that Twiss command works 
+        madx.use(sequence='sps')
+        twiss_thin = madx.twiss()  
+        
+        line = xt.Line.from_madx_sequence(madx.sequence['sps'])
+        line.build_tracker()
+        #madx_beam = madx.sequence['sps'].beam
+        
+        self.particle_sample = xp.Particles(
+                p0c = self.p_inj_SPS,
+                q0 = self.Q_SPS,
+                mass0 = self.m_in_eV)
+        print('\nGenerated SPS {} beam with gamma = {:.3f}, Qx = {:.3f}, Qy = {:.3f}\n'.format(self.ion_type, 
+                                                                                              self.particle_sample.gamma0[0],
+                                                                                              self.qx0,
+                                                                                              self.qy0))
+        
+        line.particle_ref = self.particle_sample
+        
+        ############## ADD RF VOLTAGE FOR LONGITUDINAL - DIFFERENT FOR MADX AND XSUITE ##############
+        
+        #### SET CAVITY VOLTAGE - with info from Hannes
+        # 6x200 MHz cavities: actcse, actcsf, actcsh, actcsi (3 modules), actcsg, actcsj (4 modules)
+        # acl 800 MHz cavities
+        # acfca crab cavities
+        # Ions: all 200 MHz cavities: 1.7 MV, h=4653
+        harmonic_nb = 4653
+        nn = 'actcse.31632'
+        
+        # MADX sequence 
+        madx.sequence.sps.elements[nn].lag = 0
+        madx.sequence.sps.elements[nn].volt = 3.0*self.particle_sample.q0 # different convention between madx and xsuite
+        madx.sequence.sps.elements[nn].freq = madx.sequence['sps'].beam.freq0*harmonic_nb
+        
+        # Xsuite sequence 
+        line[nn].lag = 0  # 0 if below transition
+        line[nn].voltage = voltage # In Xsuite for ions, do not multiply by charge as in MADX
+        line[nn].frequency = madx.sequence['sps'].beam.freq0*1e6*harmonic_nb
+        
+        # Save MADX sequence
+        if save_madx_seq:
+            madx.command.save(sequence='sps', file='{}/SPS_2021_{}_{}_symmetric.seq'.format(self.seq_folder, 
+                                                                                  self.ion_type, 
+                                                                                  self.seq_name), beam=True)  
+        # Save Xsuite sequence
+        if save_xsuite_seq:
+            with open('{}/SPS_2021_{}_{}_symmetric.json'.format(self.seq_folder, self.ion_type, self.seq_name), 'w') as fid:
+                json.dump(line.to_dict(), fid, cls=xo.JEncoder)
+                
+        if return_xsuite_line:
+            return line
