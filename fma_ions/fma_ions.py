@@ -917,13 +917,13 @@ class FMA:
             try:
                 x, y, _, _ = self.load_tracking_data()
             except FileExistsError:
-                line = self.install_SC_and_get_line(line0, beamParams)
-                line_SC_beat = ps_seq.generate_xsuite_seq_with_beta_beat(beta_beat=beta_beat, line=line)
+                line_beat = ps_seq.generate_xsuite_seq_with_beta_beat(beta_beat=beta_beat, line=line0)
+                line_SC_beat = self.install_SC_and_get_line(line_beat, beamParams)
                 particles = self.generate_particles(line_SC_beat, beamParams)
                 x, y = self.track_particles(particles, line_SC_beat)
         else:
-            line = self.install_SC_and_get_line(line0, beamParams)
-            line_SC_beat = ps_seq.generate_xsuite_seq_with_beta_beat(beta_beat=beta_beat, line=line)
+            line_beat = ps_seq.generate_xsuite_seq_with_beta_beat(beta_beat=beta_beat, line=line0)
+            line_SC_beat = self.install_SC_and_get_line(line_beat, beamParams)
             particles = self.generate_particles(line_SC_beat, beamParams)
             x, y = self.track_particles(particles, line_SC_beat)
   
