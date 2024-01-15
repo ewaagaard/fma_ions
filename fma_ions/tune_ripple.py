@@ -104,8 +104,13 @@ class Tune_Ripple_SPS:
                                                          beta_beat=self.beta_beat, 
                                                          use_symmetric_lattice=self.use_symmetric_lattice)
         
-        # Extract list of elements to trim (all focusing quads)
-        elements_to_trim = [nn for nn in line.element_names if nn.startswith('qf.')]
+        # Extract list of elements to trim (all focusing quads) - only take the multipoles
+        elements_to_trim = []
+        for i, ele in enumerate(line.element_names):
+            if ele.startswith('qf') and line.elements[i].__class__.__name__ == 'Multipole':
+                elements_to_trim.append(ele)
+                
+        #elements_to_trim = [nn for nn in line.element_names if nn.startswith('qf.')]
     
         # Build a custom setter
         qf_setter = xt.MultiSetter(line, elements_to_trim,
