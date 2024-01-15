@@ -735,7 +735,8 @@ class FMA:
 
 
     def run_SPS_with_beta_beat(self, 
-                               load_tbt_data=False, 
+                               load_tbt_data=False,
+                               save_tune_data=True,
                                Qy_frac=25, 
                                beta_beat=0.05,
                                make_single_Jy_trace=False,
@@ -747,6 +748,7 @@ class FMA:
         Parameters
         ----------
         load_tbt_data: if turn-by-turn data from tracking is already saved
+        save_tune_data - store results Qx, Qy, d from FMA
         Qy_frac - fractional vertical tune
         beta_beat : relative difference in beta functions (Y for SPS)
         Jy, with varying action Jx. "Trace" instead of "grid", if uniform beam is used
@@ -776,7 +778,16 @@ class FMA:
             x, y = self.track_particles(particles, line_SC_beat)
   
         # Extract diffusion coefficient from FMA of turn-by-turn data
-        Qx, Qy, d = self.run_FMA(x, y, Qmin=self.Q_min_SPS)
+        if load_tbt_data:
+            Qx, Qy, d = self.load_tune_data()
+        else:
+            Qx, Qy, d = self.run_FMA(x, y, Qmin=self.Q_min_SPS)
+            
+        if save_tune_data and not load_tbt_data:
+            os.makedirs(self.output_folder, exist_ok=True)
+            np.save('{}/Qx.npy'.format(self.output_folder), Qx)
+            np.save('{}/Qy.npy'.format(self.output_folder), Qy)
+            np.save('{}/d.npy'.format(self.output_folder), d)
          
         # Tunes from Twiss
         Qh_set = twiss_sps['qx']
