@@ -30,9 +30,11 @@ class Tune_Ripple_SPS:
     Qy_frac: float = 25
     beta_beat: float = None
     use_symmetric_lattice = True
+    ripple_period: int = 2000 
+    num_turns: int = 10000
     
     
-    def find_k_from_q_setvalue(self, dq=0.05, ripple_period=2000, total_turns=10000, plane='X'):
+    def find_k_from_q_setvalue(self, dq=0.05, plane='X'):
         """
         For desired tune amplitude modulation dQx or dQy, find corresponding change in quadrupole strengths
         'qh_setvalue' and 'qv_setvalue' are linear knobs that regulate QD and QF strength
@@ -81,14 +83,41 @@ class Tune_Ripple_SPS:
         amp_kqd = np.abs(kqd_1 - kqd_0)
         
         # Create arrays of quadrupole strengths to iterate over
-        turns = np.arange(1, total_turns+1)
-        kqf_vals = kqf_0 + amp_kqf * np.sin(2 * np.pi * turns / ripple_period)
-        kqd_vals = kqd_0 + amp_kqd * np.sin(2 * np.pi * turns / ripple_period)
+        turns = np.arange(1, self.num_turns+1)
+        kqf_vals = kqf_0 + amp_kqf * np.sin(2 * np.pi * turns / self.ripple_period)
+        kqd_vals = kqd_0 + amp_kqd * np.sin(2 * np.pi * turns / self.ripple_period)
         
-        return kqf_vals, kqd_vals
+        return kqf_vals, kqd_vals, turns
         
     
-    def run_simple_ripple(self, period, Qx_amplitude):
+    def load_madx_SPS_with_deferred_expressions(self, use_symmetric_lattice=True, Qy_frac=25):
+        """
+        Loads MADX Pb sequence file with deferred expressions to regulate QD and QF strengths
+        """
+        # Load
+        sps = SPS_sequence_maker()
+        madx = sps.load_simple_madx_seq(use_symmetric_lattice, Qy_frac=25)
+        madx.use(sequence="sps")
+
+        # Convert to line
+        line = xt.Line.from_madx_sequence(madx.sequence['sps'], deferred_expressions=True)
+        m_in_eV, p_inj_SPS = sps.generate_SPS_beam()
+        
+        line.particle_ref = xp.Particles(
+                p0c = p_inj_SPS,
+                q0 = sps.Q_SPS,
+                mass0 = m_in_eV)
+        line.build_tracker()
+        twiss = line.twiss()
+        
+        print('\nGenerated SPS Pb beam with gamma = {:.3f}, Qx = {:.3f}, Qy = {:.3f}\n'.format(line.particle_ref.gamma0[0],
+                                                                                              twiss['qx'],
+                                                                                              twiss['qy']))
+        return line
+    
+    
+    
+    def run_simple_ripple(self, dq=0.05, plane='X'):
         """
         Run SPS standard tune ripple:
             
@@ -98,24 +127,53 @@ class Tune_Ripple_SPS:
         Qx_amplitude - dQx to vary, amplitude of oscillations
         """
         
-        # Load Xtrack line of SPS
-        sps_seq = SPS_sequence_maker()
-        line, twiss = sps_seq.load_xsuite_line_and_twiss(Qy_frac=self.Qy_frac, 
-                                                         beta_beat=self.beta_beat, 
-                                                         use_symmetric_lattice=self.use_symmetric_lattice)
+        # Get SPS Pb line with deferred expressions
+        line = self.load_madx_SPS_with_deferred_expressions()
+        kqf_vals, kqd_vals, turns = self.find_k_from_q_setvalue(dq=dq, plane=plane)
         
-        # Extract list of elements to trim (all focusing quads) - only take the multipoles
-        elements_to_trim = []
-        for i, ele in enumerate(line.element_names):
-            if ele.startswith('qf') and line.elements[i].__class__.__name__ == 'Multipole':
-                elements_to_trim.append(ele)
-                
-        #elements_to_trim = [nn for nn in line.element_names if nn.startswith('qf.')]
+
+        # Generate particles
+        fma_sps = FMA(n_linear=20)
+        particles = fma_sps.generate_particles(line, BeamParameters_SPS, make_single_Jy_trace=True)
+        
+        # Empty array for turns
+        Qx = np.zeros(len(kqf_vals))
+        Qy = np.zeros(len(kqf_vals))
+        
+        for ii in range(self.num_turns):
+            if ii % 20 == 0: print(f'Turn {ii} of {self.num_turns}')
+        
+            # Change the strength of the quads
+            line.vars['kqf'] = kqf_vals[ii]
+            line.vars['kqd'] = kqd_vals[ii]
+        
+            # Track one turn
+            line.track(particles)
+        
+            # Check tunes
+            twiss = line.twiss()
+            Qx[ii] = twiss['qx']
+            Qy[ii] = twiss['qy']
+
+        # Plot tune evolution over time
+        fig, ax = plt.subplots(1, 2, figsize=(12,6))
+        ax[0].plot(turns, Qx, '-', color='blue', label='$Q_{x}$')
+        ax[1].plot(turns, Qy, '-', color='red', label='$Q_{y}$')
+        ax[0].set_ylabel('Tune')
+        ax[0].set_xlabel('Turns')
+        ax[1].set_xlabel('Turns')
+        
+        plt.show()
+        
+        return turns, Qx, Qy
     
-        # Build a custom setter
-        qf_setter = xt.MultiSetter(line, elements_to_trim,
-                                    field='knl', index=1 # we want to change knl[1]
-                                    )
+    
+    def print_quadrupolar_elements_in_line(self, line):
+        """Print all quadrupolar elements"""
         
-        # Get the initial values of the quad strength
-        k1l_0 = qf_setter.get_values()
+        # Print all quadrupolar components present
+        my_dict = line.to_dict()
+        d =  my_dict["elements"]
+        for key, value in d.items():
+            if value['__class__'] == 'Multipole' and value['_order'] == 1:
+                print('{}: knl = {}'.format(key, value['knl']))
