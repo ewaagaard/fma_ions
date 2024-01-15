@@ -363,7 +363,6 @@ class FMA:
         ax[1].set_xscale('log')
         
         fig.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
-        fig.savefig('{}/{}_Tune_over_action.png'.format(self.output_folder, case_name), dpi=250)
         
         # Plot tune over normalized beam size, in horizontal
         fig2, ax2 = plt.subplots(figsize=(8, 6))
@@ -383,6 +382,8 @@ class FMA:
              ax=ax2, orientation='vertical', label='$\sigma_{x}$')
         
         fig2.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+        
+        fig.savefig('{}/{}_Tune_over_action.png'.format(self.output_folder, case_name), dpi=250)
         fig2.savefig('{}/{}_Tune_over_normalized_{}.png'.format(self.output_folder, case_name, plane), dpi=250)
         
         if also_show_plot:
@@ -476,6 +477,10 @@ class FMA:
         fig2.colorbar(mpl.cm.ScalarMappable(norm=mpl.colors.Normalize(min(self._x_norm), max(self._x_norm)), cmap='cool'),
              ax=ax2, orientation='vertical', label='$\sigma_{x}$')
         fig2.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+        
+        # Save figures
+        fig.savefig('{}/Normalized_phase_space.png'.format(self.output_folder), dpi=250)
+        fig2.savefig('{}/Polar_action_space_{}.png'.format(self.output_folder, plane), dpi=250)
         
         if also_show_plot:
             plt.show()
