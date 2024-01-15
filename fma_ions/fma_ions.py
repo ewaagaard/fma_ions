@@ -479,12 +479,14 @@ class FMA:
         fig2.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
         
         # Save figures
-        fig.savefig('{}/Normalized_phase_space.png'.format(self.output_folder), dpi=250)
-        fig2.savefig('{}/Polar_action_space_{}.png'.format(self.output_folder, plane), dpi=250)
+        fig.savefig('{}/{}_Normalized_phase_space.png'.format(self.output_folder, case_name), dpi=250)
+        fig2.savefig('{}/{}_Polar_action_space_{}.png'.format(self.output_folder, case_name, plane), dpi=250)
         
         if also_show_plot:
             plt.show()
         
+        plt.close()
+    
     
     def run_FMA(self, x_tbt_data, y_tbt_data, Qmin=0.0, remove_dead_particles=True):
         """
