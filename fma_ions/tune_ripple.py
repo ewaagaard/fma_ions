@@ -32,18 +32,60 @@ class Tune_Ripple_SPS:
     use_symmetric_lattice = True
     
     
-    def find_k_from_q_setvalue(self, dq, plane='X'):
+    def find_k_from_q_setvalue(self, dq=0.05, ripple_period=2000, total_turns=10000, plane='X'):
         """
         For desired tune amplitude modulation dQx or dQy, find corresponding change in quadrupole strengths
+        'qh_setvalue' and 'qv_setvalue' are linear knobs that regulate QD and QF strength
+        - https://gitlab.cern.ch/acc-models/acc-models-sps/-/blame/2021/toolkit/macro.madx?ref_type=heads#L81
         
         Parameters:
         -----------
         dq - change in tune amplitude, e.g. 0.05
-        plane - default is 'X'
+        period - oscillation period of tune in number of turns
+        plane - 'X' or 'Y' (default is 'X')
         """
-        # Load MADX line of SPS
+        # Load MADX line of SPS and define quad knobs
         sps_seq = SPS_sequence_maker()
         madx = sps_seq.load_madx_SPS()
+        madx.exec('sps_define_quad_knobs')
+        
+        # Find old magnet stregths
+        kqf_0 = madx.globals['kqf']
+        kqd_0 = madx.globals['kqd']
+        print('\nOld strengths: kqf = {:.5f}, kqd = {:.5f}'.format(kqf_0, kqd_0))
+        
+        # Adjust the qh_setvalue or qv_setvalue
+        if plane == 'X':
+            madx.input('qh_setvalue = {};'.format(sps_seq.qx0 + dq))
+        elif plane == 'Y':
+            madx.input('qv_setvalue = {};'.format(sps_seq.qy0 + dq))
+        else:
+            raise ValueError('Undefined plane!')
+        twiss = madx.twiss().summary
+        print('New tunes: Qx = {:.6f} and Qy = {:.6f}'.format(twiss['q1'], twiss['q2']))
+        
+        # Find new quadrupole strength
+        kqf_1 = madx.globals['kqf']
+        kqd_1 = madx.globals['kqd']
+        print('New strengths: kqf = {:.5f}, kqd = {:.5f}\n'.format(kqf_1, kqd_1))
+        
+        # Reset the qh_setvalue or qv_setvalue
+        if plane == 'X':
+            madx.input('qh_setvalue = {};'.format(sps_seq.qx0))
+        elif plane == 'Y':
+            madx.input('qv_setvalue = {};'.format(sps_seq.qy0))
+        print('Q setvalue reset!')
+        
+        # Find amplitudes
+        amp_kqf = np.abs(kqf_1 - kqf_0)
+        amp_kqd = np.abs(kqd_1 - kqd_0)
+        
+        # Create arrays of quadrupole strengths to iterate over
+        turns = np.arange(1, total_turns+1)
+        kqf_vals = kqf_0 + amp_kqf * np.sin(2 * np.pi * turns / ripple_period)
+        kqd_vals = kqd_0 + amp_kqd * np.sin(2 * np.pi * turns / ripple_period)
+        
+        return kqf_vals, kqd_vals
         
     
     def run_simple_ripple(self, period, Qx_amplitude):
