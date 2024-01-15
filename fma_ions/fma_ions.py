@@ -174,7 +174,7 @@ class FMA:
             x_norm, y_norm, _, _ = xp.generate_2D_polar_grid(
                                                             theta_range=(0.01, np.pi/2-0.01),
                                                             ntheta = self.n_theta,
-                                                            r_range = (0.1, 7),
+                                                            r_range = (self.r_min, self.n_sigma),
                                                             nr = self.n_r)
         # Store normalized coordinates
         self._x_norm, self._y_norm = x_norm, y_norm
