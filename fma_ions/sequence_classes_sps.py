@@ -157,7 +157,7 @@ class SPS_sequence_maker:
         return m_in_eV, p_inj_SPS
 
 
-    def load_madx_SPS(self, make_thin=True):
+    def load_madx_SPS(self, make_thin=True, attach_beam=True):
         """
         Loads default SPS Pb sequence at flat bottom, and matches the tunes. 
         
@@ -174,13 +174,14 @@ class SPS_sequence_maker:
         madx = Madx()
         madx.call("{}/sps.seq".format(optics))
         madx.call("{}/strengths/lhc_ion.str".format(optics))
-        madx.call("{}/beams/beam_lhc_ion_injection.madx".format(optics))  # attach beam just in case, otherwise error table will be empty
+        if attach_beam:
+            madx.call("{}/beams/beam_lhc_ion_injection.madx".format(optics))  # attach beam just in case, otherwise error table will be empty
         
         # Generate SPS beam - use default Pb or make custom beam
         self.m_in_eV, self.p_inj_SPS = self.generate_SPS_beam()
         
-        #madx.call("{}/beams/beam_lhc_ion_injection.madx".format(optics))
-        madx.input(" \
+        if attach_beam:
+            madx.input(" \
                    Beam, particle=ion, mass={}, charge={}, pc = {}, sequence='sps'; \
                    DPP:=BEAM->SIGE*(BEAM->ENERGY/BEAM->PC)^2;  \
                    ".format(self.m_in_eV/1e9, self.Q_SPS, self.p_inj_SPS/1e9))   # convert mass to GeV/c^2
