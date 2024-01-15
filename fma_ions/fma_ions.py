@@ -729,7 +729,13 @@ class FMA:
         self.plot_initial_distribution(x, y, d, case_name='SPS')
 
 
-    def run_SPS_with_beta_beat(self, load_tbt_data=False, Qy_frac=19, beta_beat=0.05):
+    def run_SPS_with_beta_beat(self, 
+                               load_tbt_data=False, 
+                               Qy_frac=25, 
+                               beta_beat=0.05,
+                               make_single_Jy_trace=False,
+                               use_symmetric_lattice=False
+                               ):
         """
         Default FMA analysis for SPS Pb ions, plot final results and tune diffusion in initial distribution
         
@@ -738,6 +744,8 @@ class FMA:
         load_tbt_data: if turn-by-turn data from tracking is already saved
         Qy_frac - fractional vertical tune
         beta_beat : relative difference in beta functions (Y for SPS)
+        Jy, with varying action Jx. "Trace" instead of "grid", if uniform beam is used
+        use_symmetric_lattice - flag to use symmetric lattice without QFA and QDA
         
         Returns
         -------
@@ -745,7 +753,7 @@ class FMA:
         """
         beamParams = BeamParameters_SPS
         sps_seq = SPS_sequence_maker()
-        line0, twiss_sps =  sps_seq.load_xsuite_line_and_twiss(Qy_frac=Qy_frac)
+        line0, twiss_sps =  sps_seq.load_xsuite_line_and_twiss(Qy_frac=Qy_frac, use_symmetric_lattice=use_symmetric_lattice)
         
         # Install SC, track particles and observe tune diffusion
         if load_tbt_data:
@@ -754,12 +762,12 @@ class FMA:
             except FileExistsError:
                 line_beat = sps_seq.generate_xsuite_seq_with_beta_beat(beta_beat=beta_beat, line=line0)
                 line_SC_beat = self.install_SC_and_get_line(line_beat, beamParams)
-                particles = self.generate_particles(line_SC_beat, beamParams)
+                particles = self.generate_particles(line_SC_beat, beamParams, make_single_Jy_trace)
                 x, y = self.track_particles(particles, line_SC_beat)
         else:
             line_beat = sps_seq.generate_xsuite_seq_with_beta_beat(beta_beat=beta_beat, line=line0)
             line_SC_beat = self.install_SC_and_get_line(line_beat, beamParams)
-            particles = self.generate_particles(line_SC_beat, beamParams)
+            particles = self.generate_particles(line_SC_beat, beamParams, make_single_Jy_trace)
             x, y = self.track_particles(particles, line_SC_beat)
   
         # Extract diffusion coefficient from FMA of turn-by-turn data
