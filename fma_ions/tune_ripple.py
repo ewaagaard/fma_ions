@@ -5,16 +5,20 @@ Main class containing the tune ripple simulator for SPS
 import numpy as np
 from dataclasses import dataclass
 import matplotlib.pyplot as plt
+from pathlib import Path
+import json
 
 import xtrack as xt
 import xpart as xp
 import xfields as xf
+import xobjects as xo
 
 from .sequence_classes_ps import PS_sequence_maker, BeamParameters_PS
 from .sequence_classes_sps import SPS_sequence_maker, BeamParameters_SPS
 from .resonance_lines import resonance_lines
 from .fma_ions import FMA
 
+sequence_path = Path(__file__).resolve().parent.joinpath('../data/sps_sequences').absolute()
 
 @dataclass
 class Tune_Ripple_SPS:
@@ -32,6 +36,55 @@ class Tune_Ripple_SPS:
     use_symmetric_lattice = True
     ripple_period: int = 2000 
     num_turns: int = 10000
+    
+    
+    def load_SPS_line_with_deferred_madx_expressions(self, use_symmetric_lattice=True, Qy_frac=25):
+        """
+        Loads xtrack Pb sequence file with deferred expressions to regulate QD and QF strengths
+        or generate from MADX if does not exist
+        
+        Parameters:
+        -----------
+        use_symmetric_lattice - flag to use symmetric lattice without QFA and QDA
+        Qy_fractional - fractional vertical tune. "19"" means fractional tune Qy = 0.19
+        
+        Returns:
+        -------
+        xtrack line
+        """
+        # Try loading existing json file, otherwise create new from MADX
+        if use_symmetric_lattice:
+            fname = '{}/qy_dot{}/SPS_2021_Pb_symmetric_deferred_exp.json'.format(sequence_path, Qy_frac)
+        else:
+            fname = '{}/qy_dot{}/SPS_2021_Pb_nominal_deferred_exp.json'.format(sequence_path, Qy_frac)
+        
+        try: 
+            line = xt.Line.from_json(fname)
+        except FileNotFoundError:
+            print('\nSPS sequence file {} not found - generating new!\n'.format(fname))
+            sps = SPS_sequence_maker()
+            madx = sps.load_simple_madx_seq(use_symmetric_lattice, Qy_frac=25)
+            madx.use(sequence="sps")
+    
+            # Convert to line
+            line = xt.Line.from_madx_sequence(madx.sequence['sps'], deferred_expressions=True)
+            m_in_eV, p_inj_SPS = sps.generate_SPS_beam()
+            
+            line.particle_ref = xp.Particles(
+                    p0c = p_inj_SPS,
+                    q0 = sps.Q_SPS,
+                    mass0 = m_in_eV)
+            line.build_tracker()
+            
+            with open(fname, 'w') as fid:
+                json.dump(line.to_dict(), fid, cls=xo.JEncoder)
+            
+        twiss = line.twiss()
+        
+        print('\nGenerated SPS Pb beam with gamma = {:.3f}, Qx = {:.3f}, Qy = {:.3f}\n'.format(line.particle_ref.gamma0[0],
+                                                                                              twiss['qx'],
+                                                                                              twiss['qy']))
+        return line
     
     
     def find_k_from_q_setvalue(self, dq=0.05, plane='X'):
@@ -89,33 +142,7 @@ class Tune_Ripple_SPS:
         
         return kqf_vals, kqd_vals, turns
         
-    
-    def load_SPS_line_with_deferred_madx_expressions(self, use_symmetric_lattice=True, Qy_frac=25):
-        """
-        Loads MADX Pb sequence file with deferred expressions to regulate QD and QF strengths
-        """
-        # Load
-        sps = SPS_sequence_maker()
-        madx = sps.load_simple_madx_seq(use_symmetric_lattice, Qy_frac=25)
-        madx.use(sequence="sps")
-
-        # Convert to line
-        line = xt.Line.from_madx_sequence(madx.sequence['sps'], deferred_expressions=True)
-        m_in_eV, p_inj_SPS = sps.generate_SPS_beam()
-        
-        line.particle_ref = xp.Particles(
-                p0c = p_inj_SPS,
-                q0 = sps.Q_SPS,
-                mass0 = m_in_eV)
-        line.build_tracker()
-        twiss = line.twiss()
-        
-        print('\nGenerated SPS Pb beam with gamma = {:.3f}, Qx = {:.3f}, Qy = {:.3f}\n'.format(line.particle_ref.gamma0[0],
-                                                                                              twiss['qx'],
-                                                                                              twiss['qy']))
-        return line
-    
-    
+      
     def find_k_from_xtrack_matching(self, dq=0.05, nr_matches=10, plane='X'):
         """
         Find desired tune amplitude modulation dQx or dQy by matching the global
@@ -139,7 +166,7 @@ class Tune_Ripple_SPS:
     
         # Investigate linear dependence
         if plane == 'X':
-            Qx_target = np.linspace(twiss['qx'], twiss['qx'] + dq, num=nr_matches)
+            Qx_target = np.linspace(np.round(twiss['qx'], 2), np.round(twiss['qx'], 2) + dq, num=nr_matches)
             
             for i, Q in enumerate(Qx_target): 
             
@@ -176,7 +203,7 @@ class Tune_Ripple_SPS:
             plt.show()
             
         elif plane == 'Y':
-            Qy_target = np.linspace(twiss['qy'], twiss['qy'] + dq, num=nr_matches)
+            Qy_target = np.linspace(np.round(twiss['qy'], 2), np.round(twiss['qy'], 2) + dq, num=nr_matches)
             
             for i, Q in enumerate(Qy_target): 
             
