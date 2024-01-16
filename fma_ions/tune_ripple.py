@@ -8,15 +8,14 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 import json
 import os
+import NAFFlib
 
 import xtrack as xt
 import xpart as xp
 import xfields as xf
 import xobjects as xo
 
-from .sequence_classes_ps import PS_sequence_maker, BeamParameters_PS
 from .sequence_classes_sps import SPS_sequence_maker, BeamParameters_SPS
-from .resonance_lines import resonance_lines
 from .fma_ions import FMA
 
 sequence_path = Path(__file__).resolve().parent.joinpath('../data/sps_sequences').absolute()
@@ -46,6 +45,38 @@ class Tune_Ripple_SPS:
     n_sigma: float = 10.0
     output_folder: str = 'output_tune_ripple'
     
+    
+    def _get_initial_normalized_coord_at_start(self, make_single_Jy_trace=True, y_norm0=0.05):
+        """
+        Return normalized coordinates of particle object, conforming class parameters
+        Stores normalized x and y internally
+        
+        Parameters
+        ----------
+        make_single_Jy_trace - flag to create single trace with unique vertical action
+        Jy, with varying action Jx. "Trace" instead of "grid", if uniform beam is used
+        y_norm0 - starting normalized Y coordinate for the single Jy trace ):
+    
+        Returns:
+        -------
+        None
+        """
+        # Generate arrays of normalized coordinates 
+        x_values = np.linspace(self.r_min, self.n_sigma, num=self.n_linear)  
+        y_values = np.linspace(self.r_min, self.n_sigma, num=self.n_linear)  
+    
+        # Select single trace, or create a meshgrid for the uniform beam distribution
+        if make_single_Jy_trace: 
+            x_norm = x_values
+            y_norm = y_norm0 * np.ones(len(x_norm))
+            print('Making single-trace particles object with length {}\n'.format(len(y_norm)))
+        else:
+            X, Y = np.meshgrid(x_values, y_values)
+            x_norm, y_norm = X.flatten(), Y.flatten()
+        
+        # Store initial normalized coordinates
+        self._x_norm, self._y_norm = x_norm, y_norm
+        
     
     def load_SPS_line_with_deferred_madx_expressions(self, use_symmetric_lattice=True, Qy_frac=25):
         """
@@ -346,6 +377,7 @@ class Tune_Ripple_SPS:
         fma_sps = FMA(n_linear=self.n_linear, r_min=self.r_min, n_sigma=self.n_sigma)
         particles = fma_sps.generate_particles(line, BeamParameters_SPS, make_single_Jy_trace=True)
         
+        
         # Empty array for turns
         Qx = np.zeros(len(kqf_vals))
         Qy = np.zeros(len(kqf_vals))
@@ -463,6 +495,71 @@ class Tune_Ripple_SPS:
             raise FileNotFoundError('Tracking data does not exist - set correct path or generate the data!')
     
     
+    def load_tune_data(self):
+        """Loads numpy data of tunes if FMA has already been done"""
+        try:
+            Qx = np.load('{}/Qx.npy'.format(self.output_folder))
+            Qy = np.load('{}/Qy.npy'.format(self.output_folder))
+            return Qx, Qy
+        except FileNotFoundError:
+            raise FileNotFoundError('Tune data does not exist - set correct path or perform FMA!')
+
+    
+    def get_tune_from_tbt_data(self, x_tbt_data, y_tbt_data, 
+                               k, Qmin=0.0, save_tune_data=True):
+        """
+        Use NAFF
+        
+        Parameters:
+        ----------
+        x_tbt_data, y_tbt_data - numpy arrays of turn-by-turn data for particles 
+        Qmin - if desired, filter out some lower frequencies
+        k - length of period to evaluate tune over, "tune period"
+        save_tune_data - flag to save tune data
+        
+        Returns: 
+        --------
+        """
+        # Iterate over particles to find tune
+        for i_part in range(len(x_tbt_data)):
+            
+            if i_part % 2 == 0:
+                print('NAFF algorithm of particle {}'.format(i_part))
+            
+            # Calculate the index "window" from which tunes are extracted 
+            L = len(x_tbt_data[0]) # number of turns
+            
+            Qx = np.zeros([len(x_tbt_data), L - k + 1])
+            Qy = np.zeros([len(x_tbt_data), L - k + 1])
+            
+            # Iterate over subwindows of length k to find tune
+            for i in range(L - k + 1):
+                
+                if i_part % 2 == 0 and i % 100 == 0:
+                    print('Tune after turn {}'.format(i))
+                    
+                # Find dominant frequency with NAFFlib - also remember to subtract mean 
+                Qx_raw = NAFFlib.get_tunes(x_tbt_data[i_part, i:i+k] \
+                                                - np.mean(x_tbt_data[i_part, i:i+k]), 2)[0]
+                Qx[i_part, i] = Qx_raw[np.argmax(Qx_raw > Qmin)]  # find most dominant tune larger than this value
+                
+                Qy_raw = NAFFlib.get_tunes(y_tbt_data[i_part, i:i+k] \
+                                                - np.mean(y_tbt_data[i_part, i:i+k]), 2)[0]
+                Qy[i_part, i] = Qy_raw[np.argmax(Qy_raw > Qmin)]
+                
+        
+        # Change all zero-valued tunes to NaN
+        Qx[Qx == 0.0] = np.nan
+        Qy[Qy == 0.0] = np.nan
+
+        if save_tune_data:
+            os.makedirs(self.output_folder, exist_ok=True)
+            np.save('{}/Qx.npy'.format(self.output_folder), Qx)
+            np.save('{}/Qy.npy'.format(self.output_folder), Qy)
+
+        return Qx, Qy
+    
+    
     def run_ripple_and_analysis(self, dq=0.05, plane='X',
                    load_tbt_data=False,
                    make_single_Jy_trace=True,
@@ -489,8 +586,16 @@ class Tune_Ripple_SPS:
             x, y, px, py = self.run_ripple(dq=dq, plane=plane, make_single_Jy_trace=make_single_Jy_trace)
         
         # Load relevant SPS line and twiss
+        self._get_initial_normalized_coord_at_start() # loads normalized coord of starting distribution
         line, twiss = self.load_SPS_line_with_deferred_madx_expressions(use_symmetric_lattice=use_symmetric_lattice,
                                                                         Qy_frac=Qy_frac)
+        
+        # Try to load tune-data
+        k = int(np.ceil(2 / twiss['qs'])) # tune evaluated over two synchrotron periods
+        try:
+            Qx, Qy = self.load_tune_data()
+        except FileNotFoundError:
+            Qx, Qy = self.get_tune_from_tbt_data(x, y, k)
         
         # Load turns and quadrupole strengths
         kqf_vals, kqd_vals, turns = self.load_k_from_xtrack_matching(dq=dq, plane=plane)
@@ -508,11 +613,12 @@ class Tune_Ripple_SPS:
 
         # Action evolution over time
         fig, ax = plt.subplots(1, 1, figsize=(12,6))
-        ax.plot(turns, Jx[0], '-', color='blue')
+        ax.plot(turns, Jx[-1], '-', color='blue')
         ax.set_xlabel('Turns')
         ax.set_ylabel('$J_{x}$')
         fig.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
         plt.show()
+    
     
     def print_quadrupolar_elements_in_line(self, line):
         """Print all quadrupolar elements"""
