@@ -176,7 +176,7 @@ class FMA:
                                                             ntheta = self.n_theta,
                                                             r_range = (self.r_min, self.n_sigma),
                                                             nr = self.n_r)
-        # Store normalized coordinates
+        # Store initial normalized coordinates
         self._x_norm, self._y_norm = x_norm, y_norm
             
         # Build the particle object

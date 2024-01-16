@@ -31,12 +31,20 @@ class Tune_Ripple_SPS:
     Qy_fractional - fractional vertical tune. "19"" means fractional tune Qy = 0.19
     beta_beat - relative beta beat, i.e. relative difference between max beta function and max original beta function
     use_symmetric_lattice - flag to use symmetric lattice without QFA and QDA
+    n_linear - default number of points if uniform linear grid for normalized X and Y are used
+    r_min - minimum radial distance from beam center to generate particles, to avoid zero amplitude oscillations for FMA
+    n_sigma - max number of beam sizes sigma to generate particles
+    output_folder - where to save data
     """
     Qy_frac: float = 25
     beta_beat: float = None
     use_symmetric_lattice = True
     ripple_period: int = 2000 
     num_turns: int = 10000
+    n_linear: int = 100
+    r_min: float = 0.1
+    n_sigma: float = 10.0
+    output_folder: str = 'output_tune_ripple'
     
     
     def load_SPS_line_with_deferred_madx_expressions(self, use_symmetric_lattice=True, Qy_frac=25):
@@ -47,7 +55,7 @@ class Tune_Ripple_SPS:
         Parameters:
         -----------
         use_symmetric_lattice - flag to use symmetric lattice without QFA and QDA
-        Qy_fractional - fractional vertical tune. "19"" means fractional tune Qy = 0.19
+        Qy_frac - fractional vertical tune. "19"" means fractional tune Qy = 0.19
         
         Returns:
         -------
@@ -85,7 +93,7 @@ class Tune_Ripple_SPS:
         print('\nGenerated SPS Pb beam with gamma = {:.3f}, Qx = {:.3f}, Qy = {:.3f}\n'.format(line.particle_ref.gamma0[0],
                                                                                               twiss['qx'],
                                                                                               twiss['qy']))
-        return line
+        return line, twiss
     
     
     def find_k_from_q_setvalue(self, dq=0.05, plane='X'):
@@ -144,7 +152,7 @@ class Tune_Ripple_SPS:
         return kqf_vals, kqd_vals, turns
         
       
-    def find_k_from_xtrack_matching(self, dq=0.05, nr_matches=10, use_symmetric_lattice=True, plane='X'):
+    def find_k_from_xtrack_matching(self, dq=0.05, nr_matches=10, use_symmetric_lattice=True, plane='X', Qy_frac=25):
         """
         Find desired tune amplitude modulation dQx or dQy by matching the global
         variable kqf and kqd
@@ -155,6 +163,7 @@ class Tune_Ripple_SPS:
         nr_matches - interpolation resolution, number of times to match Qx and Qy with propoer kqf and kqd
         use_symmetric_lattice - flag to use symmetric lattice without QFA and QDA
         plane - 'X' or 'Y'
+        Qy_frac - fractional vertical tune. "19"" means fractional tune Qy = 0.19
         
         Returns:
         -------
@@ -163,8 +172,8 @@ class Tune_Ripple_SPS:
         turns - numpy array of turns
         """
         # Load Xsuite line with deferred expressions from MADx
-        line = self.load_SPS_line_with_deferred_madx_expressions(use_symmetric_lattice=use_symmetric_lattice)
-        twiss = line.twiss()
+        line, twiss = self.load_SPS_line_with_deferred_madx_expressions(use_symmetric_lattice=use_symmetric_lattice,
+                                                                        Qy_frac=Qy_frac)
         
         # Empty arrays of quadrupolar strenghts:
         kqfs = np.zeros(nr_matches)
@@ -315,26 +324,26 @@ class Tune_Ripple_SPS:
         return kqf_vals, kqd_vals, turns
     
     
-    def run_simple_ripple(self, dq=0.05, plane='X', use_xtrack_matching=True):
+    def run_simple_ripple_with_twiss(self, dq=0.05, plane='X', use_xtrack_matching=True):
         """
-        Run SPS standard tune ripple:
+        Run SPS standard tune ripple, with twiss command every turn to check tunes
             
         Parameters:
         -----------
-        period - oscillation period in number of turns
-        Qx_amplitude - dQx to vary, amplitude of oscillations
+        dq -  amplitude of oscillations to chosen plane
+        plane - 'X' or 'Y'
         use_xtrack_matching - flag to use xtrack or MADX qh_setvalue for the matching
         """
         
         # Get SPS Pb line with deferred expressions
-        line = self.load_SPS_line_with_deferred_madx_expressions()
+        line, twiss = self.load_SPS_line_with_deferred_madx_expressions()
         if use_xtrack_matching:
             kqf_vals, kqd_vals, turns = self.load_k_from_xtrack_matching(dq=dq, plane=plane)
         else:   
             kqf_vals, kqd_vals, turns = self.find_k_from_q_setvalue(dq=dq, plane=plane)
         
         # Generate particles
-        fma_sps = FMA(n_linear=20)
+        fma_sps = FMA(n_linear=self.n_linear, r_min=self.r_min, n_sigma=self.n_sigma)
         particles = fma_sps.generate_particles(line, BeamParameters_SPS, make_single_Jy_trace=True)
         
         # Empty array for turns
@@ -369,6 +378,141 @@ class Tune_Ripple_SPS:
         
         return turns, Qx, Qy
     
+    
+    def run_ripple(self, dq=0.05, plane='X',
+                   load_tbt_data=False,
+                   save_tbt_data=True,
+                   make_single_Jy_trace=True,
+                   use_symmetric_lattice=True, 
+                   Qy_frac=25
+                   ):
+        """
+        Test SPS tune ripple during tracking
+            
+        Parameters:
+        -----------
+        dq - amplitude of oscillations in chosen plane
+        plane - 'X' or 'Y'
+        load_tbt_data - flag to load data if already tracked
+        save_tbt_data - flag to save tracking data
+        make_single_Jy_trace - flag to create single trace with unique vertical action
+        use_symmetric_lattice - flag to use symmetric lattice without QFA and QDA
+        Qy_frac - fractional vertical tune. "19"" means fractional tune Qy = 0.19
+        
+        Returns:
+        --------
+        x, y, px, py - numpy arrays with turn-by-turn data
+        """
+        # Get SPS Pb line with deferred expressions
+        line, twiss = self.load_SPS_line_with_deferred_madx_expressions(use_symmetric_lattice=use_symmetric_lattice, 
+                                                                        Qy_frac=Qy_frac)
+        kqf_vals, kqd_vals, turns = self.load_k_from_xtrack_matching(dq=dq, plane=plane)
+
+        # Generate particles
+        fma_sps = FMA(n_linear=self.n_linear, r_min=self.r_min, n_sigma=self.n_sigma)
+        particles = fma_sps.generate_particles(line, BeamParameters_SPS, make_single_Jy_trace=make_single_Jy_trace)
+        
+        # Empty array for turns
+        x = np.zeros([len(particles.x), self.num_turns]) 
+        y = np.zeros([len(particles.y), self.num_turns])
+        px = np.zeros([len(particles.px), self.num_turns]) 
+        py = np.zeros([len(particles.py), self.num_turns])
+        
+        # Track the particles and return turn-by-turn coordinates
+        for ii in range(self.num_turns):
+            if ii % 20 == 0: print(f'Turn {ii} of {self.num_turns}')
+            
+            x[:, ii] = particles.x
+            y[:, ii] = particles.y
+            px[:, ii] = particles.px
+            py[:, ii] = particles.py
+        
+            # Change the strength of the quads
+            line.vars['kqf'] = kqf_vals[ii]
+            line.vars['kqd'] = kqd_vals[ii]
+        
+            # Track one turn
+            line.track(particles)
+        
+        # Set particle trajectories of dead particles that got lost in tracking
+        self._kill_ind = particles.state < 1
+        self._kill_ind_exists = True
+        
+        if save_tbt_data:
+            os.makedirs(self.output_folder, exist_ok=True)
+            np.save('{}/x.npy'.format(self.output_folder), x)
+            np.save('{}/y.npy'.format(self.output_folder), y)
+            np.save('{}/px.npy'.format(self.output_folder), px)
+            np.save('{}/py.npy'.format(self.output_folder), py)
+            np.save('{}/state.npy'.format(self.output_folder), self._kill_ind)
+            print('Saved tracking data.')
+    
+        return x, y, px, py
+    
+    
+    def load_tracking_data(self):
+        """Loads numpy data if tracking has already been made"""
+        try:            
+            x=np.load('{}/x.npy'.format(self.output_folder))
+            y=np.load('{}/y.npy'.format(self.output_folder))
+            px=np.load('{}/px.npy'.format(self.output_folder))
+            py=np.load('{}/py.npy'.format(self.output_folder))
+            return x, y, px, py
+
+        except FileNotFoundError:
+            raise FileNotFoundError('Tracking data does not exist - set correct path or generate the data!')
+    
+    
+    def run_ripple_and_analysis(self, dq=0.05, plane='X',
+                   load_tbt_data=False,
+                   make_single_Jy_trace=True,
+                   use_symmetric_lattice=True, 
+                   Qy_frac=25):
+        """
+        Run SPS tune ripple wtih tracking and generate phase space plots
+            
+        Parameters:
+        -----------
+        dq - amplitude of oscillations in chosen plane
+        plane - 'X' or 'Y'
+        load_tbt_data - flag to load data if already tracked
+        make_single_Jy_trace - flag to create single trace with unique vertical action
+        use_symmetric_lattice - flag to use symmetric lattice without QFA and QDA
+        Qy_frac - fractional vertical tune. "19"" means fractional tune Qy = 0.19
+        
+        Returns:
+        --------
+        """
+        if load_tbt_data:
+            x, y, px, py = self.load_tracking_data()
+        else:
+            x, y, px, py = self.run_ripple(dq=dq, plane=plane, make_single_Jy_trace=make_single_Jy_trace)
+        
+        # Load relevant SPS line and twiss
+        line, twiss = self.load_SPS_line_with_deferred_madx_expressions(use_symmetric_lattice=use_symmetric_lattice,
+                                                                        Qy_frac=Qy_frac)
+        
+        # Load turns and quadrupole strengths
+        kqf_vals, kqd_vals, turns = self.load_k_from_xtrack_matching(dq=dq, plane=plane)
+        turns = np.array(turns)
+        
+        # Calculate normalized coordinates
+        X = x / np.sqrt(twiss['betx'][0]) 
+        PX = twiss['alfx'][0] / np.sqrt(twiss['betx'][0]) * x + np.sqrt(twiss['betx'][0]) * px
+        Y = y / np.sqrt(twiss['bety'][0]) 
+        PY = twiss['alfy'][0] / np.sqrt(twiss['bety'][0]) * y + np.sqrt(twiss['bety'][0]) * py
+        
+        # Calculate action for each particle
+        Jx = X**2 + PX **2
+        Jy = Y**2 + PY **2
+
+        # Action evolution over time
+        fig, ax = plt.subplots(1, 1, figsize=(12,6))
+        ax.plot(turns, Jx[0], '-', color='blue')
+        ax.set_xlabel('Turns')
+        ax.set_ylabel('$J_{x}$')
+        fig.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+        plt.show()
     
     def print_quadrupolar_elements_in_line(self, line):
         """Print all quadrupolar elements"""
