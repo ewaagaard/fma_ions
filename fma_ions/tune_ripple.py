@@ -618,7 +618,7 @@ class Tune_Ripple_SPS:
         Jx = X**2 + PX **2
         Jy = Y**2 + PY **2
 
-        ind = np.arange(start=0, stop=len(x), step=len(x) / 5, dtype=int)
+        ind = np.arange(start=1, stop=len(x), step=len(x) / 5, dtype=int)
 
 
         # Take colors from colormap of normalized phase space
