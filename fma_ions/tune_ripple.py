@@ -5,6 +5,7 @@ Main class containing the tune ripple simulator for SPS
 import numpy as np
 from dataclasses import dataclass
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 from pathlib import Path
 import json
 import os
@@ -520,29 +521,28 @@ class Tune_Ripple_SPS:
         Returns: 
         --------
         """
+        # Calculate the index "window" from which tunes are extracted 
+        L = len(x_tbt_data[0]) # number of turns
+        
+        Qx = np.zeros([len(x_tbt_data), L - k + 1])
+        Qy = np.zeros([len(x_tbt_data), L - k + 1])
+        
         # Iterate over particles to find tune
         for i_part in range(len(x_tbt_data)):
             
             if i_part % 2 == 0:
                 print('NAFF algorithm of particle {}'.format(i_part))
-            
-            # Calculate the index "window" from which tunes are extracted 
-            L = len(x_tbt_data[0]) # number of turns
-            
-            Qx = np.zeros([len(x_tbt_data), L - k + 1])
-            Qy = np.zeros([len(x_tbt_data), L - k + 1])
-            
+                        
             # Iterate over subwindows of length k to find tune
             for i in range(L - k + 1):
                 
-                if i_part % 2 == 0 and i % 100 == 0:
+                if i_part % 2 == 0 and i % 4000 == 0:
                     print('Tune after turn {}'.format(i))
                     
                 # Find dominant frequency with NAFFlib - also remember to subtract mean 
                 Qx_raw = NAFFlib.get_tunes(x_tbt_data[i_part, i:i+k] \
                                                 - np.mean(x_tbt_data[i_part, i:i+k]), 2)[0]
                 Qx[i_part, i] = Qx_raw[np.argmax(Qx_raw > Qmin)]  # find most dominant tune larger than this value
-                
                 Qy_raw = NAFFlib.get_tunes(y_tbt_data[i_part, i:i+k] \
                                                 - np.mean(y_tbt_data[i_part, i:i+k]), 2)[0]
                 Qy[i_part, i] = Qy_raw[np.argmax(Qy_raw > Qmin)]
@@ -563,7 +563,8 @@ class Tune_Ripple_SPS:
     def run_ripple_and_analysis(self, dq=0.05, plane='X',
                    load_tbt_data=False,
                    make_single_Jy_trace=True,
-                   use_symmetric_lattice=True, 
+                   use_symmetric_lattice=True,
+                   install_SC_on_line=True,
                    Qy_frac=25):
         """
         Run SPS tune ripple wtih tracking and generate phase space plots
@@ -575,6 +576,7 @@ class Tune_Ripple_SPS:
         load_tbt_data - flag to load data if already tracked
         make_single_Jy_trace - flag to create single trace with unique vertical action
         use_symmetric_lattice - flag to use symmetric lattice without QFA and QDA
+        install_SC_on_line - flag to install space charge on line with FMA ions
         Qy_frac - fractional vertical tune. "19"" means fractional tune Qy = 0.19
         
         Returns:
@@ -589,6 +591,11 @@ class Tune_Ripple_SPS:
         self._get_initial_normalized_coord_at_start() # loads normalized coord of starting distribution
         line, twiss = self.load_SPS_line_with_deferred_madx_expressions(use_symmetric_lattice=use_symmetric_lattice,
                                                                         Qy_frac=Qy_frac)
+        
+        if install_SC_on_line:
+            fma_sps = FMA()
+            line = fma_sps.install_SC_and_get_line(line, BeamParameters_SPS())
+            print('Installed space charge on line\n')
         
         # Try to load tune-data
         k = int(np.ceil(2 / twiss['qs'])) # tune evaluated over two synchrotron periods
@@ -611,12 +618,31 @@ class Tune_Ripple_SPS:
         Jx = X**2 + PX **2
         Jy = Y**2 + PY **2
 
+        ind = np.arange(start=0, stop=len(x), step=len(x) / 5, dtype=int)
+
+
+        # Take colors from colormap of normalized phase space
+        colors = plt.cm.cool(np.linspace(0, 1, len(self._x_norm)))
+
         # Action evolution over time
-        fig, ax = plt.subplots(1, 1, figsize=(12,6))
-        ax.plot(turns, Jx[-1], '-', color='blue')
+        fig, ax = plt.subplots(1, 1, figsize=(8,6))
+        for i in ind:
+            ax.plot(turns, Jx[i, :], '-', color=colors[i])
         ax.set_xlabel('Turns')
         ax.set_ylabel('$J_{x}$')
         fig.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+        
+        # Plot tune evolution over time
+        fig2, ax2 = plt.subplots(1, 1, figsize=(8,6))
+        for i in ind:
+            ax2.plot(turns[k-1:], Qx[i, :], '-', color=colors[i])
+        ax2.set_xlabel('Turns')
+        ax2.set_ylabel('$Q_{x}$')
+        fig2.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+        # Add colorbar, normalized to beam size (in sigmas)
+        fig2.colorbar(mpl.cm.ScalarMappable(norm=mpl.colors.Normalize(min(self._x_norm), max(self._x_norm)), cmap='cool'),
+             ax=ax, orientation='vertical', label='$\sigma_{x}$')
+        
         plt.show()
     
     
