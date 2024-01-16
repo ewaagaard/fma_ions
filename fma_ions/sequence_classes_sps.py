@@ -292,7 +292,6 @@ class SPS_sequence_maker:
         # MADX sequence 
         madx.sequence.sps.elements[nn].lag = 0
         madx.sequence.sps.elements[nn].volt = 3.0*self.particle_sample.q0 # different convention between madx and xsuite
-        madx.sequence.sps.elements[nn].freq = madx.sequence['sps'].beam.freq0*harmonic_nb
         
         # Xsuite sequence 
         line[nn].lag = 0  # 0 if below transition

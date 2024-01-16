@@ -7,6 +7,7 @@ from dataclasses import dataclass
 import matplotlib.pyplot as plt
 from pathlib import Path
 import json
+import os
 
 import xtrack as xt
 import xpart as xp
@@ -143,19 +144,26 @@ class Tune_Ripple_SPS:
         return kqf_vals, kqd_vals, turns
         
       
-    def find_k_from_xtrack_matching(self, dq=0.05, nr_matches=10, plane='X'):
+    def find_k_from_xtrack_matching(self, dq=0.05, nr_matches=10, use_symmetric_lattice=True, plane='X'):
         """
         Find desired tune amplitude modulation dQx or dQy by matching the global
         variable kqf and kqd
         
         Parameters:
         -----------
-        period - oscillation period in number of turns
+        dq -  amplitude of oscillations to chosen plane
         nr_matches - interpolation resolution, number of times to match Qx and Qy with propoer kqf and kqd
-        Qx_amplitude - dQx to vary, amplitude of oscillations
+        use_symmetric_lattice - flag to use symmetric lattice without QFA and QDA
+        plane - 'X' or 'Y'
+        
+        Returns:
+        -------
+        kqf_vals - numpy array of oscillating kqf strenghts to modulate Qx according to dq (if chosen plane)
+        kqd_vals - numpy array of oscillating kqf strenghts to modulate Qy according to dq (if chosen plane)
+        turns - numpy array of turns
         """
         # Load Xsuite line with deferred expressions from MADx
-        line = self.load_SPS_line_with_deferred_madx_expressions()
+        line = self.load_SPS_line_with_deferred_madx_expressions(use_symmetric_lattice=use_symmetric_lattice)
         twiss = line.twiss()
         
         # Empty arrays of quadrupolar strenghts:
@@ -179,8 +187,8 @@ class Tune_Ripple_SPS:
                         xt.Vary('kqd', step=1e-8),
                     ],
                     targets = [
-                        xt.Target('qx', Q, tol=1e-5),
-                        xt.Target('qy', twiss['qy'], tol=1e-5)])
+                        xt.Target('qx', Q, tol=1e-7),
+                        xt.Target('qy', twiss['qy'], tol=1e-7)])
                 
                 twiss = line.twiss()
                 
@@ -249,9 +257,62 @@ class Tune_Ripple_SPS:
         kqf_vals = kqfs[0] + amp_kqf * np.sin(2 * np.pi * turns / self.ripple_period)
         kqd_vals = kqds[0] + amp_kqd * np.sin(2 * np.pi * turns / self.ripple_period)
         
+        # Make dictionary
+        k_dict = {'Qx': Qx_vals.tolist(),
+                  'Qy': Qy_vals.tolist(),
+                  'kqf': kqfs.tolist(),
+                  'kqd': kqds.tolist()}
+        
+        # Save dictionary to json file
+        sym_string = '_symmetric_lattice' if use_symmetric_lattice else '_nominal_lattice'
+        k_val_path = '{}/qy_dot{}/k_knobs'.format(sequence_path, self.Qy_frac)
+        os.makedirs(k_val_path, exist_ok=True)
+        
+        with open("{}/k_vals_{}{}.json".format(k_val_path, plane, sym_string), "w") as fp:
+            json.dump(k_dict , fp) 
+        
         return kqf_vals, kqd_vals, turns
         
         
+    def load_k_from_xtrack_matching(self, dq=0.05, use_symmetric_lattice=True, plane='X'):
+        """
+        Parameters:
+        -----------
+        dq -  amplitude of oscillations to chosen plane
+        nr_matches - interpolation resolution, number of times to match Qx and Qy with propoer kqf and kqd
+        use_symmetric_lattice - flag to use symmetric lattice without QFA and QDA
+        plane - 'X' or 'Y'
+        
+        Returns:
+        -------
+        kqf_vals - numpy array of oscillating kqf strenghts to modulate Qx according to dq (if chosen plane)
+        kqd_vals - numpy array of oscillating kqf strenghts to modulate Qy according to dq (if chosen plane)
+        turns - numpy array of turns
+        """
+        # Trying loading knobs if exist already
+        try:
+            sym_string = '_symmetric_lattice' if use_symmetric_lattice else '_nominal_lattice'
+            k_val_path = '{}/qy_dot{}/k_knobs'.format(sequence_path, self.Qy_frac)
+            
+            with open("{}/k_vals_{}{}.json".format(k_val_path, plane, sym_string), "r") as fp:
+                k_dict = json.load(fp) 
+            print('Loaded k_strength json file\n')
+                
+            # Find amplitudes
+            amp_kqf = k_dict['kqf'][-1] - k_dict['kqf'][0]
+            amp_kqd = k_dict['kqd'][-1] - k_dict['kqd'][0]
+            
+            # Create arrays of quadrupole strengths to iterate over
+            turns = np.arange(1, self.num_turns+1)
+            kqf_vals = k_dict['kqf'][0] + amp_kqf * np.sin(2 * np.pi * turns / self.ripple_period)
+            kqd_vals = k_dict['kqd'][0] + amp_kqd * np.sin(2 * np.pi * turns / self.ripple_period)
+            
+        except FileNotFoundError:
+            print('Did not find k_strength json file - creating new!\n')
+            
+            kqf_vals, kqd_vals, turns = self.find_k_from_xtrack_matching(dq, use_symmetric_lattice=use_symmetric_lattice)
+    
+        return kqf_vals, kqd_vals, turns
     
     
     def run_simple_ripple(self, dq=0.05, plane='X', use_xtrack_matching=True):
@@ -268,7 +329,7 @@ class Tune_Ripple_SPS:
         # Get SPS Pb line with deferred expressions
         line = self.load_SPS_line_with_deferred_madx_expressions()
         if use_xtrack_matching:
-            kqf_vals, kqd_vals, turns = self.find_k_from_xtrack_matching(dq=dq, plane=plane)
+            kqf_vals, kqd_vals, turns = self.load_k_from_xtrack_matching(dq=dq, plane=plane)
         else:   
             kqf_vals, kqd_vals, turns = self.find_k_from_q_setvalue(dq=dq, plane=plane)
         
