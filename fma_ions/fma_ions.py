@@ -74,14 +74,16 @@ class FMA:
     Q_min_PS: float = 0.015
     
     
-    def install_SC_and_get_line(self, line, beamParams, mode='frozen'):
+    def install_SC_and_get_line(self, line, beamParams, mode='frozen', optimize_for_tracking=True):
         """
         Install frozen Space Charge (SC) and generate particles with provided Xsuite line and beam parameters
         
         Parameters:
         ----------
-        beamParams - beam parameters (data class containing Nb, sigma_z, exn, eyn)
         line - xsuite line to track through
+        beamParams - beam parameters (data class containing Nb, sigma_z, exn, eyn)
+        mode - type of space charge ('frozen' is recommended)
+        optimize_for_tracking - remove multiple drift spaces and line variables. Should be 'False' if knobs are used
         
         Returns:
         -------
@@ -93,7 +95,8 @@ class FMA:
         
         # Extract Twiss table from before installing space charge
         line.build_tracker(_context=context, compile=False)
-        line.optimize_for_tracking()
+        if optimize_for_tracking:
+            line.optimize_for_tracking()
         twiss_xtrack = line.twiss()
 
         print('\nInstalling space charge on line...\n')
