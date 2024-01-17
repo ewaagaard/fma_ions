@@ -5,5 +5,5 @@ import fma_ions
 import xtrack as xt
 
 # First test qh_setvalue from MADX
-sps_ripple = fma_ions.Tune_Ripple_SPS(ripple_period=10_000, num_turns=400_000, n_linear=500, output_folder='output_tune_ripple_long')
+sps_ripple = fma_ions.Tune_Ripple_SPS(ripple_period=10_000, num_turns=200_000, n_linear=500, output_folder='output_tune_ripple_long')
 sps_ripple.run_ripple_and_analysis(load_tbt_data=False, install_SC_on_line=True, use_symmetric_lattice=False)
