@@ -416,7 +416,8 @@ class Tune_Ripple_SPS:
                    load_tbt_data=False,
                    save_tbt_data=True,
                    make_single_Jy_trace=True,
-                   use_symmetric_lattice=True, 
+                   use_symmetric_lattice=True,
+                   install_SC_on_line = True,
                    Qy_frac=25
                    ):
         """
@@ -430,6 +431,7 @@ class Tune_Ripple_SPS:
         save_tbt_data - flag to save tracking data
         make_single_Jy_trace - flag to create single trace with unique vertical action
         use_symmetric_lattice - flag to use symmetric lattice without QFA and QDA
+        install_SC_on_line - flag to install space charge on line with FMA ions
         Qy_frac - fractional vertical tune. "19"" means fractional tune Qy = 0.19
         
         Returns:
@@ -439,6 +441,10 @@ class Tune_Ripple_SPS:
         # Get SPS Pb line with deferred expressions
         line, twiss = self.load_SPS_line_with_deferred_madx_expressions(use_symmetric_lattice=use_symmetric_lattice, 
                                                                         Qy_frac=Qy_frac)
+        if install_SC_on_line:
+            fma_sps = FMA()
+            line = fma_sps.install_SC_and_get_line(line, BeamParameters_SPS(), optimize_for_tracking=False)
+            print('Installed space charge on line\n')
         kqf_vals, kqd_vals, turns = self.load_k_from_xtrack_matching(dq=dq, plane=plane)
 
         # Generate particles
@@ -565,7 +571,8 @@ class Tune_Ripple_SPS:
                    make_single_Jy_trace=True,
                    use_symmetric_lattice=True,
                    install_SC_on_line=True,
-                   Qy_frac=25):
+                   Qy_frac=25,
+                   also_show_plot=False):
         """
         Run SPS tune ripple wtih tracking and generate phase space plots
             
@@ -585,17 +592,13 @@ class Tune_Ripple_SPS:
         if load_tbt_data:
             x, y, px, py = self.load_tracking_data()
         else:
-            x, y, px, py = self.run_ripple(dq=dq, plane=plane, make_single_Jy_trace=make_single_Jy_trace)
+            x, y, px, py = self.run_ripple(dq=dq, plane=plane, make_single_Jy_trace=make_single_Jy_trace, 
+                                           install_SC_on_line=install_SC_on_line)
         
         # Load relevant SPS line and twiss
         self._get_initial_normalized_coord_at_start() # loads normalized coord of starting distribution
         line, twiss = self.load_SPS_line_with_deferred_madx_expressions(use_symmetric_lattice=use_symmetric_lattice,
                                                                         Qy_frac=Qy_frac)
-        
-        if install_SC_on_line:
-            fma_sps = FMA()
-            line = fma_sps.install_SC_and_get_line(line, BeamParameters_SPS())
-            print('Installed space charge on line\n')
         
         # Try to load tune-data
         k = int(np.ceil(2 / twiss['qs'])) # tune evaluated over two synchrotron periods
@@ -620,9 +623,10 @@ class Tune_Ripple_SPS:
 
         ind = np.arange(start=1, stop=len(x), step=len(x) / 5, dtype=int)
 
-
         # Take colors from colormap of normalized phase space
         colors = plt.cm.cool(np.linspace(0, 1, len(self._x_norm)))
+
+        print('\nStarting plotting\n')
 
         # Action evolution over time
         fig, ax = plt.subplots(1, 1, figsize=(8,6))
@@ -643,7 +647,11 @@ class Tune_Ripple_SPS:
         fig2.colorbar(mpl.cm.ScalarMappable(norm=mpl.colors.Normalize(min(self._x_norm), max(self._x_norm)), cmap='cool'),
              ax=ax, orientation='vertical', label='$\sigma_{x}$')
         
-        plt.show()
+        fig.savefig('{}/Action_over_turns.png'.format(self.output_folder), dpi=250)
+        fig2.savefig('{}/Tune_over_turns.png'.format(self.output_folder), dpi=250)
+        
+        if also_show_plot:
+            plt.show()
     
     
     def print_quadrupolar_elements_in_line(self, line):
