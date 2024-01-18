@@ -569,6 +569,7 @@ class Tune_Ripple_SPS:
     def run_ripple_and_analysis(self, dq=0.05, plane='X',
                    load_tbt_data=False,
                    make_single_Jy_trace=True,
+                   action_limits=None,
                    use_symmetric_lattice=True,
                    install_SC_on_line=True,
                    Qy_frac=25,
@@ -580,13 +581,23 @@ class Tune_Ripple_SPS:
             
         Parameters:
         -----------
-        dq - amplitude of oscillations in chosen plane
-        plane - 'X' or 'Y'
-        load_tbt_data - flag to load data if already tracked
-        make_single_Jy_trace - flag to create single trace with unique vertical action
-        use_symmetric_lattice - flag to use symmetric lattice without QFA and QDA
-        install_SC_on_line - flag to install space charge on line with FMA ions
-        Qy_frac - fractional vertical tune. "19"" means fractional tune Qy = 0.19
+        dq : float
+            amplitude of oscillations in chosen plane
+        plane : str
+            'X' or 'Y'
+        load_tbt_data : bool
+            flag to load data if already tracked
+        make_single_Jy_trace : bool 
+            flag to create single trace with unique vertical action
+        action_limits: list, optional
+            list with [J_min, J_max] to include particles in fixed action range. Default: None, 
+            meaning plotting "num_particles_to_plot" evenly spread out
+        use_symmetric_lattice : bool
+            flag to use symmetric lattice without QFA and QDA
+        install_SC_on_line : bool
+            flag to install space charge on line with FMA ions
+        Qy_frac : int
+            fractional vertical tune. "19"" means fractional tune Qy = 0.19
         action_in_logscale: bool, optional
             whether to plot action in logscale or not
         num_particles_to_plot : 
@@ -602,6 +613,7 @@ class Tune_Ripple_SPS:
                                            install_SC_on_line=install_SC_on_line)
         
         # Select particle index to plot - evenly spaced out in action
+        if 
         ind = np.arange(start=1, stop=len(x), step=len(x) / num_particles_to_plot, dtype=int)
         
         # Load relevant SPS line and twiss
@@ -640,6 +652,10 @@ class Tune_Ripple_SPS:
 
         # Take colors from colormap of normalized phase space
         colors = plt.cm.cool(np.linspace(0, 1, len(self._x_norm)))
+
+        # First make stroboscopic view
+        self.generate_stroboscopic_view(turns, phi, Jx, ind, num_plots = 10, plane='X')
+
 
         ######### Action evolution over time #########
         fig, ax = plt.subplots(1, 1, figsize=(8,6))
@@ -722,7 +738,7 @@ class Tune_Ripple_SPS:
             plt.show()
     
     
-    def generate_stroboscopic_view(self, turns, phi, J, ind, plane='X'):
+    def generate_stroboscopic_view(self, turns, phi, J, ind, num_plots = 10, plane='X'):
         """ 
         Create plots of action evolution, along with polar action space with one turn per modulation period
         Saves these plots in a subfolder
@@ -737,6 +753,8 @@ class Tune_Ripple_SPS:
             array of actions
         ind: np.ndarray with integers
             array containing index of particles to plot
+        num_plots: int, optional
+            number of stroboscopic plots.
         plane: str, optional
             'X' or 'Y'
             
@@ -744,6 +762,63 @@ class Tune_Ripple_SPS:
         --------
         None
         """
+        # Take colors from colormap of normalized phase space
+        colors = plt.cm.cool(np.linspace(0, 1, len(self._x_norm)))
+    
+        # Create folder for stroboscopic plot if does not exist
+        output_strobo = '{}/strobo'.format(self.output_folder)
+        os.makedirs(output_strobo, exist_ok=True)
+           
+        # Step every time in number of terms
+        strobo_step = int(self.ripple_period / num_plots)
+        
+        counter = 1
+        # Iterate over index sweep for stroboscopic view
+        for i in range(0, self.ripple_period, strobo_step):
+        
+            ######### Stroboscopic action view #########
+            fig, ax = plt.subplots(1, 2, figsize=(11,6), sharey=True)
+            fig.suptitle('Stroboscopic - tune modulation every {} turns, {} turns in total'.format(self.ripple_period, self.num_turns), 
+                         fontsize=14)    
+        
+            # Stroboscopic turn index to plot
+            ind_strob = np.arange(start=i, stop=self.num_turns+i, step=self.ripple_period, dtype=int)
+            
+            if counter % 2 == 0:
+                print('\nMaking stroboplot nr {} out of {}'.format(counter, num_plots))
+                print('Turn index: {}\n'.format(ind_strob))
+            
+            
+            # Iterate over particles to plot
+            j = 0
+            for particle in ind:
+                                
+                # Mix black and colorbar 
+                color=colors[particle] if j % 2 == 0 else 'k'
+                    
+                # Plot normalized phase space and action space
+                ax[0].plot(phi[particle, ind_strob], J[particle, ind_strob], 'o', color=color, alpha=0.5, markersize=1.6) 
+                ax[1].plot(turns, J[particle, :], 'o', color=color, alpha=0.5, markersize=1.2)
+                for strob_turn in ind_strob:
+                    ax[1].axvline(x=strob_turn, lw=0.8, alpha=0.7, color='k')                  
+                j += 1
+    
+            # Add correct labels           
+            ax[0].set_xlabel(r"$\phi$ [rad]")
+            ax[1].set_xlabel('Turns')
+            ax[1].set_ylabel('$J_{x}$') if plane == 'X' else ax[1].set_ylabel('$J_{y}$')
+            ax[1].set_xlim(0, self.num_turns / 10)
+            
+            fig.savefig('{}/{}_Stroboscopic_Action.png'.format(output_strobo, counter), dpi=250)
+            fig.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+            
+            counter += 1
+            del fig, ax
+            
+            plt.close()
+
+
+    
     
     def print_quadrupolar_elements_in_line(self, line):
         """Print all quadrupolar elements"""
