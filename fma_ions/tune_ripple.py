@@ -858,7 +858,7 @@ class Tune_Ripple_SPS:
         for i in range(0, self.ripple_period, strobo_step):
         
             ######### Stroboscopic action view #########
-            fig, ax = plt.subplots(1, 2, figsize=(11,6), sharey=True)
+            fig, ax = plt.subplots(1, 2, figsize=(11,7), sharey=True)
             fig.suptitle('Stroboscopic - tune modulation every {} turns, {} turns in total'.format(self.ripple_period, self.num_turns), 
                          fontsize=14)    
         
@@ -878,7 +878,7 @@ class Tune_Ripple_SPS:
                 color=colors[particle] if j % 2 == 0 else 'k'
                     
                 # Plot normalized phase space and action space
-                ax[0].plot(phi[particle, ind_strob], J[particle, ind_strob], 'o', color=color, alpha=0.5, markersize=1.6) 
+                ax[0].plot(phi[particle, ind_strob], J[particle, ind_strob], 'o', color=color, alpha=0.5, markersize=2.1) 
                 ax[1].plot(turns, J[particle, :], 'o', color=color, alpha=0.5, markersize=1.2)
                 for strob_turn in ind_strob:
                     ax[1].axvline(x=strob_turn, lw=0.8, alpha=0.7, color='k')                  
@@ -887,7 +887,7 @@ class Tune_Ripple_SPS:
             # Add correct labels           
             ax[0].set_xlabel(r"$\phi$ [rad]")
             ax[1].set_xlabel('Turns')
-            ax[1].set_ylabel('$J_{x}$') if plane == 'X' else ax[1].set_ylabel('$J_{y}$')
+            ax[0].set_ylabel('$J_{x}$') if plane == 'X' else ax[1].set_ylabel('$J_{y}$')
             ax[1].set_xlim(0, self.num_turns / 10)
             
             fig.savefig('{}/{}_Stroboscopic_Action.png'.format(output_strobo, counter), dpi=250)

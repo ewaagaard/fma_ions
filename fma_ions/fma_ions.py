@@ -40,21 +40,36 @@ class FMA:
     
     Parameters:
     ----------
-    use_uniform_beam - if True generate a transverse pencil distribution, otherwise 2D polar grid
-    num_turns - to track in total
-    num_spacecharge_interactions - how many interactions per turn
-    delta0 - relative momentum offset dp/p
-    z0 - initial longitudinal offset zeta
-    mode - space charge model: 'frozen', 'semi-frozen' or 'pic' (frozen recommended)
-    n_theta - number of divisions for theta coordinates for particles in normalized coordinates
-    n_r - number of divisions for r coordinates for particles in normalized coordinates
-    r_min - minimum radial distance from beam center to generate particles, to avoid zero amplitude oscillations for FMA
-    n_linear - default number of points if uniform linear grid for normalized X and Y are used
-    n_sigma - max number of beam sizes sigma to generate particles
-    output_folder - where to save data
-    plot_order - order to include in resonance diagram
-    periodicity - periodicity in tune diagram
-    Q_min_SPS, Q_min_PS - min tune to filter out from synchrotron frequency
+    use_uniform_beam : bool
+        if True generate a transverse pencil distribution, otherwise 2D polar grid
+    num_turns : int
+        number of turns to track in total
+    num_spacecharge_interactions : int
+        number of SC interactions per turn
+    delta0 : float
+        relative momentum offset dp/p
+    z0 : float
+        initial longitudinal offset zeta
+    mode : str
+        space charge model: 'frozen', 'semi-frozen' or 'pic' (frozen recommended)
+    n_theta : int
+        if POLAR coordinates used, number of divisions for theta coordinates for particles in normalized coordinates
+    n_r : int
+        if POLAR coordinates used, number of divisions for r coordinates for particles in normalized coordinates
+    r_min : float
+        minimum radial distance from beam center to generate particles, to avoid zero amplitude oscillations for FMA
+    n_linear : 
+        if UNIFORM distribution is used, default number of points if uniform linear grid for normalized X and Y are used
+    n_sigma : float
+        maximum radial distance, i.e. max number of beam sizes sigma to generate particles
+    output_folder : str 
+        folder where to save data
+    plot_order : int
+        order to include in resonance diagram
+    periodicity : int 
+        periodicity in tune diagram
+    Q_min_SPS, Q_min_PS : float, optional
+        min tune to filter out from synchrotron frequency
     """
     use_uniform_beam: bool = True
     num_turns: int = 1200
@@ -80,14 +95,19 @@ class FMA:
         
         Parameters:
         ----------
-        line - xsuite line to track through
-        beamParams - beam parameters (data class containing Nb, sigma_z, exn, eyn)
-        mode - type of space charge ('frozen' is recommended)
-        optimize_for_tracking - remove multiple drift spaces and line variables. Should be 'False' if knobs are used
+        line : xtrack.line
+            xsuite line to track through
+        beamParams : dataclass 
+            beam parameters (data class containing Nb, sigma_z, exn, eyn)
+        mode : str
+            type of space charge ('frozen' is recommended)
+        optimize_for_tracking : flag
+            remove multiple drift spaces and line variables. Should be 'False' if knobs are used
         
         Returns:
         -------
-        line - xtrack line with space charge installed 
+        line : xtrack.line
+            xtrack line with space charge installed 
         """
         # Choose context, and remove tracker if already exists 
         context = xo.ContextCpu()  # to be upgrade to GPU if needed 
@@ -143,17 +163,21 @@ class FMA:
         """
         Generate xpart particle object from beam parameters 
     
-        Parameters
+        Parameters:
         ----------
-        line - xtrack line object 
-        beamParams - beam parameters (data class containing Nb, sigma_z, exn, eyn)
-        make_single_Jy_trace - flag to create single trace with unique vertical action
-        Jy, with varying action Jx. "Trace" instead of "grid", if uniform beam is used
-        y_norm0 - starting normalized Y coordinate for the single Jy trace 
+        line : xtrack.line
+            xsuite line to track through
+        beamParams : dataclass 
+            beam parameters (data class containing Nb, sigma_z, exn, eyn)
+        make_single_Jy_trace : bool
+            flag to create single trace with unique vertical action Jy, 
+            with varying action Jx. "Trace" instead of "grid", if uniform beam is used
+        y_norm0 : float
+            starting normalized Y coordinate for the single Jy trace 
         
         Returns
         -------
-        particles : xpart particles object 
+        particles : xpart particles object after tracking
         """
         
         ##### Generate particles #####
@@ -198,12 +222,17 @@ class FMA:
         
         Parameters:
         ----------
-        particles - particles object from xpart
-        line - xsuite line to track through, where space charge has been installed 
+        particles : xpart.particles
+            particles object from xpart
+        line : xtrack.line
+            xsuite line to track through
+        save_tbt: bool
+            whether to save turn-by-turn data from tracking
         
         Returns:
         -------
-        x, y - numpy arrays containing turn-by-turn data coordinates
+        x, y - numpy.ndarrays
+            arrays containing turn-by-turn data coordinates
         """          
         #### TRACKING #### 
         # Track the particles and return turn-by-turn coordinates
@@ -250,7 +279,14 @@ class FMA:
     
     
     def load_tracking_data(self):
-        """Loads numpy data if tracking has already been made"""
+        """
+        Loads numpy data if tracking has already been made
+        
+        Returns:
+        --------
+        x, y, px, py : np.ndarrays
+            numpy arrays with turn-by-turn data
+        """
         try:
             if self.delta0 == 0.0 and self.z0 == 0.0:
                 print('\nLoading on-momentum data!\n')
@@ -279,7 +315,14 @@ class FMA:
 
     
     def load_tune_data(self):
-        """Loads numpy data of tunes if FMA has already been done"""
+        """
+        Loads numpy data of tunes if FMA has already been done
+        
+        Returns:
+        --------
+        Qx, Qy, d : np.ndarrays
+            numpy arrays with turn-by-turn tune and diffusion data
+        """
         try:
             Qx = np.load('{}/Qx.npy'.format(self.output_folder))
             Qy = np.load('{}/Qy.npy'.format(self.output_folder))
@@ -302,13 +345,25 @@ class FMA:
         
         Parameters:
         -----------
-        twiss - twiss table from xtrack
-        load_tbt_data - load tune data if FMA has already been done
-        load_up_to_turn - turn up to which to load tbt data
-        also_show_plot - boolean to include "plt.show()"
-        resonance_order - integer, order up to which resonance should be plotted
-        case_name - additional string to add to figure heading 
-        plane - 'X' or 'Y'
+        twiss : xtrack.twisstable
+            twiss table from xtrack
+        load_tbt_data : bool
+            load tune data if FMA has already been done
+        load_up_to_turn : int, optional
+            turn up to which to load tbt data
+        also_show_plot : bool 
+            whether to include "plt.show()"
+        resonance_order : int
+            order up to which resonance should be plotted
+        case_name : str, optional
+            additional string to add to figure heading 
+        plane : str
+            'X' or 'Y'
+        
+        Returns:
+        --------
+        Jx, Jy, Qx, Qy, d : np.ndarrays
+            numpy arrays with turn-by-turn action, tune and diffusion data
         """
         if load_up_to_turn is None:
             load_up_to_turn = self.num_turns
@@ -395,8 +450,6 @@ class FMA:
         return Jx, Jy, Qx, Qy, d
         
         
-        
-        
     def plot_normalized_phase_space(self, twiss, 
                                     particle_index=None,
                                     also_show_plot=True,
@@ -408,10 +461,20 @@ class FMA:
         
         Parameters:
         -----------
-        twiss - twiss table from xtrack
-        start_particle - which particle index to start from
-        plot_up_to_particle - index up to which particle from tracking data to include 
-        plane - 'X' or 'Y'
+        twiss : xtrack.twisstable 
+            twiss table from xtrack
+        particle_index : numpy.ndarray, optional
+            array with particle index, if not given takes all
+        also_show_plot : bool 
+            whether to include "plt.show()"
+        case_name : str, optional
+            extra string to add to case name
+        plane : str
+            'X' or 'Y'
+            
+        Returns:
+        -------
+        None
         """
         x, y, px, py  = self.load_tracking_data()
         
@@ -497,13 +560,15 @@ class FMA:
         
         Parameters:
         ----------
-        x_tbt_data, y_tbt_data - numpy arrays of turn-by-turn data for particles 
-        Qmin - if desired, filter out some lower frequencies
+        x_tbt_data, y_tbt_data : np.ndarrays
+            arrays of turn-by-turn data for particles 
+        Qmin : float
+            if desired, filter out some lower frequencies
         
-        Returns: 
-        -------
-        d - numpy array containing diffusion for all particles
-        Qx, Qy - numpy arrays containing final tunes of all particles
+        Returns:
+        --------
+        Qx, Qy, d : np.ndarrays
+            numpy arrays with turn-by-turn action, tune and diffusion data
         """
         
         # Initialize empty arrays for tunes of particles, during first and second half of run - at split_ind
