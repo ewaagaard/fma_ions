@@ -611,11 +611,7 @@ class Tune_Ripple_SPS:
         else:
             x, y, px, py = self.run_ripple(dq=dq, plane=plane, make_single_Jy_trace=make_single_Jy_trace, 
                                            install_SC_on_line=install_SC_on_line)
-        
-        # Select particle index to plot - evenly spaced out in action
-        if 
-        ind = np.arange(start=1, stop=len(x), step=len(x) / num_particles_to_plot, dtype=int)
-        
+                
         # Load relevant SPS line and twiss
         self._get_initial_normalized_coord_at_start() # loads normalized coord of starting distribution
         line, twiss = self.load_SPS_line_with_deferred_madx_expressions(use_symmetric_lattice=use_symmetric_lattice,
@@ -642,6 +638,13 @@ class Tune_Ripple_SPS:
         Jx = X**2 + PX **2
         Jy = Y**2 + PY **2
 
+        # Select particle index to plot - evenly spaced out in action
+        if action_limits is None:
+            ind = np.arange(start=1, stop=len(x), step=len(x) / num_particles_to_plot, dtype=int)
+        else:
+            ind = np.where((action_limits[0] < Jx) & (action_limits[1] > Jx))[0]
+            print('\nCustom action index between {} < Jx < {}\n'.format(Jx[ind[0]], Jx[ind[-1]]))
+
         # Calculate phase space angle
         if plane == 'X':
             phi = np.arctan2(X, PX)          
@@ -654,7 +657,7 @@ class Tune_Ripple_SPS:
         colors = plt.cm.cool(np.linspace(0, 1, len(self._x_norm)))
 
         # First make stroboscopic view
-        self.generate_stroboscopic_view(turns, phi, Jx, ind, num_plots = 10, plane='X')
+        self.generate_stroboscopic_view(turns, phi, Jx, ind, num_plots = 10, plane='X', action_limits=action_limits)
 
 
         ######### Action evolution over time #########
