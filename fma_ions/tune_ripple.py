@@ -28,17 +28,24 @@ class Tune_Ripple_SPS:
     
     Parameters:
     -----------
-    Qy_fractional - fractional vertical tune. "19"" means fractional tune Qy = 0.19
-    beta_beat - relative beta beat, i.e. relative difference between max beta function and max original beta function
-    use_symmetric_lattice - flag to use symmetric lattice without QFA and QDA
-    n_linear - default number of points if uniform linear grid for normalized X and Y are used
-    r_min - minimum radial distance from beam center to generate particles, to avoid zero amplitude oscillations for FMA
-    n_sigma - max number of beam sizes sigma to generate particles
-    output_folder - where to save data
+    Qy_fractional: int
+        fractional vertical tune. "19"" means fractional tune Qy = 0.19
+    beta_beat: float
+        relative beta beat, i.e. relative difference between max beta function and max original beta function
+    use_symmetric_lattice: bool
+        flag to use symmetric lattice without QFA and QDA
+    n_linear : int
+        default number of points if uniform linear grid for normalized X and Y are used
+    r_min : float
+        minimum radial distance from beam center to generate particles, to avoid zero amplitude oscillations for FMA
+    n_sigma : float
+        max number of beam sizes sigma to generate particles
+    output_folder : str
+        location to save data
     """
     Qy_frac: float = 25
     beta_beat: float = None
-    use_symmetric_lattice = True
+    use_symmetric_lattice: bool = True
     ripple_period: int = 2000 
     num_turns: int = 10000
     n_linear: int = 100
@@ -54,9 +61,11 @@ class Tune_Ripple_SPS:
         
         Parameters
         ----------
-        make_single_Jy_trace - flag to create single trace with unique vertical action
-        Jy, with varying action Jx. "Trace" instead of "grid", if uniform beam is used
-        y_norm0 - starting normalized Y coordinate for the single Jy trace ):
+        make_single_Jy_trace : bool
+            flag to create single trace with unique vertical action Jy, 
+            with varying action Jx. "Trace" instead of "grid", if uniform beam is used
+        y_norm0 : float
+            starting normalized Y coordinate for the single Jy trace ):
     
         Returns:
         -------
@@ -86,8 +95,10 @@ class Tune_Ripple_SPS:
         
         Parameters:
         -----------
-        use_symmetric_lattice - flag to use symmetric lattice without QFA and QDA
-        Qy_frac - fractional vertical tune. "19"" means fractional tune Qy = 0.19
+        use_symmetric_lattice : bool
+            flag to use symmetric lattice without QFA and QDA
+        Qy_frac : int
+            fractional vertical tune. "19"" means fractional tune Qy = 0.19
         
         Returns:
         -------
@@ -136,9 +147,19 @@ class Tune_Ripple_SPS:
         
         Parameters:
         -----------
-        dq - change in tune amplitude, e.g. 0.05
-        period - oscillation period of tune in number of turns
-        plane - 'X' or 'Y' (default is 'X')
+        dq : float
+            absolute change in tune amplitude, e.g. 0.05
+        plane : str
+            'X' or 'Y' (default is 'X')
+        
+        Returns:
+        --------
+        kqf_vals : np.ndarray
+            focusing quadrupole values corresponding to modulate Qx according to dq (if chosen plane)
+        kqd_vals : np.ndarray
+            defocusing quadrupole values corresponding to modulate Qy according to dq (if chosen plane)
+        turns : np.ndarray
+            range over turns the amplitude modulation corresponds to 
         """
         # Load MADX line of SPS and define quad knobs
         sps_seq = SPS_sequence_maker()
@@ -191,17 +212,25 @@ class Tune_Ripple_SPS:
         
         Parameters:
         -----------
-        dq -  amplitude of oscillations to chosen plane
-        nr_matches - interpolation resolution, number of times to match Qx and Qy with propoer kqf and kqd
-        use_symmetric_lattice - flag to use symmetric lattice without QFA and QDA
-        plane - 'X' or 'Y'
-        Qy_frac - fractional vertical tune. "19"" means fractional tune Qy = 0.19
+        dq : float
+            absolute change in tune amplitude, e.g. 0.05
+        nr_matches : int
+            number of times to match Qx and Qy with propoer kqf and kqd, for interpolation resolution
+        use_symmetric_lattice : bool
+            flag to use symmetric lattice without QFA and QDA
+        plane : str
+            'X' or 'Y' (default is 'X')
+        Qy_frac : int
+            fractional vertical tune. "19"" means fractional tune Qy = 0.19
         
         Returns:
-        -------
-        kqf_vals - numpy array of oscillating kqf strenghts to modulate Qx according to dq (if chosen plane)
-        kqd_vals - numpy array of oscillating kqf strenghts to modulate Qy according to dq (if chosen plane)
-        turns - numpy array of turns
+        --------
+        kqf_vals : np.ndarray
+            focusing quadrupole values corresponding to modulate Qx according to dq (if chosen plane)
+        kqd_vals : np.ndarray
+            defocusing quadrupole values corresponding to modulate Qy according to dq (if chosen plane)
+        turns : np.ndarray
+            range over turns the amplitude modulation corresponds to 
         """
         # Load Xsuite line with deferred expressions from MADx
         line, twiss = self.load_SPS_line_with_deferred_madx_expressions(use_symmetric_lattice=use_symmetric_lattice,
@@ -319,16 +348,23 @@ class Tune_Ripple_SPS:
         """
         Parameters:
         -----------
-        dq -  amplitude of oscillations to chosen plane
-        nr_matches - interpolation resolution, number of times to match Qx and Qy with propoer kqf and kqd
-        use_symmetric_lattice - flag to use symmetric lattice without QFA and QDA
-        plane - 'X' or 'Y'
-        
+        dq : float
+            absolute change in tune amplitude, e.g. 0.05
+        nr_matches : int
+            number of times to match Qx and Qy with propoer kqf and kqd, for interpolation resolution
+        use_symmetric_lattice : bool
+            flag to use symmetric lattice without QFA and QDA
+        plane : str
+            'X' or 'Y' (default is 'X')
+
         Returns:
-        -------
-        kqf_vals - numpy array of oscillating kqf strenghts to modulate Qx according to dq (if chosen plane)
-        kqd_vals - numpy array of oscillating kqf strenghts to modulate Qy according to dq (if chosen plane)
-        turns - numpy array of turns
+        --------
+        kqf_vals : np.ndarray
+            focusing quadrupole values corresponding to modulate Qx according to dq (if chosen plane)
+        kqd_vals : np.ndarray
+            defocusing quadrupole values corresponding to modulate Qy according to dq (if chosen plane)
+        turns : np.ndarray
+            range over turns the amplitude modulation corresponds to 
         """
         # Trying loading knobs if exist already
         try:
@@ -362,9 +398,21 @@ class Tune_Ripple_SPS:
             
         Parameters:
         -----------
-        dq -  amplitude of oscillations to chosen plane
-        plane - 'X' or 'Y'
-        use_xtrack_matching - flag to use xtrack or MADX qh_setvalue for the matching
+        dq : float
+            absolute change in tune amplitude, e.g. 0.05
+        plane : str
+            'X' or 'Y' (default is 'X')
+        use_xtrack_matching : bool
+            flag to use xtrack or MADX qh_setvalue for the matching
+        
+        Returns:
+        --------
+        turns : np.ndarray
+            range over turns the amplitude modulation corresponds to 
+        Qx : np.ndarray
+            Qx tunes over corresponding tune range
+        Qy : np.ndarray
+            Qy tunes over corresponding tune range
         """
         
         # Get SPS Pb line with deferred expressions
@@ -425,18 +473,27 @@ class Tune_Ripple_SPS:
             
         Parameters:
         -----------
-        dq - amplitude of oscillations in chosen plane
-        plane - 'X' or 'Y'
-        load_tbt_data - flag to load data if already tracked
-        save_tbt_data - flag to save tracking data
-        make_single_Jy_trace - flag to create single trace with unique vertical action
-        use_symmetric_lattice - flag to use symmetric lattice without QFA and QDA
-        install_SC_on_line - flag to install space charge on line with FMA ions
-        Qy_frac - fractional vertical tune. "19"" means fractional tune Qy = 0.19
+        dq : float
+            absolute change in tune amplitude, e.g. 0.05
+        plane : str
+            'X' or 'Y' (default is 'X')
+        load_tbt_data : bool
+            flag to load data if already tracked
+        save_tbt_data : bool
+            flag to save tracking data
+        make_single_Jy_trace : bool
+            flag to create single trace with unique vertical action
+        use_symmetric_lattice : bool
+            flag to use symmetric lattice without QFA and QDA
+        install_SC_on_line : bool
+            flag to install space charge on line with FMA ions
+        Qy_frac : int 
+            fractional vertical tune. "19"" means fractional tune Qy = 0.19
         
         Returns:
         --------
-        x, y, px, py - numpy arrays with turn-by-turn data
+        x, y, px, py : np.ndarrays
+            numpy arrays with turn-by-turn data
         """
         # Get SPS Pb line with deferred expressions
         line, twiss = self.load_SPS_line_with_deferred_madx_expressions(use_symmetric_lattice=use_symmetric_lattice, 
@@ -490,7 +547,14 @@ class Tune_Ripple_SPS:
     
     
     def load_tracking_data(self):
-        """Loads numpy data if tracking has already been made"""
+        """
+        Loads numpy data if tracking has already been made
+        
+        Returns:
+        --------
+        x, y, px, py : np.ndarrays
+            numpy arrays with turn-by-turn data
+        """
         try:            
             x=np.load('{}/x.npy'.format(self.output_folder))
             y=np.load('{}/y.npy'.format(self.output_folder))
@@ -503,7 +567,14 @@ class Tune_Ripple_SPS:
     
     
     def load_tune_data(self):
-        """Loads numpy data of tunes if FMA has already been done"""
+        """
+        Loads numpy data of tunes if FMA has already been done
+        
+        Returns:
+        --------
+        Qx, Qy : np.ndarrays
+            numpy arrays with turn-by-turn tune data
+        """
         try:
             Qx = np.load('{}/Qx.npy'.format(self.output_folder))
             Qy = np.load('{}/Qy.npy'.format(self.output_folder))
@@ -519,12 +590,19 @@ class Tune_Ripple_SPS:
         
         Parameters:
         ----------
-        x_tbt_data, y_tbt_data - numpy arrays of turn-by-turn data for particles 
-        Qmin - if desired, filter out some lower frequencies
-        k - length of period to evaluate tune over, "tune period"
-        save_tune_data - flag to save tune data
+        x_tbt_data, y_tbt_data : numpy.ndarrays 
+            arrays of turn-by-turn data for particles 
+        Qmin : float, optional 
+            if desired, filter out some lower frequencies
+        k : int
+            length of period to evaluate tune over, "tune period"
+        save_tune_data : bool
+            flag to save tune data
         
-        Returns: 
+        Returns:
+        --------
+        Qx, Qy : np.ndarrays
+            numpy arrays with turn-by-turn tune data
         --------
         """
         # Calculate the index "window" from which tunes are extracted 
@@ -642,7 +720,7 @@ class Tune_Ripple_SPS:
         if action_limits is None:
             ind = np.arange(start=1, stop=len(x), step=len(x) / num_particles_to_plot, dtype=int)
         else:
-            ind = np.where((action_limits[0] < Jx) & (action_limits[1] > Jx))[0]
+            ind = np.where((action_limits[0] < Jx[:, 0]) & (action_limits[1] > Jx[:, 0]))[0]
             print('\nCustom action index between {} < Jx < {}\n'.format(Jx[ind[0]], Jx[ind[-1]]))
 
         # Calculate phase space angle
@@ -657,7 +735,7 @@ class Tune_Ripple_SPS:
         colors = plt.cm.cool(np.linspace(0, 1, len(self._x_norm)))
 
         # First make stroboscopic view
-        self.generate_stroboscopic_view(turns, phi, Jx, ind, num_plots = 10, plane='X', action_limits=action_limits)
+        self.generate_stroboscopic_view(turns, phi, Jx, ind, num_plots = 10, plane='X')
 
 
         ######### Action evolution over time #########
@@ -823,8 +901,13 @@ class Tune_Ripple_SPS:
 
     
     
-    def print_quadrupolar_elements_in_line(self, line):
-        """Print all quadrupolar elements"""
+    def _print_quadrupolar_elements_in_line(self, line):
+        """Print all quadrupolar elements
+        
+        Returns:
+        --------
+        None
+        """
         
         # Print all quadrupolar components present
         my_dict = line.to_dict()
