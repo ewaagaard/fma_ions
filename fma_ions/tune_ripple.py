@@ -572,6 +572,8 @@ class Tune_Ripple_SPS:
                    use_symmetric_lattice=True,
                    install_SC_on_line=True,
                    Qy_frac=25,
+                   num_particles_to_plot=10,
+                   action_in_logscale=False,
                    also_show_plot=False):
         """
         Run SPS tune ripple wtih tracking and generate phase space plots
@@ -585,6 +587,10 @@ class Tune_Ripple_SPS:
         use_symmetric_lattice - flag to use symmetric lattice without QFA and QDA
         install_SC_on_line - flag to install space charge on line with FMA ions
         Qy_frac - fractional vertical tune. "19"" means fractional tune Qy = 0.19
+        action_in_logscale: bool, optional
+            whether to plot action in logscale or not
+        num_particles_to_plot : 
+            number of particles to include in plot
         
         Returns:
         --------
@@ -594,6 +600,9 @@ class Tune_Ripple_SPS:
         else:
             x, y, px, py = self.run_ripple(dq=dq, plane=plane, make_single_Jy_trace=make_single_Jy_trace, 
                                            install_SC_on_line=install_SC_on_line)
+        
+        # Select particle index to plot - evenly spaced out in action
+        ind = np.arange(start=1, stop=len(x), step=len(x) / num_particles_to_plot, dtype=int)
         
         # Load relevant SPS line and twiss
         self._get_initial_normalized_coord_at_start() # loads normalized coord of starting distribution
@@ -621,38 +630,120 @@ class Tune_Ripple_SPS:
         Jx = X**2 + PX **2
         Jy = Y**2 + PY **2
 
-        ind = np.arange(start=1, stop=len(x), step=len(x) / 5, dtype=int)
+        # Calculate phase space angle
+        if plane == 'X':
+            phi = np.arctan2(X, PX)          
+        elif plane == 'Y':
+            phi = np.arctan2(Y, PY)
+        else:
+            raise ValueError('Plane invalid - has to be "X" or "Y"')
 
         # Take colors from colormap of normalized phase space
         colors = plt.cm.cool(np.linspace(0, 1, len(self._x_norm)))
 
-        print('\nStarting plotting\n')
-
-        # Action evolution over time
+        ######### Action evolution over time #########
         fig, ax = plt.subplots(1, 1, figsize=(8,6))
-        for i in ind:
-            ax.plot(turns, Jx[i, :], '-', color=colors[i])
-        ax.set_xlabel('Turns')
-        ax.set_ylabel('$J_{x}$')
-        fig.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+        fig.suptitle('Action evolution- tune modulation period of {} turns'.format(self.ripple_period), fontsize=14)
         
-        # Plot tune evolution over time
+        ######### Plot tune evolution over time #########
         fig2, ax2 = plt.subplots(1, 1, figsize=(8,6))
-        for i in ind:
-            ax2.plot(turns[k-1:], Qx[i, :], '-', color=colors[i])
-        ax2.set_xlabel('Turns')
-        ax2.set_ylabel('$Q_{x}$')
-        fig2.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
-        # Add colorbar, normalized to beam size (in sigmas)
-        fig2.colorbar(mpl.cm.ScalarMappable(norm=mpl.colors.Normalize(min(self._x_norm), max(self._x_norm)), cmap='cool'),
-             ax=ax, orientation='vertical', label='$\sigma_{x}$')
+        fig2.suptitle('Tune evolution- tune modulation period of {} turns'.format(self.ripple_period), fontsize=14)
         
+        ######### POLAR ACTION SPACE #########
+        fig3, ax3 = plt.subplots(1, 1, figsize=(8,6))
+        fig3.suptitle('Polar action space - tune modulation period of {} turns'.format(self.ripple_period), fontsize=14)
+        
+        print('\nStarting plotting\n')
+        j = 0
+        for particle in ind:
+            
+            if j % 10 == 0:
+                print('Index {} out of {}'.format(j, len(ind))) 
+            
+            # Mix black and colorbar 
+            color=colors[particle] if j % 2 == 0 else 'k'
+                
+            # Plot normalized phase space and action space
+            if plane == 'X':
+                ax.plot(turns, Jx[particle, :], 'o', color=color, alpha=0.5, markersize=1.2)
+                ax2.plot(turns[k-1:], Qx[particle, :], '-', color=color)
+                ax3.plot(phi[particle, :], Jx[particle, :], 'o', color=color, alpha=0.5, markersize=1.2)
+
+            elif plane == 'Y':
+                ax.plot(turns, Jy[particle, :], 'o', color=color, alpha=0.5, markersize=1.2)
+                ax2.plot(turns[k-1:], Qy[particle, :], '-', color=color)
+                ax3.plot(phi[particle, :], Jy[particle, :], 'o', color=color, alpha=0.5, markersize=1.2)
+            j += 1
+
+        # Add correct labels        
+        if plane == 'X':               
+            ax.set_xlabel('Turns')
+            ax.set_ylabel('$J_{x}$')
+            
+            ax2.set_xlabel('Turns')
+            ax2.set_ylabel('$Q_{x}$')
+            
+            ax3.set_xlabel(r"$\phi$ [rad]")
+            ax3.set_ylabel(r"$J_{x}$")
+            
+        elif plane == 'Y':
+            ax.set_xlabel('Turns')
+            ax.set_ylabel('$J_{y}$')
+            
+            ax2.set_xlabel('Turns')
+            ax2.set_ylabel('$Q_{y}$')
+            
+            ax3.set_ylabel(r"$J_{y}$")
+            ax3.set_xlabel(r"$\phi$ [rad]")
+        
+        # Set logscale for action
+        if action_in_logscale:
+            ax.set_yscale('log')
+            ax3.set_yscale('log')
+        
+        # Add colorbar, normalized to beam size (in sigmas)
+        fig.colorbar(mpl.cm.ScalarMappable(norm=mpl.colors.Normalize(min(self._x_norm), max(self._x_norm)), cmap='cool'),
+             ax=ax, orientation='vertical', label='$\sigma_{x}$')
+        fig2.colorbar(mpl.cm.ScalarMappable(norm=mpl.colors.Normalize(min(self._x_norm), max(self._x_norm)), cmap='cool'),
+             ax=ax2, orientation='vertical', label='$\sigma_{x}$')
+        fig3.colorbar(mpl.cm.ScalarMappable(norm=mpl.colors.Normalize(min(self._x_norm), max(self._x_norm)), cmap='cool'),
+             ax=ax3, orientation='vertical', label='$\sigma_{x}$')
+        
+        fig.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+        fig2.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+        fig3.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+        
+        # Save figures
         fig.savefig('{}/Action_over_turns.png'.format(self.output_folder), dpi=250)
         fig2.savefig('{}/Tune_over_turns.png'.format(self.output_folder), dpi=250)
+        fig3.savefig('{}/Polar_action_space_{}.png'.format(self.output_folder, plane), dpi=250)
         
         if also_show_plot:
             plt.show()
     
+    
+    def generate_stroboscopic_view(self, turns, phi, J, ind, plane='X'):
+        """ 
+        Create plots of action evolution, along with polar action space with one turn per modulation period
+        Saves these plots in a subfolder
+        
+        Parameters:
+        -----------
+        turns: np.ndarray
+            array with turn evolution
+        phi: np.ndarray
+            array with phase in phase space
+        J: np.ndarray
+            array of actions
+        ind: np.ndarray with integers
+            array containing index of particles to plot
+        plane: str, optional
+            'X' or 'Y'
+            
+        Returns:
+        --------
+        None
+        """
     
     def print_quadrupolar_elements_in_line(self, line):
         """Print all quadrupolar elements"""
