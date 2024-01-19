@@ -40,6 +40,8 @@ class Tune_Ripple_SPS:
         minimum radial distance from beam center to generate particles, to avoid zero amplitude oscillations for FMA
     n_sigma : float
         max number of beam sizes sigma to generate particles
+    z0 : float
+        initial longitudinal offset zeta
     output_folder : str
         location to save data
     """
@@ -51,6 +53,7 @@ class Tune_Ripple_SPS:
     n_linear: int = 100
     r_min: float = 0.1
     n_sigma: float = 10.0
+    z0: float = 0.0
     output_folder: str = 'output_tune_ripple'
     
     
@@ -423,7 +426,7 @@ class Tune_Ripple_SPS:
             kqf_vals, kqd_vals, turns = self.find_k_from_q_setvalue(dq=dq, plane=plane)
         
         # Generate particles
-        fma_sps = FMA(n_linear=self.n_linear, r_min=self.r_min, n_sigma=self.n_sigma)
+        fma_sps = FMA(n_linear=self.n_linear, r_min=self.r_min, n_sigma=self.n_sigma, z0=self.z0)
         particles = fma_sps.generate_particles(line, BeamParameters_SPS, make_single_Jy_trace=True)
         
         
