@@ -466,6 +466,7 @@ class Tune_Ripple_SPS:
                    make_single_Jy_trace=True,
                    use_symmetric_lattice=True,
                    install_SC_on_line = True,
+                   sextupolar_value_to_add=None,
                    Qy_frac=25
                    ):
         """
@@ -487,6 +488,8 @@ class Tune_Ripple_SPS:
             flag to use symmetric lattice without QFA and QDA
         install_SC_on_line : bool
             flag to install space charge on line with FMA ions
+        sextupolar_value_to_add : float, optional
+            k2 value of one extraction sextupole in SPS, if not None
         Qy_frac : int 
             fractional vertical tune. "19"" means fractional tune Qy = 0.19
         
@@ -498,6 +501,12 @@ class Tune_Ripple_SPS:
         # Get SPS Pb line with deferred expressions
         line, twiss = self.load_SPS_line_with_deferred_madx_expressions(use_symmetric_lattice=use_symmetric_lattice, 
                                                                         Qy_frac=Qy_frac)
+        
+        # If sextupolar value is set, set this value
+        if sextupolar_value_to_add is not None:
+            line = self._set_LSE_extraction_sextupolar_value(line, k2_value=sextupolar_value_to_add)
+            print('\nSetting klse10602 sextupolar value to {}\n'.format(line.vars['klse10602']._value))
+        
         if install_SC_on_line:
             fma_sps = FMA()
             line = fma_sps.install_SC_and_get_line(line, BeamParameters_SPS(), optimize_for_tracking=False)
@@ -694,7 +703,7 @@ class Tune_Ripple_SPS:
             x, y, px, py = self.load_tracking_data()
         else:
             x, y, px, py = self.run_ripple(dq=dq, plane=plane, make_single_Jy_trace=make_single_Jy_trace, 
-                                           install_SC_on_line=install_SC_on_line)
+                                           install_SC_on_line=install_SC_on_line, sextupolar_value_to_add=sextupolar_value_to_add)
                 
         # Load relevant SPS line and twiss
         self._get_initial_normalized_coord_at_start() # loads normalized coord of starting distribution
@@ -813,12 +822,13 @@ class Tune_Ripple_SPS:
             ax3.set_yscale('log')
         
         # Add colorbar, normalized to beam size (in sigmas)
-        fig.colorbar(mpl.cm.ScalarMappable(norm=mpl.colors.Normalize(min(self._x_norm), max(self._x_norm)), cmap='cool'),
-             ax=ax, orientation='vertical', label='$\sigma_{x}$')
-        fig2.colorbar(mpl.cm.ScalarMappable(norm=mpl.colors.Normalize(min(self._x_norm), max(self._x_norm)), cmap='cool'),
-             ax=ax2, orientation='vertical', label='$\sigma_{x}$')
-        fig3.colorbar(mpl.cm.ScalarMappable(norm=mpl.colors.Normalize(min(self._x_norm), max(self._x_norm)), cmap='cool'),
-             ax=ax3, orientation='vertical', label='$\sigma_{x}$')
+        if not plot_random_colors:
+            fig.colorbar(mpl.cm.ScalarMappable(norm=mpl.colors.Normalize(min(self._x_norm), max(self._x_norm)), cmap='cool'),
+                 ax=ax, orientation='vertical', label='$\sigma_{x}$')
+            fig2.colorbar(mpl.cm.ScalarMappable(norm=mpl.colors.Normalize(min(self._x_norm), max(self._x_norm)), cmap='cool'),
+                 ax=ax2, orientation='vertical', label='$\sigma_{x}$')
+            fig3.colorbar(mpl.cm.ScalarMappable(norm=mpl.colors.Normalize(min(self._x_norm), max(self._x_norm)), cmap='cool'),
+                 ax=ax3, orientation='vertical', label='$\sigma_{x}$')
         
         fig.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
         fig2.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
