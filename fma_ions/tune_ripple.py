@@ -652,6 +652,7 @@ class Tune_Ripple_SPS:
                    install_SC_on_line=True,
                    Qy_frac=25,
                    num_particles_to_plot=10,
+                   sextupolar_value_to_add=None,
                    action_in_logscale=False,
                    also_show_plot=False):
         """
@@ -676,6 +677,8 @@ class Tune_Ripple_SPS:
             flag to install space charge on line with FMA ions
         Qy_frac : int
             fractional vertical tune. "19"" means fractional tune Qy = 0.19
+        sextupolar_value_to_add : float, optional
+            k2 value of one extraction sextupole in SPS, if not None
         action_in_logscale: bool, optional
             whether to plot action in logscale or not
         num_particles_to_plot : 
@@ -694,6 +697,11 @@ class Tune_Ripple_SPS:
         self._get_initial_normalized_coord_at_start() # loads normalized coord of starting distribution
         line, twiss = self.load_SPS_line_with_deferred_madx_expressions(use_symmetric_lattice=use_symmetric_lattice,
                                                                         Qy_frac=Qy_frac)
+        
+        # If sextupolar value is set, set this value
+        if sextupolar_value_to_add is not None:
+            line = self._set_LSE_extraction_sextupolar_value(line, k2_value=sextupolar_value_to_add)
+            print('\nSetting klse10602 sextupolar value to {}\n'.format(line.vars['klse10602']._value))
         
         # Try to load tune-data
         k = int(np.ceil(2 / twiss['qs'])) # tune evaluated over two synchrotron periods
@@ -899,10 +907,39 @@ class Tune_Ripple_SPS:
             plt.close()
 
 
+    def _set_LSE_extraction_sextupolar_value(self, line, k2_value=0.1):
+        """
+        Add sextupolar component to one extraction LSE sextupole in SPS (normally zero-valued)
+        
+        Parameters:
+        -----------
+        line : xtrack.line
+            xtrack line object to search through
+        k2_value: float
+            sextupolar component of first extraction sextupole
+        
+        Returns:
+        --------
+        line : xtrack.line
+            xtrack line object with new sextupole values
+        """
+        # Adjust knob for sextupolar value
+        line.vars['klse10602'] = k2_value
+        twiss = line.twiss() # check stability in twiss command
+        
+        return line
     
     
-    def _print_quadrupolar_elements_in_line(self, line):
-        """Print all quadrupolar elements
+    def _print_multipolar_elements_in_line(self, line, order=1):
+        """
+        Print all quadrupolar elements for a given order (default 1, i.e. quadrupole)
+        
+        Parameters:
+        -----------
+        line : xtrack.line
+            xtrack line object to search through
+        order : int
+            multipolar order to print
         
         Returns:
         --------
@@ -913,5 +950,5 @@ class Tune_Ripple_SPS:
         my_dict = line.to_dict()
         d =  my_dict["elements"]
         for key, value in d.items():
-            if value['__class__'] == 'Multipole' and value['_order'] == 1:
+            if value['__class__'] == 'Multipole' and value['_order'] == order:
                 print('{}: knl = {}'.format(key, value['knl']))
