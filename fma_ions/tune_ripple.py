@@ -653,6 +653,7 @@ class Tune_Ripple_SPS:
                    Qy_frac=25,
                    num_particles_to_plot=10,
                    sextupolar_value_to_add=None,
+                   plot_random_colors=False,
                    action_in_logscale=False,
                    also_show_plot=False):
         """
@@ -679,6 +680,8 @@ class Tune_Ripple_SPS:
             fractional vertical tune. "19"" means fractional tune Qy = 0.19
         sextupolar_value_to_add : float, optional
             k2 value of one extraction sextupole in SPS, if not None
+        plot_random_colors : bool, optional
+            plots random colors for each particle if True, otherwise colormap depending on starting amplitude
         action_in_logscale: bool, optional
             whether to plot action in logscale or not
         num_particles_to_plot : 
@@ -740,7 +743,10 @@ class Tune_Ripple_SPS:
             raise ValueError('Plane invalid - has to be "X" or "Y"')
 
         # Take colors from colormap of normalized phase space
-        colors = plt.cm.cool(np.linspace(0, 1, len(self._x_norm)))
+        if plot_random_colors:
+            colors = plt.cm.prism(np.linspace(0, 1, len(self._x_norm))) # varies according to prism, strongly 
+        else:
+            colors = plt.cm.cool(np.linspace(0, 1, len(self._x_norm)))
 
         # First make stroboscopic view
         self.generate_stroboscopic_view(turns, phi, Jx, ind, num_plots = 10, plane='X')
