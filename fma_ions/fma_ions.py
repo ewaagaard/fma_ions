@@ -625,9 +625,16 @@ class FMA:
         
         Parameters:
         ----------
-        d, Qx, Qy - input data from self.run_FMA
-        Qx_set, Qy_set - input data from Twiss
-        case_name - name string for scenario
+        d, Qx, Qy :  numpy.ndarray
+            arrays with input data from self.run_FMA
+        Qx_set, Qy_set : float 
+            set tunes, input data from Twiss
+        case_name : str
+            name string for scenario
+            
+        Returns:
+        --------
+        None
         """
         fig = plt.figure(figsize=(9,6))
         tune_diagram = resonance_lines(plot_range[0],
@@ -663,11 +670,20 @@ class FMA:
         
         Parameters:
         ----------
-        x, y, d - input data generated from self.run_FMA
-        case_name - name string for scenario
-        use_normalized_coordinates - flag whether to normalize coordinates w.r.t beam size
-        interpolate_initial_distribution - interpolate initial particle distribution into colormesh, or keep the points as they are 
-        also_show_plot - run plt.show()
+        x, y, d :  numpy.ndarray
+            arrays with input data generated from self.run_FMA
+        case_name : str
+            name string for scenario
+        use_normalized_coordinates : bool
+            flag whether to normalize coordinates w.r.t beam size
+        interpolate_initial_distribution : bool
+            interpolate initial particle distribution into colormesh, or keep the points as they are 
+        also_show_plot : bool 
+            whether to run plt.show()
+            
+        Returns:
+        --------
+        None
         """ 
         fig2=plt.figure(figsize=(8,6))
         XX,YY = np.meshgrid(np.unique(x[:,0]), np.unique(y[:,0]))
@@ -716,7 +732,12 @@ class FMA:
         
         Parameters:
         ----------
-        x_tbt_data, y_tbt_data
+        x_tbt_data, y_tbt_data :  numpy.ndarray
+            arrays with turn-by-turn data
+        
+        Returns:
+        --------
+        None
         """
         if load_tbt_data:
             x_tbt_data, y_tbt_data, _, _ = self.load_tracking_data()
@@ -747,17 +768,22 @@ class FMA:
         """
         Default FMA analysis for SPS Pb ions, plot final results and tune diffusion in initial distribution
         
-        Parameters
+        Parameters:
         ----------
-        load_tbt_data: if turn-by-turn (TBT) data from tracking is already saved
-        save_tune_data - store results Qx, Qy, d from FMA
-        Qy_frac - fractional vertical tune 
-        make_single_Jy_trace - flag to create single trace with unique vertical action
-        Jy, with varying action Jx. "Trace" instead of "grid", if uniform beam is used
-        use_symmetric_lattice - flag to use symmetric lattice without QFA and QDA
+        load_tbt_data : bool 
+            whether to load turn-by-turn (TBT) data from tracking is already saved
+        save_tune_data : bool 
+            flag to store results Qx, Qy, d from FMA
+        Qy_frac : int
+            fractional vertical tune 
+        make_single_Jy_trace : bool 
+            flag to create single trace with unique vertical action
+            Jy, with varying action Jx. "Trace" instead of "grid", if uniform beam is used
+        use_symmetric_lattice : bool
+            flag to use symmetric lattice without QFA and QDA
         
-        Returns
-        -------
+        Returns:
+        --------
         None
         """
         beamParams = BeamParameters_SPS
@@ -815,16 +841,23 @@ class FMA:
         """
         Default FMA analysis for SPS Pb ions, plot final results and tune diffusion in initial distribution
         
-        Parameters
+        Parameters:
         ----------
-        load_tbt_data: if turn-by-turn data from tracking is already saved
-        save_tune_data - store results Qx, Qy, d from FMA
-        Qy_frac - fractional vertical tune
-        beta_beat : relative difference in beta functions (Y for SPS)
-        Jy, with varying action Jx. "Trace" instead of "grid", if uniform beam is used
-        use_symmetric_lattice - flag to use symmetric lattice without QFA and QDA
+        load_tbt_data : bool 
+            whether to load turn-by-turn (TBT) data from tracking is already saved
+        save_tune_data : bool 
+            flag to store results Qx, Qy, d from FMA
+        Qy_frac : int
+            fractional vertical tune
+        beta_beat : float 
+            relative difference in beta functions (Y for SPS)
+        make_single_Jy_trace : bool 
+            flag to create single trace with unique vertical action
+            Jy, with varying action Jx. "Trace" instead of "grid", if uniform beam is used
+        use_symmetric_lattice : bool
+            flag to use symmetric lattice without QFA and QDA
         
-        Returns
+        Returns:
         -------
         None
         """
@@ -883,18 +916,26 @@ class FMA:
         
         Parameters:
         -----------
-        ion type - which ion (str)
-        m_ion - ion mass in atomic units [u]
-        Q_SPS - SPS ion charge state
-        Q_PS - PS ion charge state
-        qx - horizontal tune
-        qy - vertical tune
-        Nb - bunch intensity (default 'None' will keep default Pb parameters)
-        load_tbt_data - bool if tracking is already done
+        ion type : str
+            which ion (str)
+        m_ion : float
+            ion mass in atomic units [u]
+        Q_SPS : int 
+            SPS ion charge state
+        Q_PS : int
+            PS ion charge state
+        qx : float
+            horizontal tune
+        qy ; float
+            vertical tune
+        Nb : int
+            bunch intensity (default 'None' will keep default Pb parameters)
+        load_tbt_data : bool
+            flag if tracking is already done
         
         Returns:
         --------
-        None, but generates plots
+        None
         """
         beamParams = BeamParameters_SPS
         if Nb is not None:
@@ -941,9 +982,10 @@ class FMA:
         
         Parameters
         ----------
-        load_tbt_data: if turn-by-turn data from tracking is already saved
+        load_tbt_data : bool
+            flag if turn-by-turn data from tracking is already saved
         
-        Returns
+        Returns:
         -------
         None
         """
@@ -995,10 +1037,12 @@ class FMA:
         
         Parameters
         ----------
-        load_tbt_data: if turn-by-turn data from tracking is already saved
-        beta_beat : relative difference in beta functions (X for PS)
+        load_tbt_data : bool
+            flag whether turn-by-turn data from tracking is already saved
+        beta_beat : float
+            relative difference in beta functions (X for PS)
         
-        Returns
+        Returns:
         -------
         None
         """
@@ -1047,14 +1091,22 @@ class FMA:
         
         Parameters:
         -----------
-        ion type - which ion (str)
-        m_ion - ion mass in atomic units [u]
-        Q_LEIR - LEIR ion charge state
-        Q_PS - PS ion charge state
-        qx - horizontal tune
-        qy - vertical tune
-        Nb - bunch intensity (default 'None' will keep default Pb parameters)
-        load_tbt_data - bool if tracking is already done
+        ion type : str
+            which ion (str)
+        m_ion : float
+            ion mass in atomic units [u]
+        Q_LEIR : int
+            LEIR ion charge state
+        Q_PS : int
+            PS ion charge state
+        qx : float
+            horizontal tune
+        qy ; float
+            vertical tune
+        Nb : int
+            bunch intensity (default 'None' will keep default Pb parameters)
+        load_tbt_data : bool
+            flag if tracking is already done
         
         Returns:
         --------
