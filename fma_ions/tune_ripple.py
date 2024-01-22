@@ -753,7 +753,66 @@ class Tune_Ripple_SPS:
             phi = np.arctan2(Y, PY)
         else:
             raise ValueError('Plane invalid - has to be "X" or "Y"')
+        
+        # Generate the plots
+        J = Jx if plane == 'X' else Jy
+        Q = Qx if plane == 'X' else Qy
+        Z = X if plane == 'X' else Y
+        PZ = PX if plane == 'X' else PY
 
+        self.plot_action_and_tunes(turns, phi, J, Q, Z, PZ, ind, k, plot_random_colors=plot_random_colors,
+                                      action_in_logscale=action_in_logscale,
+                                      also_show_plot=also_show_plot, num_particles_to_plot=num_particles_to_plot)
+    
+    def plot_action_and_tunes(self, 
+                              turns,
+                              phi,
+                              J, 
+                              Q,
+                              Z,
+                              PZ,
+                              ind,
+                              k,
+                              plane='X',
+                              plot_random_colors=False,
+                              action_in_logscale=False,
+                              also_show_plot=False,
+                              num_particles_to_plot=10):
+        """
+        Creates plots of action and tune evolution, and phase space
+        
+        Parameters:
+        -----------
+        turns : numpy.ndarray
+            array containing turns from tracking
+        phi : numpy.ndarray
+            array with particle phase from tracking 
+        J : numpy.ndarray
+            array with particle actions from tracking 
+        Q : numpy.ndarray
+            array with particle tunes from tracking
+        Z : numpy.ndarray
+            array with normalized phase space coordinates X or Y
+        PZ : numpy.ndarray
+            array with normalized phase space coordinates PX or PY
+        ind : numpy.ndarray
+            indices of particles to plot
+        k : int
+            number of turns over which to evaluate the tune (normally two synchrotron periods)
+        plane : str
+            'X' or 'Y'
+        plot_random_colors : bool, optional
+            plots random colors for each particle if True, otherwise colormap depending on starting amplitude
+        action_in_logscale: bool, optional
+            whether to plot action in logscale or not
+        num_particles_to_plot : 
+            number of particles to include in plot
+        
+        Returns:
+        --------
+        None
+        """
+        
         # Take colors from colormap of normalized phase space
         if plot_random_colors:
             colors = plt.cm.prism(np.linspace(0, 1, len(self._x_norm))) # varies according to prism, strongly 
@@ -761,16 +820,16 @@ class Tune_Ripple_SPS:
             colors = plt.cm.cool(np.linspace(0, 1, len(self._x_norm)))
 
         # First make stroboscopic view
-        self.generate_stroboscopic_view(turns, phi, Jx, ind, num_plots = 10, plane='X')
+        self.generate_stroboscopic_view(turns, phi, J, ind, num_plots = 10, plane='X')
 
 
-        ######### Action evolution over time #########
-        fig, ax = plt.subplots(1, 1, figsize=(8,6))
-        fig.suptitle('Action evolution- tune modulation period of {} turns'.format(self.ripple_period), fontsize=14)
+        ######### Action evolution and over time #########
+        fig, ax = plt.subplots(2, 1, figsize=(11,7), sharex=True)
+        fig.suptitle('Action and tune evolution - tune modulation period of {} turns'.format(self.ripple_period), fontsize=13)
         
-        ######### Plot tune evolution over time #########
+        ######### NORMALIZED PHASE SPACE #########
         fig2, ax2 = plt.subplots(1, 1, figsize=(8,6))
-        fig2.suptitle('Tune evolution- tune modulation period of {} turns'.format(self.ripple_period), fontsize=14)
+        fig2.suptitle('Normalized phase space - tune modulation period of {} turns'.format(self.ripple_period), fontsize=14)
         
         ######### POLAR ACTION SPACE #########
         fig3, ax3 = plt.subplots(1, 1, figsize=(8,6))
@@ -786,50 +845,42 @@ class Tune_Ripple_SPS:
             # Mix black and colorbar 
             color=colors[particle] if j % 2 == 0 else 'k'
                 
-            # Plot normalized phase space and action space
-            if plane == 'X':
-                ax.plot(turns, Jx[particle, :], 'o', color=color, alpha=0.5, markersize=1.2)
-                ax2.plot(turns[k-1:], Qx[particle, :], '-', color=color)
-                ax3.plot(phi[particle, :], Jx[particle, :], 'o', color=color, alpha=0.5, markersize=1.2)
+            # Plot normalized phase space and action space           
+            ax[0].plot(turns, J[particle, :], 'o', color=color, alpha=0.5, markersize=1.2)
+            ax[1].plot(turns[k-1:], Q[particle, :], '-', color=color)
+     
+            ax2.plot(Z[particle, :], PZ[particle, :], 'o', color=color, alpha=0.5, markersize=1.5)
 
-            elif plane == 'Y':
-                ax.plot(turns, Jy[particle, :], 'o', color=color, alpha=0.5, markersize=1.2)
-                ax2.plot(turns[k-1:], Qy[particle, :], '-', color=color)
-                ax3.plot(phi[particle, :], Jy[particle, :], 'o', color=color, alpha=0.5, markersize=1.2)
+            ax3.plot(phi[particle, :], J[particle, :], 'o', color=color, alpha=0.5, markersize=1.2)
+
+            ax[1].set_xlabel('Turns')
+            ax3.set_xlabel(r"$\phi$ [rad]")
+
             j += 1
 
         # Add correct labels        
-        if plane == 'X':               
-            ax.set_xlabel('Turns')
-            ax.set_ylabel('$J_{x}$')
-            
-            ax2.set_xlabel('Turns')
-            ax2.set_ylabel('$Q_{x}$')
-            
-            ax3.set_xlabel(r"$\phi$ [rad]")
-            ax3.set_ylabel(r"$J_{x}$")
-            
+        if plane == 'X':                       
+            ax[0].set_ylabel('$J_{x}$')
+            ax[1].set_ylabel('$Q_{x}$')
+            ax2.set_ylabel(r"$P_{x}$")
+            ax2.set_xlabel(r"$X$")
+            ax3.set_ylabel(r"$J_{x}$")     
         elif plane == 'Y':
-            ax.set_xlabel('Turns')
-            ax.set_ylabel('$J_{y}$')
-            
-            ax2.set_xlabel('Turns')
-            ax2.set_ylabel('$Q_{y}$')
-            
+            ax[0].set_ylabel('$J_{y}$')
+            ax[1].set_ylabel('$Q_{y}$')
+            ax2.set_ylabel(r"$P_{Y}$")
+            ax2.set_xlabel(r"$Y$")
             ax3.set_ylabel(r"$J_{y}$")
-            ax3.set_xlabel(r"$\phi$ [rad]")
-        
+    
         # Set logscale for action
         if action_in_logscale:
-            ax.set_yscale('log')
+            ax[0].set_yscale('log')
             ax3.set_yscale('log')
         
         # Add colorbar, normalized to beam size (in sigmas)
         if not plot_random_colors:
             fig.colorbar(mpl.cm.ScalarMappable(norm=mpl.colors.Normalize(min(self._x_norm), max(self._x_norm)), cmap='cool'),
-                 ax=ax, orientation='vertical', label='$\sigma_{x}$')
-            fig2.colorbar(mpl.cm.ScalarMappable(norm=mpl.colors.Normalize(min(self._x_norm), max(self._x_norm)), cmap='cool'),
-                 ax=ax2, orientation='vertical', label='$\sigma_{x}$')
+                 ax=ax[0], orientation='vertical', label='$\sigma_{x}$')
             fig3.colorbar(mpl.cm.ScalarMappable(norm=mpl.colors.Normalize(min(self._x_norm), max(self._x_norm)), cmap='cool'),
                  ax=ax3, orientation='vertical', label='$\sigma_{x}$')
         
@@ -838,8 +889,8 @@ class Tune_Ripple_SPS:
         fig3.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
         
         # Save figures
-        fig.savefig('{}/Action_over_turns.png'.format(self.output_folder), dpi=250)
-        fig2.savefig('{}/Tune_over_turns.png'.format(self.output_folder), dpi=250)
+        fig.savefig('{}/Action_and_tune_over_turns.png'.format(self.output_folder), dpi=250)
+        fig2.savefig('{}/Normalized_phase_space.png'.format(self.output_folder), dpi=250)
         fig3.savefig('{}/Polar_action_space_{}.png'.format(self.output_folder, plane), dpi=250)
         
         if also_show_plot:
