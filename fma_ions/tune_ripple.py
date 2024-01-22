@@ -6,6 +6,7 @@ import numpy as np
 from dataclasses import dataclass
 import matplotlib.pyplot as plt
 import matplotlib as mpl
+import matplotlib.gridspec as gridspec
 from pathlib import Path
 import json
 import os
@@ -799,7 +800,7 @@ class Tune_Ripple_SPS:
                                                                           self._state[self._state < 1]))
 
         # Plot sweeping phase space, and actions and tunes
-        self.plot_sweeping_phase_space(turns, J, ind, Z, PZ, action_in_logscale=action_in_logscale, 
+        self.plot_sweeping_phase_space(turns, J, Q, ind, k, Z, PZ, action_in_logscale=action_in_logscale, 
                                        plot_up_to_turn=phase_sweep_up_to_turn, sweep_step=phase_space_sweep_interval)
         self.plot_action_and_tunes(turns, phi, J, Q, Z, PZ, ind, k, plot_random_colors=plot_random_colors,
                                       action_in_logscale=action_in_logscale,
@@ -935,7 +936,7 @@ class Tune_Ripple_SPS:
             plt.show()
     
     
-    def plot_sweeping_phase_space(self, turns, J, ind, Z, PZ, sweep_step=1000, plane='X', 
+    def plot_sweeping_phase_space(self, turns, J, Q, ind, k, Z, PZ, sweep_step=1000, plane='X', 
                                   action_in_logscale=False, plot_up_to_turn=None):
         """
         Create series of snap-shots in phase space over actions
@@ -946,12 +947,16 @@ class Tune_Ripple_SPS:
             array containing turns from tracking
         J : numpy.ndarray
             array with particle actions from tracking 
+        Q : numpy.ndarray
+            array with particle tunes from tracking
+        ind : numpy.ndarray
+            indices of particles to plot
+        k : int
+            number of turns over which to evaluate the tune (normally two synchrotron periods)
         Z : numpy.ndarray
             array with normalized phase space coordinates X or Y
         PZ : numpy.ndarray
             array with normalized phase space coordinates PX or PY
-        ind : numpy.ndarray
-            indices of particles to plot
         plane : str
             'X' or 'Y'
         sweep_step : int
@@ -977,13 +982,6 @@ class Tune_Ripple_SPS:
            
         sweep_ind = np.arange(start=1, stop=plot_up_to_turn, step=sweep_step)
              
-        # Find max phase space limits
-        Zmax = np.max(Z[:, :plot_up_to_turn])
-        Zmin = np.min(Z[:, :plot_up_to_turn])
-        PZmax = np.max(PZ[:, :plot_up_to_turn])
-        PZmin = np.min(PZ[:, :plot_up_to_turn])
-        print(Zmin, Zmax, PZmin, PZmax)
-        
         # Iterate over index sweep for stroboscopic view
         for i in range(len(sweep_ind)):
             
@@ -991,10 +989,19 @@ class Tune_Ripple_SPS:
                 print('Sweep nr {}'.format(i+1))
             
             ######### Stroboscopic action view #########
-            fig, ax = plt.subplots(1, 2, figsize=(11,7))
+            #fig, ax = plt.subplots(2, 2, figsize=(13,7))
+            fig = plt.figure(figsize=(13, 7), tight_layout=True)
             fig.suptitle('Phase space sweep - tune modulation every {} turns, {} turns in total'.format(self.ripple_period, self.num_turns), 
                          fontsize=13)    
+
+            # Create axes for each purpose            
+            gs = gridspec.GridSpec(2, 2)
             
+            # Action and tune evolution over time
+            ax1 = fig.add_subplot(gs[0, 0])
+            ax2 = fig.add_subplot(gs[1, 0], sharex=ax1)
+            ax3 = fig.add_subplot(gs[:, 1]) # ax for normalized phase space 
+        
             # Iterate over particles to plot
             j = 0
             for particle in ind:
@@ -1003,36 +1010,41 @@ class Tune_Ripple_SPS:
                 color=colors[particle] if j % 2 == 0 else 'k'
                     
                 # Plot normalized phase space and action space
-                ax[0].plot(turns[:plot_up_to_turn], J[particle, :plot_up_to_turn], 'o', color=color, alpha=0.5, markersize=1.2)
+                ax1.plot(turns[:plot_up_to_turn], J[particle, :plot_up_to_turn], 'o', color=color, alpha=0.5, markersize=1.2)
+                ax2.plot(turns[k-1:plot_up_to_turn], Q[particle, :plot_up_to_turn-k+1], 'o', color=color, alpha=0.5, markersize=1.2)
                 if j == 0:
-                    ax[0].axvline(x=sweep_ind[i], lw=0.8, alpha=0.7, color='k')  
+                    ax1.axvline(x=sweep_ind[i], lw=0.8, alpha=0.7, color='k')
+                    ax2.axvline(x=sweep_ind[i], lw=0.8, alpha=0.7, color='k') 
 
-                ax[1].plot(Z[particle, :sweep_ind[i]], PZ[particle, :sweep_ind[i]], 'o', color=color, alpha=0.5, markersize=2.5)
+                ax3.plot(Z[particle, :sweep_ind[i]], PZ[particle, :sweep_ind[i]], 'o', color=color, alpha=0.5, markersize=2.5)
                 j += 1
         
-            ax[0].set_xlabel('Turns')
+            ax2.set_xlabel('Turns')
+            plt.setp(ax1.get_xticklabels(), visible=False)
             
             # Add correct labels        
             if plane == 'X':                       
-                ax[0].set_ylabel('$J_{x}$')
-                ax[1].set_ylabel(r"$P_{x}$")
-                ax[1].set_xlabel(r"$X$")
+                ax1.set_ylabel('$J_{x}$')
+                ax2.set_ylabel('$Q_{x}$')
+                ax3.set_ylabel(r"$P_{x}$")
+                ax3.set_xlabel(r"$X$")
             elif plane == 'Y':
-                ax[0].set_ylabel('$J_{y}$')
-                ax[1].set_ylabel(r"$P_{y}$")
-                ax[1].set_xlabel(r"$Y$")
+                ax1.set_ylabel('$J_{y}$')
+                ax2.set_ylabel('$Q_{y}$')
+                ax3.set_ylabel(r"$P_{y}$")
+                ax3.set_xlabel(r"$Y$")
         
             #ax[1].set_xlim(Zmin, Zmax)
             #ax[1].set_ylim(PZmin, PZmax)
         
             # Set logscale for action
             if action_in_logscale:
-                ax[0].set_yscale('log')
+                ax1.set_yscale('log')
             
             fig.savefig('{}/{}_Phase_space_sweep.png'.format(output_sweep, i), dpi=250)
             fig.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
             
-            del fig, ax
+            del fig, ax1, ax2, ax3
             
             plt.close()
 
