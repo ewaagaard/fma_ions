@@ -470,7 +470,8 @@ class Tune_Ripple_SPS:
                    use_symmetric_lattice=True,
                    install_SC_on_line = True,
                    sextupolar_value_to_add=None,
-                   Qy_frac=25
+                   Qy_frac=25,
+                   beta_beat=None
                    ):
         """
         Test SPS tune ripple during tracking
@@ -495,6 +496,8 @@ class Tune_Ripple_SPS:
             k2 value of one extraction sextupole in SPS, if not None
         Qy_frac : int 
             fractional vertical tune. "19"" means fractional tune Qy = 0.19
+        beta_beat : float 
+            relative difference in beta functions (Y for SPS)
         
         Returns:
         --------
@@ -510,6 +513,11 @@ class Tune_Ripple_SPS:
             line = self._set_LSE_extraction_sextupolar_value(line, k2_value=sextupolar_value_to_add)
             print('\nSetting klse10602 sextupolar value to {}\n'.format(line.vars['klse10602']._value))
         
+        # Add beta-beat if desired 
+        if beta_beat is not None:
+            sps_seq = SPS_sequence_maker()
+            line = sps_seq.generate_xsuite_seq_with_beta_beat(beta_beat=beta_beat, line=line)
+
         if install_SC_on_line:
             fma_sps = FMA()
             line = fma_sps.install_SC_and_get_line(line, BeamParameters_SPS(), optimize_for_tracking=False)
@@ -665,12 +673,15 @@ class Tune_Ripple_SPS:
                    use_symmetric_lattice=True,
                    install_SC_on_line=True,
                    Qy_frac=25,
+                   beta_beat=None,
                    num_particles_to_plot=10,
                    sextupolar_value_to_add=None,
                    plot_random_colors=False,
                    action_in_logscale=False,
                    also_show_plot=False,
-                   plot_dead_particles=False):
+                   plot_dead_particles=False,
+                   phase_sweep_up_to_turn=None,
+                   phase_space_sweep_interval=1000):
         """
         Run SPS tune ripple wtih tracking and generate phase space plots
             
@@ -693,6 +704,8 @@ class Tune_Ripple_SPS:
             flag to install space charge on line with FMA ions
         Qy_frac : int
             fractional vertical tune. "19"" means fractional tune Qy = 0.19
+        beta_beat : float 
+            relative difference in beta functions (Y for SPS)
         num_particles_to_plot : int
             number of particles to include in plot
         sextupolar_value_to_add : float, optional
@@ -703,6 +716,8 @@ class Tune_Ripple_SPS:
             whether to plot action in logscale or not
         plot_dead_particles : bool, optional
             whether to plot particles that got lost in tracking or not
+        phase_space_sweep_interval : int
+            number of steps to follow the evolution of phase space
         
         Returns:
         --------
@@ -711,7 +726,8 @@ class Tune_Ripple_SPS:
             x, y, px, py = self.load_tracking_data()
         else:
             x, y, px, py = self.run_ripple(dq=dq, plane=plane, make_single_Jy_trace=make_single_Jy_trace, 
-                                           install_SC_on_line=install_SC_on_line, sextupolar_value_to_add=sextupolar_value_to_add)
+                                           install_SC_on_line=install_SC_on_line, sextupolar_value_to_add=sextupolar_value_to_add,
+                                           beta_beat=beta_beat)
                 
         # Load relevant SPS line and twiss
         self._get_initial_normalized_coord_at_start() # loads normalized coord of starting distribution
@@ -733,6 +749,10 @@ class Tune_Ripple_SPS:
         # Load turns and quadrupole strengths
         kqf_vals, kqd_vals, turns = self.load_k_from_xtrack_matching(dq=dq, plane=plane)
         turns = np.array(turns)
+        
+        # Plot for phase space sweep
+        if phase_sweep_up_to_turn is None:
+            phase_sweep_up_to_turn = turns[-1]
         
         # Calculate normalized coordinates
         X = x / np.sqrt(twiss['betx'][0]) 
@@ -772,8 +792,15 @@ class Tune_Ripple_SPS:
             Q[self._state[:, :len(x[0]) - k + 1] < 1.0] = np.nan
             Z[self._state < 1.0] = np.nan
             PZ[self._state < 1.0] = np.nan
-        #ind = [x for x in ind if x not in full_ind[self._kill_ind]]  # keep all particles that are not dead
+            
+            # Print number of lost particles in tracking
+            last_state = self._state[:, -1]
+            print('\nNumber of particles lost: {}\nError code: {}'.format(len(last_state[last_state < 1]), 
+                                                                          self._state[self._state < 1]))
 
+        # Plot sweeping phase space, and actions and tunes
+        self.plot_sweeping_phase_space(turns, J, ind, Z, PZ, action_in_logscale=action_in_logscale, 
+                                       plot_up_to_turn=phase_sweep_up_to_turn, sweep_step=phase_space_sweep_interval)
         self.plot_action_and_tunes(turns, phi, J, Q, Z, PZ, ind, k, plot_random_colors=plot_random_colors,
                                       action_in_logscale=action_in_logscale,
                                       also_show_plot=also_show_plot, num_particles_to_plot=num_particles_to_plot)
@@ -907,6 +934,110 @@ class Tune_Ripple_SPS:
         if also_show_plot:
             plt.show()
     
+    
+    def plot_sweeping_phase_space(self, turns, J, ind, Z, PZ, sweep_step=1000, plane='X', 
+                                  action_in_logscale=False, plot_up_to_turn=None):
+        """
+        Create series of snap-shots in phase space over actions
+
+        Parameters:
+        -----------
+        turns : numpy.ndarray
+            array containing turns from tracking
+        J : numpy.ndarray
+            array with particle actions from tracking 
+        Z : numpy.ndarray
+            array with normalized phase space coordinates X or Y
+        PZ : numpy.ndarray
+            array with normalized phase space coordinates PX or PY
+        ind : numpy.ndarray
+            indices of particles to plot
+        plane : str
+            'X' or 'Y'
+        sweep_step : int
+            interval between every frozen plot in phase space
+        action_in_logscale: bool, optional
+            whether to plot action in logscale or not
+        plot_up_to_turn : int, optional
+            until which turn to plot
+
+        Returns:
+        --------
+        None
+        """
+        if plot_up_to_turn is None:
+            plot_up_to_turn = turns[-1]
+        
+        # Take colors from colormap of normalized phase space
+        colors = plt.cm.cool(np.linspace(0, 1, len(self._x_norm)))
+    
+        # Create folder for stroboscopic plot if does not exist
+        output_sweep = '{}/phase_space_sweep'.format(self.output_folder)
+        os.makedirs(output_sweep, exist_ok=True)
+           
+        sweep_ind = np.arange(start=1, stop=plot_up_to_turn, step=sweep_step)
+             
+        # Find max phase space limits
+        Zmax = np.max(Z[:, :plot_up_to_turn])
+        Zmin = np.min(Z[:, :plot_up_to_turn])
+        PZmax = np.max(PZ[:, :plot_up_to_turn])
+        PZmin = np.min(PZ[:, :plot_up_to_turn])
+        print(Zmin, Zmax, PZmin, PZmax)
+        
+        # Iterate over index sweep for stroboscopic view
+        for i in range(len(sweep_ind)):
+            
+            if i % 5 == 0:
+                print('Sweep nr {}'.format(i+1))
+            
+            ######### Stroboscopic action view #########
+            fig, ax = plt.subplots(1, 2, figsize=(11,7))
+            fig.suptitle('Phase space sweep - tune modulation every {} turns, {} turns in total'.format(self.ripple_period, self.num_turns), 
+                         fontsize=13)    
+            
+            # Iterate over particles to plot
+            j = 0
+            for particle in ind:
+                                
+                # Mix black and colorbar 
+                color=colors[particle] if j % 2 == 0 else 'k'
+                    
+                # Plot normalized phase space and action space
+                ax[0].plot(turns[:plot_up_to_turn], J[particle, :plot_up_to_turn], 'o', color=color, alpha=0.5, markersize=1.2)
+                if j == 0:
+                    ax[0].axvline(x=sweep_ind[i], lw=0.8, alpha=0.7, color='k')  
+
+                ax[1].plot(Z[particle, :sweep_ind[i]], PZ[particle, :sweep_ind[i]], 'o', color=color, alpha=0.5, markersize=2.5)
+                j += 1
+        
+            ax[0].set_xlabel('Turns')
+            
+            # Add correct labels        
+            if plane == 'X':                       
+                ax[0].set_ylabel('$J_{x}$')
+                ax[1].set_ylabel(r"$P_{x}$")
+                ax[1].set_xlabel(r"$X$")
+            elif plane == 'Y':
+                ax[0].set_ylabel('$J_{y}$')
+                ax[1].set_ylabel(r"$P_{y}$")
+                ax[1].set_xlabel(r"$Y$")
+        
+            #ax[1].set_xlim(Zmin, Zmax)
+            #ax[1].set_ylim(PZmin, PZmax)
+        
+            # Set logscale for action
+            if action_in_logscale:
+                ax[0].set_yscale('log')
+            
+            fig.savefig('{}/{}_Phase_space_sweep.png'.format(output_sweep, i), dpi=250)
+            fig.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+            
+            del fig, ax
+            
+            plt.close()
+
+        
+        
     
     def generate_stroboscopic_view(self, turns, phi, J, ind, num_plots = 10, plane='X'):
         """ 
