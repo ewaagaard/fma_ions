@@ -525,6 +525,7 @@ class Tune_Ripple_SPS:
         y = np.zeros([len(particles.y), self.num_turns])
         px = np.zeros([len(particles.px), self.num_turns]) 
         py = np.zeros([len(particles.py), self.num_turns])
+        state = np.zeros([len(particles.state), self.num_turns])
         
         # Track the particles and return turn-by-turn coordinates
         for ii in range(self.num_turns):
@@ -534,6 +535,7 @@ class Tune_Ripple_SPS:
             y[:, ii] = particles.y
             px[:, ii] = particles.px
             py[:, ii] = particles.py
+            state[:, ii] = particles.state
         
             # Change the strength of the quads
             line.vars['kqf'] = kqf_vals[ii]
@@ -543,8 +545,7 @@ class Tune_Ripple_SPS:
             line.track(particles)
         
         # Set particle trajectories of dead particles that got lost in tracking
-        self._kill_ind = particles.state < 1
-        self._kill_ind_exists = True
+        self._state = state
         
         if save_tbt_data:
             os.makedirs(self.output_folder, exist_ok=True)
@@ -552,7 +553,7 @@ class Tune_Ripple_SPS:
             np.save('{}/y.npy'.format(self.output_folder), y)
             np.save('{}/px.npy'.format(self.output_folder), px)
             np.save('{}/py.npy'.format(self.output_folder), py)
-            np.save('{}/state.npy'.format(self.output_folder), self._kill_ind)
+            np.save('{}/state.npy'.format(self.output_folder), state)
             print('Saved tracking data.')
     
         return x, y, px, py
@@ -572,6 +573,7 @@ class Tune_Ripple_SPS:
             y=np.load('{}/y.npy'.format(self.output_folder))
             px=np.load('{}/px.npy'.format(self.output_folder))
             py=np.load('{}/py.npy'.format(self.output_folder))
+            self._state=np.load('{}/state.npy'.format(self.output_folder))
             return x, y, px, py
 
         except FileNotFoundError:
@@ -667,7 +669,8 @@ class Tune_Ripple_SPS:
                    sextupolar_value_to_add=None,
                    plot_random_colors=False,
                    action_in_logscale=False,
-                   also_show_plot=False):
+                   also_show_plot=False,
+                   plot_dead_particles=False):
         """
         Run SPS tune ripple wtih tracking and generate phase space plots
             
@@ -690,14 +693,16 @@ class Tune_Ripple_SPS:
             flag to install space charge on line with FMA ions
         Qy_frac : int
             fractional vertical tune. "19"" means fractional tune Qy = 0.19
+        num_particles_to_plot : int
+            number of particles to include in plot
         sextupolar_value_to_add : float, optional
             k2 value of one extraction sextupole in SPS, if not None
         plot_random_colors : bool, optional
             plots random colors for each particle if True, otherwise colormap depending on starting amplitude
         action_in_logscale: bool, optional
             whether to plot action in logscale or not
-        num_particles_to_plot : 
-            number of particles to include in plot
+        plot_dead_particles : bool, optional
+            whether to plot particles that got lost in tracking or not
         
         Returns:
         --------
@@ -739,6 +744,7 @@ class Tune_Ripple_SPS:
         Jx = X**2 + PX **2
         Jy = Y**2 + PY **2
 
+
         # Select particle index to plot - evenly spaced out in action
         if action_limits is None:
             ind = np.arange(start=1, stop=len(x), step=len(x) / num_particles_to_plot, dtype=int)
@@ -759,6 +765,14 @@ class Tune_Ripple_SPS:
         Q = Qx if plane == 'X' else Qy
         Z = X if plane == 'X' else Y
         PZ = PX if plane == 'X' else PY
+        
+        # Set values to nan if particles are dead 
+        if not plot_dead_particles:
+            J[self._state < 1.0] = np.nan
+            Q[self._state[:, :len(x[0]) - k + 1] < 1.0] = np.nan
+            Z[self._state < 1.0] = np.nan
+            PZ[self._state < 1.0] = np.nan
+        #ind = [x for x in ind if x not in full_ind[self._kill_ind]]  # keep all particles that are not dead
 
         self.plot_action_and_tunes(turns, phi, J, Q, Z, PZ, ind, k, plot_random_colors=plot_random_colors,
                                       action_in_logscale=action_in_logscale,
@@ -822,7 +836,6 @@ class Tune_Ripple_SPS:
         # First make stroboscopic view
         self.generate_stroboscopic_view(turns, phi, J, ind, num_plots = 10, plane='X')
 
-
         ######### Action evolution and over time #########
         fig, ax = plt.subplots(2, 1, figsize=(11,7), sharex=True)
         fig.suptitle('Action and tune evolution - tune modulation period of {} turns'.format(self.ripple_period), fontsize=13)
@@ -848,9 +861,7 @@ class Tune_Ripple_SPS:
             # Plot normalized phase space and action space           
             ax[0].plot(turns, J[particle, :], 'o', color=color, alpha=0.5, markersize=1.2)
             ax[1].plot(turns[k-1:], Q[particle, :], '-', color=color)
-     
             ax2.plot(Z[particle, :], PZ[particle, :], 'o', color=color, alpha=0.5, markersize=1.5)
-
             ax3.plot(phi[particle, :], J[particle, :], 'o', color=color, alpha=0.5, markersize=1.2)
 
             ax[1].set_xlabel('Turns')
