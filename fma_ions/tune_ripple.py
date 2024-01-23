@@ -341,8 +341,9 @@ class Tune_Ripple_SPS:
         sym_string = '_symmetric_lattice' if use_symmetric_lattice else '_nominal_lattice'
         k_val_path = '{}/qy_dot{}/k_knobs'.format(sequence_path, self.Qy_frac)
         os.makedirs(k_val_path, exist_ok=True)
+        print('\nSaving k strengths to dq{}percent.json"\n'.format(int(100*dq)))
         
-        with open("{}/k_vals_{}{}.json".format(k_val_path, plane, sym_string), "w") as fp:
+        with open("{}/k_vals_{}{}_dq{}percent.json".format(k_val_path, plane, sym_string, int(100*dq)), "w") as fp:
             json.dump(k_dict , fp) 
         
         return kqf_vals, kqd_vals, turns
@@ -375,9 +376,9 @@ class Tune_Ripple_SPS:
             sym_string = '_symmetric_lattice' if use_symmetric_lattice else '_nominal_lattice'
             k_val_path = '{}/qy_dot{}/k_knobs'.format(sequence_path, self.Qy_frac)
             
-            with open("{}/k_vals_{}{}.json".format(k_val_path, plane, sym_string), "r") as fp:
+            with open("{}/k_vals_{}{}_dq{}percent.json".format(k_val_path, plane, sym_string, int(100*dq)), "r") as fp:
                 k_dict = json.load(fp) 
-            print('Loaded k_strength json file\n')
+            print('Loaded k_strength json file dq = {} percent\n'.format(int(100*dq)))
                 
             # Find amplitudes
             amp_kqf = k_dict['kqf'][-1] - k_dict['kqf'][0]
