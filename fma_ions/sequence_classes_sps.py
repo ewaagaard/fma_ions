@@ -176,6 +176,20 @@ class SPS_sequence_maker:
                 madx.call('{}/qy_dot{}/SPS_2021_Pb_nominal_symmetric.seq'.format(sequence_path, Qy_frac))
             else:
                 madx.call('{}/qy_dot{}/SPS_2021_Pb_nominal.seq'.format(sequence_path, Qy_frac))
+
+            # Use correct tune and chromaticity matching macros
+            madx.call("{}/toolkit/macro.madx".format(optics))
+            madx.use('sps')
+            madx.exec(f"sps_match_tunes({self.qx0}, {self.qy0});")
+            madx.exec("sps_define_sext_knobs();")
+            madx.exec("sps_set_chroma_weights_q26();")
+            madx.input(f"""match;
+            global, dq1={self.dq1};
+            global, dq2={self.dq2};
+            vary, name=qph_setvalue;
+            vary, name=qpv_setvalue;
+            jacobian, calls=10, tolerance=1e-25;
+            endmatch;""")
             
         except FileNotFoundError:
             raise FileExistsError('\nHave to generate sequence first!\n')
