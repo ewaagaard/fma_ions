@@ -56,7 +56,8 @@ class SPS_sequence_maker:
     Q_SPS: float = 82.
     m_ion: float = 207.98
     
-    def load_xsuite_line_and_twiss(self, Qy_frac=25, beta_beat=None, use_symmetric_lattice=False):
+    def load_xsuite_line_and_twiss(self, Qy_frac=25, beta_beat=None, use_symmetric_lattice=False,
+                                   add_non_linear_magnet_errors=False):
         """
         Method to load pre-generated SPS lattice files for Xsuite
         
@@ -72,8 +73,11 @@ class SPS_sequence_maker:
         twiss - twiss table from xtrack 
         """
         symmetric_string = '_symmetric' if use_symmetric_lattice else ''
+        err_str = '_with_non_linear_chrom_error' if add_non_linear_magnet_errors else ''
         if use_symmetric_lattice:
             print('\nLoading symmetric SPS lattice\n')
+        if add_non_linear_magnet_errors:
+            print('\nLoading lattic with non-linear chromatic magnet errors\n')
         
         # Update fractional vertical tune 
         self.qy0 = int(self.qy0) + Qy_frac / 100 
@@ -81,17 +85,22 @@ class SPS_sequence_maker:
         
         # Check if pre-generated sequence exists 
         if beta_beat is None or beta_beat == 0.0:
-            sps_fname = '{}/qy_dot{}/SPS_2021_{}_nominal{}.json'.format(sequence_path, Qy_frac, self.ion_type, symmetric_string)
+            sps_fname = '{}/qy_dot{}/SPS_2021_{}_nominal{}{}.json'.format(sequence_path, Qy_frac, self.ion_type, symmetric_string, err_str)
         else:                                                  
-            sps_fname = '{}/qy_dot{}/SPS_2021_{}_{}_percent_beta_beat.json'.format(sequence_path, Qy_frac, self.ion_type, int(beta_beat*100))
+            sps_fname = '{}/qy_dot{}/SPS_2021_{}_{}_percent_beta_beat{}.json'.format(sequence_path, Qy_frac, self.ion_type, int(beta_beat*100), err_str)
             
         try:
             sps_line = xt.Line.from_json(sps_fname)
         except FileNotFoundError:
-            print('\nPre-made SPS sequence does not exists, generating new sequence with Qx, Qy = ({}, {}) and beta-beat = {}!\n'.format(self.qx0, 
+            print('\nPre-made SPS sequence does not exists, generating new sequence with Qx, Qy = ({}, {}), beta-beat = {} and non-linear error={}!\n'.format(self.qx0, 
                                                                                                                                          self.qy0, 
-                                                                                                                                         beta_beat))
-            sps_line = self.generate_xsuite_seq() if beta_beat is None else self.generate_xsuite_seq_with_beta_beat(beta_beat)
+                                                                                                                                         beta_beat,
+                                                                                                                                         add_non_linear_magnet_errors))
+            # Make new line with beta-beat and/or non-linear chromatic errors
+            if beta_beat is None:
+                sps_line = self.generate_xsuite_seq(add_non_linear_magnet_errors=add_non_linear_magnet_errors) 
+            else:
+                sps_line = self.generate_xsuite_seq_with_beta_beat(add_non_linear_magnet_errors=add_non_linear_magnet_errors)
             
         # Build tracker and Twiss
         #sps_line.build_tracker()  # tracker is already built when loading
@@ -157,8 +166,8 @@ class SPS_sequence_maker:
         return m_in_eV, p_inj_SPS
 
 
-    def load_simple_madx_seq(self, use_symmetric_lattice=True, Qy_frac=25,
-                             add_non_linear_magnet_errors=False):
+    def load_simple_madx_seq(self, use_symmetric_lattice=False, Qy_frac=25,
+                             add_non_linear_magnet_errors=False, make_thin=True):
         """
         Loads default SPS Pb sequence at flat bottom. 
         
@@ -170,6 +179,8 @@ class SPS_sequence_maker:
             fractional vertical tune. "19"" means fractional tune Qy = 0.19
         add_non_linear_magnet_errors : bool
             whether to add line with non-linear chromatic errors
+        make_thin : bool
+            whether to slice the sequence or not
         
         Returns: 
         --------    
@@ -194,6 +205,16 @@ class SPS_sequence_maker:
                 errtab_ions = madx.table.errtab
                 print('Added non-linear errors!')
 
+            # Flatten and slice line
+            if make_thin:
+                madx.use(sequence='sps')
+                madx.input("seqedit, sequence=SPS;")
+                madx.input("flatten;")
+                madx.input("endedit;")
+                madx.use("sps")
+                madx.input("select, flag=makethin, slice=5, thick=false;")
+                madx.input("makethin, sequence=sps, style=teapot, makedipedge=True;")
+
             # Use correct tune and chromaticity matching macros
             madx.call("{}/toolkit/macro.madx".format(optics))
             madx.use('sps')
@@ -214,9 +235,11 @@ class SPS_sequence_maker:
         return madx
 
 
-    def load_madx_SPS(self, make_thin=True, attach_beam=True):
+    def load_madx_SPS_from_job(self, make_thin=True, attach_beam=True):
         """
-        Loads default SPS Pb sequence at flat bottom, and matches the tunes. 
+        Loads default SPS Pb sequence at flat bottom for ions as in 
+        https://gitlab.cern.ch/acc-models/acc-models-sps/-/tree/2021/scenarios/lhc/lhc_ion?ref_type=heads 
+        and matches the tunes. 
         
         Parameters:
         -----------
@@ -270,7 +293,9 @@ class SPS_sequence_maker:
 
     def generate_xsuite_seq(self, save_madx_seq=False, 
                             save_xsuite_seq=False, 
-                            return_xsuite_line=True, voltage=3.0e6):
+                            return_xsuite_line=True, voltage=3.0e6,
+                            use_symmetric_lattice=False,
+                            add_non_linear_magnet_errors=False):
         """
         Load MADX line, match tunes and chroma, add RF and generate Xsuite line
         
@@ -280,6 +305,8 @@ class SPS_sequence_maker:
         save_xsuite_seq - save xtrack sequence to directory  
         return_xsuite_line - return generated xtrack line
         voltage - RF voltage
+        add_non_linear_magnet_errors : bool
+            whether to add line with non-linear chromatic errors
         
         Returns:
         --------
@@ -288,8 +315,11 @@ class SPS_sequence_maker:
         os.makedirs(self.seq_folder, exist_ok=True)
         print('\nGenerating sequence for {} with qx = {}, qy = {}\n'.format(self.ion_type, self.qx0, self.qy0))
         
+        err_str = '_with_non_linear_chrom_error' if add_non_linear_magnet_errors else ''
+        
         # Load madx instance with SPS sequence
-        madx = self.load_madx_SPS()
+        madx = self.load_simple_madx_seq(use_symmetric_lattice=use_symmetric_lattice, 
+                                         add_non_linear_magnet_errors=add_non_linear_magnet_errors)
         
         # Create Xsuite line, check that Twiss command works 
         madx.use(sequence='sps')
@@ -298,6 +328,9 @@ class SPS_sequence_maker:
         line = xt.Line.from_madx_sequence(madx.sequence['sps'])
         line.build_tracker()
         #madx_beam = madx.sequence['sps'].beam
+        
+        # Generate SPS beam - use default Pb or make custom beam
+        self.m_in_eV, self.p_inj_SPS = self.generate_SPS_beam()
         
         self.particle_sample = xp.Particles(
                 p0c = self.p_inj_SPS,
@@ -333,105 +366,13 @@ class SPS_sequence_maker:
         
         # Save MADX sequence
         if save_madx_seq:
-            madx.command.save(sequence='sps', file='{}/SPS_2021_{}_{}.seq'.format(self.seq_folder, 
+            madx.command.save(sequence='sps', file='{}/SPS_2021_{}_{}{}.seq'.format(self.seq_folder, 
                                                                                   self.ion_type, 
-                                                                                  self.seq_name), beam=True)  
+                                                                                  self.seq_name,
+                                                                                  err_str), beam=True)  
         # Save Xsuite sequence
         if save_xsuite_seq:
-            with open('{}/SPS_2021_{}_{}.json'.format(self.seq_folder, self.ion_type, self.seq_name), 'w') as fid:
-                json.dump(line.to_dict(), fid, cls=xo.JEncoder)
-                
-        if return_xsuite_line:
-            return line
-
-
-    def generate_xsuite_seq_with_magnet_errors(self, save_madx_seq=False, 
-                            save_xsuite_seq=False, 
-                            return_xsuite_line=True, 
-                            add_non_linear_magnet_errors=False,
-                            deferred_expressions=False):
-        """
-        Loads default SPS Pb sequences, adds non-linear magnet errors (from Xavier buffat)
-        
-        Parameters:
-        -----------
-        save_madx_seq - save madx sequence to directory 
-        save_xsuite_seq - save xtrack sequence to directory  
-        return_xsuite_line - return generated xtrack line
-        deferred_expressions - whether to include deferred expressions in the xsuite line or not
-        
-        Returns:
-        --------
-        None
-        """
-        madx = Madx()
-        madx.call("{}/madx/SPS_2021_Pb_nominal.seq".format(sequence_path))
-        
-        # Add the extra magnet errors
-        madx.use(sequence='sps')
-        madx.call('{}/sps_setMultipoles_upto7.cmd'.format(error_file_path))
-        madx.input('exec, set_Multipoles_26GeV;')
-        madx.call('{}/sps_assignMultipoles_upto7.cmd'.format(error_file_path))
-        madx.input('exec, AssignMultipoles;')
-        errtab_ions = madx.table.errtab
-        
-        self.seq_name += '_with_magnet_errors'
-        
-        # Generate SPS beam - use default Pb or make custom beam
-        m_in_eV, p_inj_SPS = self.generate_SPS_beam()
-        
-        self.particle_sample = xp.Particles(
-                p0c = p_inj_SPS,
-                q0 = self.Q_SPS,
-                mass0 = m_in_eV)
-        print('\nGenerated SPS {} beam with gamma = {:.3f}, Qx = {:.3f}, Qy = {:.3f}\n'.format(self.ion_type, 
-                                                                                              self.particle_sample.gamma0[0],
-                                                                                              self.qx0,
-                                                                                              self.qy0))
-        madx.input(" \
-                   Beam, particle=ion, mass={}, charge={}, pc = {}, sequence='sps'; \
-                   DPP:=BEAM->SIGE*(BEAM->ENERGY/BEAM->PC)^2;  \
-                   ".format(m_in_eV/1e9, self.Q_SPS, p_inj_SPS/1e9))   # convert mass to GeV/c^2
-
-        # Flatten line
-        madx.use(sequence='sps')
-        madx.input("seqedit, sequence=SPS;")
-        madx.input("flatten;")
-        madx.input("endedit;")
-        madx.use("sps")
-        madx.input("select, flag=makethin, slice=5, thick=false;")
-        madx.input("makethin, sequence=sps, style=teapot, makedipedge=True;")
-
-        # Use correct tune and chromaticity matching macros
-        madx.call("{}/toolkit/macro.madx".format(optics))
-        madx.use('sps')
-        madx.exec(f"sps_match_tunes({self.qx0}, {self.qy0});")
-        madx.exec("sps_define_sext_knobs();")
-        madx.exec("sps_set_chroma_weights_q26();")
-        madx.input(f"""match;
-        global, dq1={self.dq1};
-        global, dq2={self.dq2};
-        vary, name=qph_setvalue;
-        vary, name=qpv_setvalue;
-        jacobian, calls=10, tolerance=1e-25;
-        endmatch;""")
-        
-        # Create Xsuite line, check that Twiss command works 
-        madx.use(sequence='sps')
-        twiss_thin = madx.twiss()  
-        
-        line = xt.Line.from_madx_sequence(madx.sequence['sps'], deferred_expressions=deferred_expressions)
-        line.particle_ref = self.particle_sample
-        line.build_tracker()
-        
-        # Save MADX sequence
-        if save_madx_seq:
-            madx.command.save(sequence='sps', file='{}/SPS_2021_{}_{}.seq'.format(self.seq_folder, 
-                                                                                  self.ion_type, 
-                                                                                  self.seq_name), beam=True)  
-        # Save Xsuite sequence
-        if save_xsuite_seq:
-            with open('{}/SPS_2021_{}_{}.json'.format(self.seq_folder, self.ion_type, self.seq_name), 'w') as fid:
+            with open('{}/SPS_2021_{}_{}{}.json'.format(self.seq_folder, self.ion_type, self.seq_name, err_str), 'w') as fid:
                 json.dump(line.to_dict(), fid, cls=xo.JEncoder)
                 
         if return_xsuite_line:
@@ -458,12 +399,8 @@ class SPS_sequence_maker:
         line - xsuite line for tracking
         """
         # If non-linear errors are used, use twiss0 from reference line without errors  
-        if add_non_linear_magnet_errors:
-            self._line = self.generate_xsuite_seq_with_magnet_errors() if line is None else line
-            self._line0 = self.generate_xsuite_seq() if line is None else line
-        else:
-            self._line = self.generate_xsuite_seq() if line is None else line
-            self._line0 = self._line.copy()
+        self._line = self.generate_xsuite_seq(add_non_linear_magnet_errors=add_non_linear_magnet_errors) if line is None else line
+        self._line0 = self._line.copy()
         self._twiss0 = self._line0.twiss()
         
         # Introduce beta to arbitrary QD 
@@ -554,7 +491,7 @@ class SPS_sequence_maker:
         """
         
         # Load MADX instance
-        madx = self.load_madx_SPS(make_thin=False)
+        madx = self.load_simple_madx_seq(make_thin=False)
         
         #Print all QFA and QDA elements
         dash = '-' * 65
