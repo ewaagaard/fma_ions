@@ -763,7 +763,8 @@ class FMA:
                 save_tune_data=True, 
                 Qy_frac=25,
                 make_single_Jy_trace=False,
-                use_symmetric_lattice=False
+                use_symmetric_lattice=False,
+                add_non_linear_magnet_errors=False
                 ):
         """
         Default FMA analysis for SPS Pb ions, plot final results and tune diffusion in initial distribution
@@ -781,6 +782,8 @@ class FMA:
             Jy, with varying action Jx. "Trace" instead of "grid", if uniform beam is used
         use_symmetric_lattice : bool
             flag to use symmetric lattice without QFA and QDA
+        add_non_linear_magnet_errors : bool
+            whether to add non-linear chromatic errors for SPS
         
         Returns:
         --------
@@ -788,7 +791,8 @@ class FMA:
         """
         beamParams = BeamParameters_SPS
         sps_seq = SPS_sequence_maker()
-        line0, twiss_sps =  sps_seq.load_xsuite_line_and_twiss(Qy_frac=Qy_frac, use_symmetric_lattice=use_symmetric_lattice)
+        line0, twiss_sps =  sps_seq.load_xsuite_line_and_twiss(Qy_frac=Qy_frac, use_symmetric_lattice=use_symmetric_lattice,
+                                                               add_non_linear_magnet_errors=add_non_linear_magnet_errors)
         
         # Install SC, track particles and observe tune diffusion
         if load_tbt_data:

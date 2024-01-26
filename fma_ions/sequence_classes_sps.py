@@ -57,7 +57,7 @@ class SPS_sequence_maker:
     m_ion: float = 207.98
     
     def load_xsuite_line_and_twiss(self, Qy_frac=25, beta_beat=None, use_symmetric_lattice=False,
-                                   add_non_linear_magnet_errors=False):
+                                   add_non_linear_magnet_errors=False, save_new_xtrack_line=True):
         """
         Method to load pre-generated SPS lattice files for Xsuite
         
@@ -66,6 +66,7 @@ class SPS_sequence_maker:
         Qy_fractional - fractional vertical tune. "19"" means fractional tune Qy = 0.19
         beta_beat - relative beta beat, i.e. relative difference between max beta function and max original beta function
         use_symmetric_lattice - flag to use symmetric lattice without QFA and QDA
+        save_new_xtrack_line - if new sequence is created, save it for future use
         
         Returns:
         -------
@@ -101,6 +102,12 @@ class SPS_sequence_maker:
                 sps_line = self.generate_xsuite_seq(add_non_linear_magnet_errors=add_non_linear_magnet_errors) 
             else:
                 sps_line = self.generate_xsuite_seq_with_beta_beat(add_non_linear_magnet_errors=add_non_linear_magnet_errors)
+                
+            # Save new Xsuite sequence if desired
+            if save_new_xtrack_line:
+                with open(sps_fname, 'w') as fid:
+                    json.dump(sps_line.to_dict(), fid, cls=xo.JEncoder)
+                print('\nSaved new xtrack line {}\n'.format(sps_fname))
             
         # Build tracker and Twiss
         #sps_line.build_tracker()  # tracker is already built when loading
@@ -295,7 +302,8 @@ class SPS_sequence_maker:
                             save_xsuite_seq=False, 
                             return_xsuite_line=True, voltage=3.0e6,
                             use_symmetric_lattice=False,
-                            add_non_linear_magnet_errors=False):
+                            add_non_linear_magnet_errors=False,
+                            deferred_expressions=False):
         """
         Load MADX line, match tunes and chroma, add RF and generate Xsuite line
         
@@ -307,6 +315,8 @@ class SPS_sequence_maker:
         voltage - RF voltage
         add_non_linear_magnet_errors : bool
             whether to add line with non-linear chromatic errors
+        deferred_expressions : bool
+            whether to use deferred expressions while importing madx sequence into xsuite
         
         Returns:
         --------
@@ -325,7 +335,7 @@ class SPS_sequence_maker:
         madx.use(sequence='sps')
         twiss_thin = madx.twiss()  
         
-        line = xt.Line.from_madx_sequence(madx.sequence['sps'])
+        line = xt.Line.from_madx_sequence(madx.sequence['sps'], deferred_expressions=deferred_expressions)
         line.build_tracker()
         #madx_beam = madx.sequence['sps'].beam
         
