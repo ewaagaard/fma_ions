@@ -92,7 +92,8 @@ class Tune_Ripple_SPS:
         self._x_norm, self._y_norm = x_norm, y_norm
         
     
-    def load_SPS_line_with_deferred_madx_expressions(self, use_symmetric_lattice=True, Qy_frac=25):
+    def load_SPS_line_with_deferred_madx_expressions(self, use_symmetric_lattice=True, Qy_frac=25,
+                                                     add_non_linear_magnet_errors=False):
         """
         Loads xtrack Pb sequence file with deferred expressions to regulate QD and QF strengths
         or generate from MADX if does not exist
@@ -103,23 +104,27 @@ class Tune_Ripple_SPS:
             flag to use symmetric lattice without QFA and QDA
         Qy_frac : int
             fractional vertical tune. "19"" means fractional tune Qy = 0.19
+        add_non_linear_magnet_errors : bool
+            whether to add line with non-linear chromatic errors
         
         Returns:
         -------
         xtrack line
         """
+        err_str = '_with_non_linear_chrom_error' if add_non_linear_magnet_errors else ''
+        
         # Try loading existing json file, otherwise create new from MADX
         if use_symmetric_lattice:
-            fname = '{}/qy_dot{}/SPS_2021_Pb_symmetric_deferred_exp.json'.format(sequence_path, Qy_frac)
+            fname = '{}/qy_dot{}/SPS_2021_Pb_symmetric_deferred_exp{}.json'.format(sequence_path, Qy_frac, err_str)
         else:
-            fname = '{}/qy_dot{}/SPS_2021_Pb_nominal_deferred_exp.json'.format(sequence_path, Qy_frac)
+            fname = '{}/qy_dot{}/SPS_2021_Pb_nominal_deferred_exp{}.json'.format(sequence_path, Qy_frac, err_str)
         
         try: 
             line = xt.Line.from_json(fname)
         except FileNotFoundError:
             print('\nSPS sequence file {} not found - generating new!\n'.format(fname))
             sps = SPS_sequence_maker()
-            madx = sps.load_simple_madx_seq(use_symmetric_lattice, Qy_frac=25)
+            madx = sps.load_simple_madx_seq(use_symmetric_lattice, Qy_frac=25, add_non_linear_magnet_errors=add_non_linear_magnet_errors)
             madx.use(sequence="sps")
     
             # Convert to line
@@ -473,7 +478,8 @@ class Tune_Ripple_SPS:
                    install_SC_on_line = True,
                    sextupolar_value_to_add=None,
                    Qy_frac=25,
-                   beta_beat=None
+                   beta_beat=None,
+                   add_non_linear_magnet_errors=False
                    ):
         """
         Test SPS tune ripple during tracking
@@ -500,6 +506,8 @@ class Tune_Ripple_SPS:
             fractional vertical tune. "19"" means fractional tune Qy = 0.19
         beta_beat : float 
             relative difference in beta functions (Y for SPS)
+        add_non_linear_magnet_errors : bool
+            whether to add non-linear chromatic errors for SPS
         
         Returns:
         --------
@@ -508,7 +516,7 @@ class Tune_Ripple_SPS:
         """
         # Get SPS Pb line with deferred expressions
         line, twiss = self.load_SPS_line_with_deferred_madx_expressions(use_symmetric_lattice=use_symmetric_lattice, 
-                                                                        Qy_frac=Qy_frac)
+                                                                        Qy_frac=Qy_frac, add_non_linear_magnet_errors=add_non_linear_magnet_errors)
         
         # If sextupolar value is set, set this value
         if sextupolar_value_to_add is not None:
@@ -676,6 +684,7 @@ class Tune_Ripple_SPS:
                    install_SC_on_line=True,
                    Qy_frac=25,
                    beta_beat=None,
+                   add_non_linear_magnet_errors=False,
                    num_particles_to_plot=10,
                    sextupolar_value_to_add=None,
                    plot_random_colors=False,
@@ -683,7 +692,9 @@ class Tune_Ripple_SPS:
                    also_show_plot=False,
                    plot_dead_particles=False,
                    phase_sweep_up_to_turn=None,
-                   phase_space_sweep_interval=1000):
+                   phase_space_sweep_interval=1000,
+                   
+                   ):
         """
         Run SPS tune ripple wtih tracking and generate phase space plots
             
@@ -708,6 +719,8 @@ class Tune_Ripple_SPS:
             fractional vertical tune. "19"" means fractional tune Qy = 0.19
         beta_beat : float 
             relative difference in beta functions (Y for SPS)
+        add_non_linear_magnet_errors : bool
+            whether to add non-linear chromatic errors for SPS
         num_particles_to_plot : int
             number of particles to include in plot
         sextupolar_value_to_add : float, optional
@@ -729,7 +742,7 @@ class Tune_Ripple_SPS:
         else:
             x, y, px, py = self.run_ripple(dq=dq, plane=plane, make_single_Jy_trace=make_single_Jy_trace, 
                                            install_SC_on_line=install_SC_on_line, sextupolar_value_to_add=sextupolar_value_to_add,
-                                           beta_beat=beta_beat)
+                                           beta_beat=beta_beat, add_non_linear_magnet_errors=add_non_linear_magnet_errors)
                 
         # Load relevant SPS line and twiss
         self._get_initial_normalized_coord_at_start() # loads normalized coord of starting distribution

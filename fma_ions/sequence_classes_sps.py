@@ -157,25 +157,42 @@ class SPS_sequence_maker:
         return m_in_eV, p_inj_SPS
 
 
-    def load_simple_madx_seq(self, use_symmetric_lattice=True, Qy_frac=25):
+    def load_simple_madx_seq(self, use_symmetric_lattice=True, Qy_frac=25,
+                             add_non_linear_magnet_errors=False):
         """
         Loads default SPS Pb sequence at flat bottom. 
         
         Parameters:
         -----------
-        use_symmetric_lattice - flag to use symmetric lattice without QFA and QDA
-        Qy_fractional - fractional vertical tune. "19"" means fractional tune Qy = 0.19
+        use_symmetric_lattice : bool
+            flag to use symmetric lattice without QFA and QDA
+        Qy_fractional : int
+            fractional vertical tune. "19"" means fractional tune Qy = 0.19
+        add_non_linear_magnet_errors : bool
+            whether to add line with non-linear chromatic errors
         
         Returns: 
         --------    
         madx - madx instance with SPS sequence    
         """
+        err_str = '_with_non_linear_chrom_error' if add_non_linear_magnet_errors else ''
+        
         try:
             madx = Madx()
             if use_symmetric_lattice:
                 madx.call('{}/qy_dot{}/SPS_2021_Pb_nominal_symmetric.seq'.format(sequence_path, Qy_frac))
             else:
                 madx.call('{}/qy_dot{}/SPS_2021_Pb_nominal.seq'.format(sequence_path, Qy_frac))
+
+            # Add the extra magnet errors
+            if add_non_linear_magnet_errors:
+                madx.use(sequence='sps')
+                madx.call('{}/sps_setMultipoles_upto7.cmd'.format(error_file_path))
+                madx.input('exec, set_Multipoles_26GeV;')
+                madx.call('{}/sps_assignMultipoles_upto7.cmd'.format(error_file_path))
+                madx.input('exec, AssignMultipoles;')
+                errtab_ions = madx.table.errtab
+                print('Added non-linear errors!')
 
             # Use correct tune and chromaticity matching macros
             madx.call("{}/toolkit/macro.madx".format(optics))
@@ -331,7 +348,8 @@ class SPS_sequence_maker:
     def generate_xsuite_seq_with_magnet_errors(self, save_madx_seq=False, 
                             save_xsuite_seq=False, 
                             return_xsuite_line=True, 
-                            add_non_linear_magnet_errors=False):
+                            add_non_linear_magnet_errors=False,
+                            deferred_expressions=False):
         """
         Loads default SPS Pb sequences, adds non-linear magnet errors (from Xavier buffat)
         
@@ -340,6 +358,7 @@ class SPS_sequence_maker:
         save_madx_seq - save madx sequence to directory 
         save_xsuite_seq - save xtrack sequence to directory  
         return_xsuite_line - return generated xtrack line
+        deferred_expressions - whether to include deferred expressions in the xsuite line or not
         
         Returns:
         --------
@@ -401,7 +420,7 @@ class SPS_sequence_maker:
         madx.use(sequence='sps')
         twiss_thin = madx.twiss()  
         
-        line = xt.Line.from_madx_sequence(madx.sequence['sps'])
+        line = xt.Line.from_madx_sequence(madx.sequence['sps'], deferred_expressions=deferred_expressions)
         line.particle_ref = self.particle_sample
         line.build_tracker()
         
