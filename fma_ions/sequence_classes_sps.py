@@ -149,10 +149,14 @@ class SPS_sequence_maker:
         
         Parameters:
         -----------
-        save_madx_seq - save madx sequence to directory 
-        save_xsuite_seq - save xtrack sequence to directory  
-        return_xsuite_line - return generated xtrack line
-        voltage - RF voltage
+        save_madx_seq : bool
+            whether save madx sequence to directory 
+        save_xsuite_seq : bool
+            whether to save xtrack sequence to directory  
+        return_xsuite_line : bool
+            wether to return generated xtrack line
+        voltage : float
+            RF voltage in V
         add_non_linear_magnet_errors : bool
             whether to add line with non-linear chromatic errors
         deferred_expressions : bool
@@ -305,10 +309,14 @@ class SPS_sequence_maker:
         
         Parameters:
         -----------
-        beta_beat - desired beta beat, i.e. relative difference between max beta function and max original beta function
-        save_xsuite_seq - flag to save xsuite sequence in desired location
-        line - can provide generated line, otherwise generate new
-        add_non_linear_magnet_errors - add errors from non-linear chromaticity if desired 
+        beta_beat : float
+            desired beta beat, i.e. relative difference between max beta function and max original beta function
+        save_xsuite_seq : bool
+            flag to save xsuite sequence in desired location
+        line : xtrack.Line
+            can provide generated line, otherwise generate new
+        add_non_linear_magnet_errors : bool
+            add errors from non-linear chromaticity if desired 
         add_non_linear_magnet_errors : bool
             whether to add line with non-linear chromatic errors
         
@@ -438,11 +446,16 @@ class SPS_sequence_maker:
         
         Parameters:
         -----------
-        line - xtrack line object
-        n_part - number of macroparticles
-        exn, eyn: horizontal and vertical normalized emittances
-        Nb: bunch intensity, number of ions per bunch
-        sigma_z: bunch length in meters 
+        line : xtrack.Line 
+            line object for beam
+        n_part : int
+            number of macroparticles
+        exn, eyn: float 
+            horizontal and vertical normalized emittances
+        Nb: float
+            bunch intensity, number of ions per bunch
+        sigma_z: float 
+            bunch length in meters 
         
         Returns:
         --------
@@ -565,7 +578,8 @@ class SPS_sequence_maker:
         
         Parameters:
         -----------
-        make_thin - flag to slice sequence or not
+        make_thin : bool
+            flag to slice sequence or not
         
         Returns: 
         --------    
@@ -622,11 +636,16 @@ class SPS_sequence_maker:
         
         Parameters:
         -----------
-        save_madx_seq - save madx sequence to directory 
-        save_xsuite_seq - save xtrack sequence to directory  
-        return_xsuite_line - return generated xtrack line
-        make_thin - flag to slice sequence or not
-        voltage - RF voltage        
+        save_madx_seq : bool 
+            whether to save madx sequence to directory 
+        save_xsuite_seq : bool 
+            whether to save xtrack sequence to directory  
+        return_xsuite_line : bool
+            whether to return generated xtrack line
+        make_thin : bool 
+            flag to slice sequence or not
+        voltage : float 
+            RF voltage in V        
         
         Returns:
         --------
