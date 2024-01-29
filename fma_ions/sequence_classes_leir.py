@@ -37,22 +37,91 @@ class BeamParameters_LEIR:
 class LEIR_sequence_maker:
     """ 
     Data class to generate Xsuite line from SPS optics repo, selecting
-    - qx0, qy0: horizontal and vertical tunes
+    - qx0, qy0: horizontal and vertical tunes (from acc-model nominal at flat bottom)
     - dq1, dq2: X and Y chroma values 
     - m_ion: ion mass in atomic units
     - optics: absolute path to optics repository -> cloned from https://gitlab.cern.ch/acc-models
     """
     qx0: float = 1.82
     qy0: float = 2.72
-    dq1: float = -3.460734474533172e-09 
-    dq2: float = -3.14426538905229e-09
+    dq1: float = -0.02366845
+    dq2: float = -0.00541004
     # Default SPS PB ION CHROMA VALUES: not displayed on acc-model, extracted from PTC Twiss 
     
     # Define beam type - default is Pb
     ion_type: str = 'Pb'
     seq_name: str = 'nominal'
-    seq_folder: str = 'sps'
-    B_PS_extr: float = 1.2368 # [T] - magnetic field in PS for Pb ions, from Heiko Damerau
-    Q_PS: float = 54.
-    Q_SPS: float = 82.
+    seq_folder: str = 'leir'
+    Brho_LEIR_extr: float = 4.8 # [T] - magnetic field in PS for Pb ions, from Heiko Damerau
     m_ion: float = 207.98
+    
+    
+    def load_madx(self, make_thin=True, add_aperture=False):
+        """
+        Loads default LEIR Pb sequence at flat bottom. 
+        
+        Parameters:
+        -----------
+        make_thin : bool
+            whether to slice the sequence or not
+        add_aperture : bool
+            whether to call aperture files 
+        
+        Returns: 
+        --------    
+        madx - madx instance with LEIR sequence    
+        """
+        madx = Madx()
+        madx.call("{}/_scripts/macros.madx".format(optics))
+        madx.call("{}/leir.seq".format(optics))
+        madx.call('{}scenarios/nominal/1_flat_bottom/leir_fb_nominal.str'.format(optics))
+
+
+        
+        
+        return madx
+        
+        
+    def generate_xsuite_seq(self, save_madx_seq=False, 
+                            save_xsuite_seq=False, 
+                            return_xsuite_line=True, voltage=3.2e3,
+                            deferred_expressions=False):
+        """
+        Load MADX line, match tunes and chroma, add RF and generate Xsuite line
+        
+        Parameters:
+        -----------
+        save_madx_seq : bool
+            save madx sequence to directory 
+        save_xsuite_seq : bool
+            save xtrack sequence to directory  
+        return_xsuite_line : bool
+            return generated xtrack line
+        voltage : float 
+            RF voltage, from LSA setting (search Obisidan note 'RF in LEIR')
+        add_non_linear_magnet_errors : bool
+            whether to add line with non-linear chromatic errors
+        deferred_expressions : bool
+            whether to use deferred expressions while importing madx sequence into xsuite
+        
+        Returns:
+        --------
+        None
+        """
+        
+        ### SET CAVITY VOLTAGE - with info from Nicolo Biancacci and LSA
+        # Ions: we set for nominal cycle V_RF = 3.2 kV and h = 2
+        # Two cavities: ER.CRF41 and ER.CRF43 - we use the first of them
+        harmonic_nb = 2
+        nn = 'er.crf41' # for now test the first of the RF cavities 
+        V_RF = 3.2  # kV
+        
+        # MADX sequence 
+        madx.sequence.leir.elements[nn].lag = 0
+        madx.sequence.leir.elements[nn].volt = V_RF*1e-3*particle_sample.q0 # different convention between madx and xsuite
+        madx.sequence.leir.elements[nn].freq = madx.sequence['leir'].beam.freq0*harmonic_nb
+        
+        # Xsuite sequence 
+        line[nn].lag = 0  # 0 if below transition
+        line[nn].voltage =  V_RF*1e3 # In Xsuite for ions, do not multiply by charge as in MADX
+        line[nn].frequency = madx.sequence['leir'].beam.freq0*1e6*harmonic_nb
