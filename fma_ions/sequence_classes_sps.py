@@ -105,7 +105,7 @@ class SPS_sequence_maker:
             sps_fname = '{}/SPS_2021_{}{}{}{}.json'.format(self.seq_folder, self.ion_type, symmetric_string,
                                                                           def_exp_str, err_str)
         else:                                                  
-            sps_fname = '{}/SPS_2021_{}{}{}{}_percent_beta_beat{}.json'.format(self.seq_folder, self.ion_type, 
+            sps_fname = '{}/SPS_2021_{}{}{}_{}_percent_beta_beat{}.json'.format(self.seq_folder, self.ion_type, 
                                                                                      symmetric_string, def_exp_str, int(beta_beat*100), err_str)
         # Try to load pre-generated sequence if exists
         try:
@@ -123,7 +123,7 @@ class SPS_sequence_maker:
                                                     add_non_linear_magnet_errors=add_non_linear_magnet_errors) 
             else:
                 sps_line = self.generate_xsuite_seq_with_beta_beat(use_symmetric_lattice=use_symmetric_lattice, 
-                                                                   deferred_expressions=deferred_expressions, add_non_linear_magnet_errors=add_non_linear_magnet_errors)
+                                                                   add_non_linear_magnet_errors=add_non_linear_magnet_errors)
                 
             # Save new Xsuite sequence if desired
             if save_new_xtrack_line:
@@ -332,10 +332,14 @@ class SPS_sequence_maker:
         
         # Initial guess: small perturbation to initial value, then minimize loss function
         dqd0 = self._line0['qd.63510..1'].knl[1] + 1e-5
+        
+        # Vector with starting guess - qd error, kqf and kqd knobs
+        #dqd0 = [dqd0_qd, self._line0.vars['kqf']._value, self._line0.vars['kqd']._value]
+        
         result = minimize(self._loss_function_beta_beat, dqd0, args=(beta_beat), 
                           method='nelder-mead', tol=1e-5, options={'maxiter':100})
         print(result)
-        self._line['qd.63510..1'].knl[1] = result.x[0] 
+        self._line['qd.63510..1'].knl[1] = result.x[0]
         twiss2 = self._line.twiss()
         
         # Compare difference in Twiss
@@ -348,18 +352,29 @@ class SPS_sequence_maker:
         # Show beta-beat 
         print('\nX beta-beat: {:.5f}'.format( (np.max(twiss2['betx']) - np.max(self._twiss0['betx']))/np.max(self._twiss0['betx']) ))
         print('Y beta-beat: {:.5f}'.format( (np.max(twiss2['bety']) - np.max(self._twiss0['bety']))/np.max(self._twiss0['bety']) ))
-        print('Generated sequence with Qx, Qy = ({}, {}) and beta-beat = {}!\n'.format(self.qx0, self.qy0, beta_beat))
+        print('Generated sequence with Qx, Qy = ({}, {}) and beta-beat = {}!\n'.format(twiss2['qx'], twiss2['qy'], beta_beat))
+        
+        # Find where this maximum beta function occurs
+        betx_max_loc = twiss2.rows[np.argmax(twiss2.betx)].name[0]
+        betx_max = twiss2.rows[np.argmax(twiss2.betx)].betx[0]
+        
+        # Add extra knob for the quadrupole
+        self._line.vars['kk_QD'] = 0
+        self._line.element_refs['qd.63510..1'].knl[1] = self._line.vars['kk_QD']
         
         # Rematch the tunes with the knobs
-        # Match tunes to assigned values
         self._line.match(
             vary=[
                 xt.Vary('kqf', step=1e-8),
                 xt.Vary('kqd', step=1e-8),
+                xt.Vary('kk_QD', step=1e-8),  #vary knobs and quadrupole simulatenously 
             ],
             targets = [
                 xt.Target('qx', self.qx0, tol=1e-7),
-                xt.Target('qy', self.qy0, tol=1e-7)])
+                xt.Target('qy', self.qy0, tol=1e-7),
+                xt.Target('betx', value=betx_max, at=betx_max_loc, tol=1e-7)
+            ])
+      
         twiss3 = self._line.twiss()
         
         print('\nTunes rematched to qx = {:.4f}, qy = {:.4f}\n'.format(twiss3['qx'], twiss3['qy']))
@@ -367,7 +382,7 @@ class SPS_sequence_maker:
         
         
         # Save Xsuite sequence
-        sps_fname = '{}/SPS_2021_{}{}{}_percent_beta_beat{}.json'.format(self.seq_folder, self.ion_type, 
+        sps_fname = '{}/qy_dot{}/SPS_2021_{}{}_{}_percent_beta_beat{}.json'.format(sequence_path, Qy_frac, self.ion_type, 
                                                                                  symmetric_string, int(beta_beat*100), err_str)
         if save_xsuite_seq:
             with open(sps_fname, 'w') as fid:
@@ -382,8 +397,10 @@ class SPS_sequence_maker:
         
         Parameters:
         ----------
-        dqd - quadrupolar strength for first slice of last SPS quadrupoles
-        beta_beat - beta beat, i.e. relative difference between max beta function and max original beta function
+        dqd : np.ndarray
+            array containing: quadrupolar strength for first slice of last SPS quadrupoles, value of kqf and value of kqd knob
+        beta_beat : float
+            beta beat, i.e. relative difference between max beta function and max original beta function
         
         Returns:
         --------
@@ -393,18 +410,21 @@ class SPS_sequence_maker:
         
         # Try with new quadrupole error, otherwise return high value (square of error)
         try:
-            # Copy the line, adjust QD strength of last sliced quadrupole by dqd 
-            self._line['qd.63510..1'].knl[1] = dqd
+            # Set the quadrupole knobs
+            #self._line.vars['kqf'] = dqd[1]
+            #self._line.vars['kqd'] = dqd[2]
             
+            # Copy the line, adjust QD strength of last sliced quadrupole by dqd 
+            self._line['qd.63510..1'].knl[1] = dqd[0]
             twiss2 = self._line.twiss()
         
             # Vertical plane beta-beat
             Y_beat = (np.max(twiss2['bety']) - np.max(self._twiss0['bety']))/np.max(self._twiss0['bety'])
-            print('Setting QD error to {:.3e} with Ybeat {:.3e}'.format(dqd[0], Y_beat))
+            print('Setting QD error to {:.3e} with Ybeat {:.3e}, qx = {:.4f}, qy = {:.4f}'.format(dqd[0], Y_beat, twiss2['qx'], twiss2['qy']))
             
-            loss = np.abs(beta_beat - Y_beat)
+            loss = (beta_beat - Y_beat)**2
         except ValueError:
-            loss = dqd**2 
+            loss = dqd[0]**2 
             self._line = self._line0.copy()
             print('Resetting line...')
         
