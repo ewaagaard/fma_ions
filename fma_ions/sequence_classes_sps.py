@@ -110,6 +110,7 @@ class SPS_sequence_maker:
         # Try to load pre-generated sequence if exists
         try:
             sps_line = xt.Line.from_json(sps_fname)
+            print('\nSuccessfully loaded {}\n'.format(sps_fname))
         except FileNotFoundError:
             print('\nPre-made SPS sequence does not exists, generating new sequence with Qx, Qy = ({}, {}), beta-beat = {} and non-linear error={}!\n{}'.format(self.qx0, 
                                                                                                                                          self.qy0, 
@@ -413,7 +414,7 @@ class SPS_sequence_maker:
         try:
             madx = Madx()
             if use_symmetric_lattice:
-                madx.call('{}/qy_dot{}/SPS_2021_Pb_nominal_symmetric.seq'.format(sequence_path, Qy_frac))
+                madx.call('{}/qy_dot{}/SPS_2021_Pb_symmetric.seq'.format(sequence_path, Qy_frac))
             else:
                 madx.call('{}/qy_dot{}/SPS_2021_Pb_nominal.seq'.format(sequence_path, Qy_frac))
 
@@ -514,7 +515,7 @@ class SPS_sequence_maker:
 
     
     def generate_symmetric_SPS_lattice(self, 
-                                       save_madx_seq=False, save_xsuite_seq=False, 
+                                       save_madx_seq=True, save_xsuite_seq=True, 
                                        return_xsuite_line=True,
                                        make_thin=True, voltage=3.0e6):
         """
@@ -532,6 +533,11 @@ class SPS_sequence_maker:
         --------
         line_symmetric - SPS xsuite line whose QFAs are replaced with QF 
         """
+        
+        # Update sequence folder location
+        self.seq_folder = '{}/qy_dot{}'.format(sequence_path, int((self.qy0 % 1) * 100))
+        os.makedirs(self.seq_folder, exist_ok=True)
+        print('\nGenerating symmetric SPS in {}\n'.format(self.seq_folder))
         
         # Load MADX instance
         madx = self.load_simple_madx_seq(make_thin=False)
@@ -609,6 +615,9 @@ class SPS_sequence_maker:
         line.build_tracker()
         #madx_beam = madx.sequence['sps'].beam
         
+        # Generate SPS beam - use default Pb or make custom beam
+        self.m_in_eV, self.p_inj_SPS = self.generate_SPS_beam()
+        
         self.particle_sample = xp.Particles(
                 p0c = self.p_inj_SPS,
                 q0 = self.Q_SPS,
@@ -632,13 +641,15 @@ class SPS_sequence_maker:
         
         # MADX sequence 
         madx.sequence.sps.elements[nn].lag = 0
-        madx.sequence.sps.elements[nn].volt = 3.0*self.particle_sample.q0 # different convention between madx and xsuite
+        madx.sequence.sps.elements[nn].volt = (voltage/1e6)*self.particle_sample.q0 # different convention between madx and xsuite
         madx.sequence.sps.elements[nn].freq = madx.sequence['sps'].beam.freq0*harmonic_nb
         
         # Xsuite sequence 
         line[nn].lag = 0  # 0 if below transition
         line[nn].voltage = voltage # In Xsuite for ions, do not multiply by charge as in MADX
         line[nn].frequency = madx.sequence['sps'].beam.freq0*1e6*harmonic_nb
+        
+        twiss = line.twiss()
         
         # Save MADX sequence
         if save_madx_seq:
@@ -648,6 +659,7 @@ class SPS_sequence_maker:
         if save_xsuite_seq:
             with open('{}/SPS_2021_{}_symmetric.json'.format(self.seq_folder, self.ion_type), 'w') as fid:
                 json.dump(line.to_dict(), fid, cls=xo.JEncoder)
+            print('\nSaved symmetric SPS in {}\n'.format(self.seq_folder))
                 
         if return_xsuite_line:
             return line
