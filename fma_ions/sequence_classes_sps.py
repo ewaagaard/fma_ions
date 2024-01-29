@@ -122,7 +122,8 @@ class SPS_sequence_maker:
                 sps_line = self.generate_xsuite_seq(use_symmetric_lattice=use_symmetric_lattice, deferred_expressions=deferred_expressions,
                                                     add_non_linear_magnet_errors=add_non_linear_magnet_errors) 
             else:
-                sps_line = self.generate_xsuite_seq_with_beta_beat( add_non_linear_magnet_errors=add_non_linear_magnet_errors)
+                sps_line = self.generate_xsuite_seq_with_beta_beat(use_symmetric_lattice=use_symmetric_lattice, 
+                                                                   deferred_expressions=deferred_expressions, add_non_linear_magnet_errors=add_non_linear_magnet_errors)
                 
             # Save new Xsuite sequence if desired
             if save_new_xtrack_line:
@@ -138,7 +139,7 @@ class SPS_sequence_maker:
 
 
     def generate_xsuite_seq(self, save_madx_seq=False, 
-                            save_xsuite_seq=False, 
+                            save_xsuite_seq=True, 
                             return_xsuite_line=True, voltage=3.0e6,
                             use_symmetric_lattice=False,
                             add_non_linear_magnet_errors=False,
@@ -166,7 +167,10 @@ class SPS_sequence_maker:
         os.makedirs(self.seq_folder, exist_ok=True)
         print('\nGenerating sequence for {} with qx = {}, qy = {}\n'.format(self.ion_type, self.qx0, self.qy0))
         
+        # Substrings to identify line
+        symmetric_string = '_symmetric' if use_symmetric_lattice else '_nominal'
         err_str = '_with_non_linear_chrom_error' if add_non_linear_magnet_errors else ''
+        def_exp_str = '_deferred_exp' if deferred_expressions else ''
         
         # Load madx instance with SPS sequence
         madx = self.load_simple_madx_seq(use_symmetric_lattice=use_symmetric_lattice, 
@@ -223,19 +227,77 @@ class SPS_sequence_maker:
                                                                                   self.seq_name,
                                                                                   err_str), beam=True)  
         # Save Xsuite sequence
+        sps_fname = '{}/SPS_2021_{}{}{}{}.json'.format(self.seq_folder, self.ion_type, symmetric_string,
+                                                                      def_exp_str, err_str)
         if save_xsuite_seq:
-            with open('{}/SPS_2021_{}_{}{}.json'.format(self.seq_folder, self.ion_type, self.seq_name, err_str), 'w') as fid:
+            with open(sps_fname, 'w') as fid:
                 json.dump(line.to_dict(), fid, cls=xo.JEncoder)
                 
         if return_xsuite_line:
             return line
 
 
+    def load_SPS_line_with_deferred_madx_expressions(self, use_symmetric_lattice=True, Qy_frac=25,
+                                                     add_non_linear_magnet_errors=False):
+        """
+        Loads xtrack Pb sequence file with deferred expressions to regulate QD and QF strengths
+        or generate from MADX if does not exist
+        
+        Parameters:
+        -----------
+        use_symmetric_lattice : bool
+            flag to use symmetric lattice without QFA and QDA
+        Qy_frac : int
+            fractional vertical tune. "19"" means fractional tune Qy = 0.19
+        add_non_linear_magnet_errors : bool
+            whether to add line with non-linear chromatic errors
+        
+        Returns:
+        -------
+        xtrack line
+        """
+        err_str = '_with_non_linear_chrom_error' if add_non_linear_magnet_errors else ''
+        
+        # Try loading existing json file, otherwise create new from MADX
+        if use_symmetric_lattice:
+            fname = '{}/qy_dot{}/SPS_2021_Pb_symmetric_deferred_exp{}.json'.format(sequence_path, Qy_frac, err_str)
+        else:
+            fname = '{}/qy_dot{}/SPS_2021_Pb_nominal_deferred_exp{}.json'.format(sequence_path, Qy_frac, err_str)
+        
+        try: 
+            line = xt.Line.from_json(fname)
+        except FileNotFoundError:
+            print('\nSPS sequence file {} not found - generating new!\n'.format(fname))
+            #sps = SPS_sequence_maker()
+            madx = self.load_simple_madx_seq(use_symmetric_lattice, Qy_frac=25, add_non_linear_magnet_errors=add_non_linear_magnet_errors)
+            madx.use(sequence="sps")
+    
+            # Convert to line
+            line = xt.Line.from_madx_sequence(madx.sequence['sps'], deferred_expressions=True)
+            m_in_eV, p_inj_SPS = self.generate_SPS_beam()
+            
+            line.particle_ref = xp.Particles(
+                    p0c = p_inj_SPS,
+                    q0 = self.Q_SPS,
+                    mass0 = m_in_eV)
+            line.build_tracker()
+            
+            with open(fname, 'w') as fid:
+                json.dump(line.to_dict(), fid, cls=xo.JEncoder)
+            
+        twiss = line.twiss()
+        
+        print('\nGenerated SPS Pb beam with gamma = {:.3f}, Qx = {:.3f}, Qy = {:.3f}\n'.format(line.particle_ref.gamma0[0],
+                                                                                              twiss['qx'],
+                                                                                              twiss['qy']))
+        return line, twiss
+
+
+
     def generate_xsuite_seq_with_beta_beat(self, beta_beat=0.05,
-                                           save_xsuite_seq=False, line=None,
+                                           save_xsuite_seq=True, line=None,
                                            use_symmetric_lattice=False,
-                                           add_non_linear_magnet_errors=False,
-                                           deferred_expressions=True
+                                           add_non_linear_magnet_errors=False
                                            ):
         """
         Generate Xsuite line with desired beta beat, optimizer quadrupole errors finds
@@ -249,17 +311,19 @@ class SPS_sequence_maker:
         add_non_linear_magnet_errors - add errors from non-linear chromaticity if desired 
         add_non_linear_magnet_errors : bool
             whether to add line with non-linear chromatic errors
-        deferred_expressions : bool
-            whether to use deferred expressions while importing madx sequence into xsuite. Default True, needed to rematch tunes
         
         Returns:
         -------
         line - xsuite line for tracking
         """
-        # If non-linear errors are used, use twiss0 from reference line without errors  
-        self._line = self.generate_xsuite_seq(use_symmetric_lattice=use_symmetric_lattice,
-                                              add_non_linear_magnet_errors=add_non_linear_magnet_errors,
-                                              deferred_expressions=deferred_expressions) if line is None else line
+        # Substrings to identify line
+        symmetric_string = '_symmetric' if use_symmetric_lattice else '_nominal'
+        err_str = '_with_non_linear_chrom_error' if add_non_linear_magnet_errors else ''
+
+        Qy_frac = int(100*(self.qy0 % 1))
+        self._line, twiss0 = self.load_SPS_line_with_deferred_madx_expressions(use_symmetric_lattice=use_symmetric_lattice, Qy_frac=Qy_frac,
+                                                         add_non_linear_magnet_errors=add_non_linear_magnet_errors)
+        
         self._line0 = self._line.copy()
         self._twiss0 = self._line0.twiss()
         
@@ -286,12 +350,27 @@ class SPS_sequence_maker:
         print('Y beta-beat: {:.5f}'.format( (np.max(twiss2['bety']) - np.max(self._twiss0['bety']))/np.max(self._twiss0['bety']) ))
         print('Generated sequence with Qx, Qy = ({}, {}) and beta-beat = {}!\n'.format(self.qx0, self.qy0, beta_beat))
         
+        # Rematch the tunes with the knobs
+        # Match tunes to assigned values
+        self._line.match(
+            vary=[
+                xt.Vary('kqf', step=1e-8),
+                xt.Vary('kqd', step=1e-8),
+            ],
+            targets = [
+                xt.Target('qx', self.qx0, tol=1e-7),
+                xt.Target('qy', self.qy0, tol=1e-7)])
+        twiss3 = self._line.twiss()
+        
+        print('\nTunes rematched to qx = {:.4f}, qy = {:.4f}\n'.format(twiss3['qx'], twiss3['qy']))
+        print('New Y beta-beat: {:.5f}'.format( (np.max(twiss3['bety']) - np.max(self._twiss0['bety']))/np.max(self._twiss0['bety']) ))
+        
         
         # Save Xsuite sequence
+        sps_fname = '{}/SPS_2021_{}{}{}_percent_beta_beat{}.json'.format(self.seq_folder, self.ion_type, 
+                                                                                 symmetric_string, int(beta_beat*100), err_str)
         if save_xsuite_seq:
-            with open('{}/SPS_2021_{}_{}_percent_beta_beat.json'.format(self.seq_folder, 
-                                                                           self.ion_type,
-                                                                           int(beta_beat*100)), 'w') as fid:
+            with open(sps_fname, 'w') as fid:
                 json.dump(self._line.to_dict(), fid, cls=xo.JEncoder)
                 
         return self._line              

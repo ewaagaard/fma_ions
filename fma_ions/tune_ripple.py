@@ -92,62 +92,6 @@ class Tune_Ripple_SPS:
         self._x_norm, self._y_norm = x_norm, y_norm
         
     
-    def load_SPS_line_with_deferred_madx_expressions(self, use_symmetric_lattice=True, Qy_frac=25,
-                                                     add_non_linear_magnet_errors=False):
-        """
-        Loads xtrack Pb sequence file with deferred expressions to regulate QD and QF strengths
-        or generate from MADX if does not exist
-        
-        Parameters:
-        -----------
-        use_symmetric_lattice : bool
-            flag to use symmetric lattice without QFA and QDA
-        Qy_frac : int
-            fractional vertical tune. "19"" means fractional tune Qy = 0.19
-        add_non_linear_magnet_errors : bool
-            whether to add line with non-linear chromatic errors
-        
-        Returns:
-        -------
-        xtrack line
-        """
-        err_str = '_with_non_linear_chrom_error' if add_non_linear_magnet_errors else ''
-        
-        # Try loading existing json file, otherwise create new from MADX
-        if use_symmetric_lattice:
-            fname = '{}/qy_dot{}/SPS_2021_Pb_symmetric_deferred_exp{}.json'.format(sequence_path, Qy_frac, err_str)
-        else:
-            fname = '{}/qy_dot{}/SPS_2021_Pb_nominal_deferred_exp{}.json'.format(sequence_path, Qy_frac, err_str)
-        
-        try: 
-            line = xt.Line.from_json(fname)
-        except FileNotFoundError:
-            print('\nSPS sequence file {} not found - generating new!\n'.format(fname))
-            sps = SPS_sequence_maker()
-            madx = sps.load_simple_madx_seq(use_symmetric_lattice, Qy_frac=25, add_non_linear_magnet_errors=add_non_linear_magnet_errors)
-            madx.use(sequence="sps")
-    
-            # Convert to line
-            line = xt.Line.from_madx_sequence(madx.sequence['sps'], deferred_expressions=True)
-            m_in_eV, p_inj_SPS = sps.generate_SPS_beam()
-            
-            line.particle_ref = xp.Particles(
-                    p0c = p_inj_SPS,
-                    q0 = sps.Q_SPS,
-                    mass0 = m_in_eV)
-            line.build_tracker()
-            
-            with open(fname, 'w') as fid:
-                json.dump(line.to_dict(), fid, cls=xo.JEncoder)
-            
-        twiss = line.twiss()
-        
-        print('\nGenerated SPS Pb beam with gamma = {:.3f}, Qx = {:.3f}, Qy = {:.3f}\n'.format(line.particle_ref.gamma0[0],
-                                                                                              twiss['qx'],
-                                                                                              twiss['qy']))
-        return line, twiss
-    
-    
     def find_k_from_q_setvalue(self, dq=0.05, plane='X'):
         """
         For desired tune amplitude modulation dQx or dQy, find corresponding change in quadrupole strengths
@@ -242,7 +186,8 @@ class Tune_Ripple_SPS:
             range over turns the amplitude modulation corresponds to 
         """
         # Load Xsuite line with deferred expressions from MADx
-        line, twiss = self.load_SPS_line_with_deferred_madx_expressions(use_symmetric_lattice=use_symmetric_lattice,
+        sps = SPS_sequence_maker()
+        line, twiss = sps.load_SPS_line_with_deferred_madx_expressions(use_symmetric_lattice=use_symmetric_lattice,
                                                                         Qy_frac=Qy_frac)
         
         # Empty arrays of quadrupolar strenghts:
@@ -426,7 +371,8 @@ class Tune_Ripple_SPS:
         """
         
         # Get SPS Pb line with deferred expressions
-        line, twiss = self.load_SPS_line_with_deferred_madx_expressions()
+        sps = SPS_sequence_maker()
+        line, twiss = sps.load_SPS_line_with_deferred_madx_expressions()
         if use_xtrack_matching:
             kqf_vals, kqd_vals, turns = self.load_k_from_xtrack_matching(dq=dq, plane=plane)
         else:   
@@ -515,7 +461,8 @@ class Tune_Ripple_SPS:
             numpy arrays with turn-by-turn data
         """
         # Get SPS Pb line with deferred expressions
-        line, twiss = self.load_SPS_line_with_deferred_madx_expressions(use_symmetric_lattice=use_symmetric_lattice, 
+        sps = SPS_sequence_maker()
+        line, twiss = sps.load_SPS_line_with_deferred_madx_expressions(use_symmetric_lattice=use_symmetric_lattice, 
                                                                         Qy_frac=Qy_frac, add_non_linear_magnet_errors=add_non_linear_magnet_errors)
         
         # If sextupolar value is set, set this value
@@ -746,7 +693,8 @@ class Tune_Ripple_SPS:
                 
         # Load relevant SPS line and twiss
         self._get_initial_normalized_coord_at_start() # loads normalized coord of starting distribution
-        line, twiss = self.load_SPS_line_with_deferred_madx_expressions(use_symmetric_lattice=use_symmetric_lattice,
+        sps = SPS_sequence_maker()
+        line, twiss = sps.load_SPS_line_with_deferred_madx_expressions(use_symmetric_lattice=use_symmetric_lattice,
                                                                         Qy_frac=Qy_frac)
         
         # If sextupolar value is set, set this value
