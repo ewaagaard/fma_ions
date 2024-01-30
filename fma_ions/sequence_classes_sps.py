@@ -301,7 +301,8 @@ class SPS_sequence_maker:
     def generate_xsuite_seq_with_beta_beat(self, beta_beat=0.05,
                                            save_xsuite_seq=True, line=None,
                                            use_symmetric_lattice=False,
-                                           add_non_linear_magnet_errors=False
+                                           add_non_linear_magnet_errors=False,
+                                           plane='Y'
                                            ):
         """
         Generate Xsuite line with desired beta beat, optimizer quadrupole errors finds
@@ -319,6 +320,8 @@ class SPS_sequence_maker:
             add errors from non-linear chromaticity if desired 
         add_non_linear_magnet_errors : bool
             whether to add line with non-linear chromatic errors
+        plane : str
+            'X' or 'Y' - which plane to find beta-beat for
         
         Returns:
         -------
@@ -344,7 +347,9 @@ class SPS_sequence_maker:
         # Vector with starting guess - qd error, kqf and kqd knobs
         #dqd0 = [dqd0_qd, self._line0.vars['kqf']._value, self._line0.vars['kqd']._value]
         
-        result = minimize(self._loss_function_beta_beat, dqd0, args=(beta_beat), 
+        print('\nBeta-beat search for {} in {}-plane!\n'.format(beta_beat, plane))
+        
+        result = minimize(self._loss_function_beta_beat, dqd0, args=(beta_beat, plane), 
                           method='nelder-mead', tol=1e-5, options={'maxiter':100})
         print(result)
         self._line['qd.63510..1'].knl[1] = result.x[0]
@@ -386,7 +391,8 @@ class SPS_sequence_maker:
         twiss3 = self._line.twiss()
         
         print('\nTunes rematched to qx = {:.4f}, qy = {:.4f}\n'.format(twiss3['qx'], twiss3['qy']))
-        print('New Y beta-beat: {:.5f}'.format( (np.max(twiss3['bety']) - np.max(self._twiss0['bety']))/np.max(self._twiss0['bety']) ))
+        print('New Y beat={:.5f}, X-beat={:.5f}'.format( (np.max(twiss3['bety']) - np.max(self._twiss0['bety']))/np.max(self._twiss0['bety']),
+                                                         (np.max(twiss3['betx']) - np.max(self._twiss0['betx']))/np.max(self._twiss0['betx']) ))
         
         
         # Save Xsuite sequence
@@ -399,9 +405,9 @@ class SPS_sequence_maker:
         return self._line              
 
 
-    def _loss_function_beta_beat(self, dqd, beta_beat):
+    def _loss_function_beta_beat(self, dqd, beta_beat, plane='Y'):
         """
-        Loss function to optimize to find correct beta-beat
+        Loss function to optimize to find correct beta-beat in 'X' or 'Y'
         
         Parameters:
         ----------
@@ -409,6 +415,8 @@ class SPS_sequence_maker:
             array containing: quadrupolar strength for first slice of last SPS quadrupoles, value of kqf and value of kqd knob
         beta_beat : float
             beta beat, i.e. relative difference between max beta function and max original beta function
+        plane : str
+            'X' or 'Y'
         
         Returns:
         --------
@@ -428,9 +436,13 @@ class SPS_sequence_maker:
         
             # Vertical plane beta-beat
             Y_beat = (np.max(twiss2['bety']) - np.max(self._twiss0['bety']))/np.max(self._twiss0['bety'])
-            print('Setting QD error to {:.3e} with Ybeat {:.3e}, qx = {:.4f}, qy = {:.4f}'.format(dqd[0], Y_beat, twiss2['qx'], twiss2['qy']))
-            
-            loss = (beta_beat - Y_beat)**2
+            X_beat = (np.max(twiss2['betx']) - np.max(self._twiss0['betx']))/np.max(self._twiss0['betx'])
+            print('Setting QD error to {:.3e} with Ybeat={:.4e}, Xbeat={:.4f}, qx = {:.4f}, qy = {:.4f}'.format(dqd[0], Y_beat, X_beat,
+                                                                                                                twiss2['qx'], twiss2['qy']))
+            if plane=='Y':
+                loss = (beta_beat - Y_beat)**2
+            else:
+                loss = (beta_beat - X_beat)**2
         except ValueError:
             loss = dqd[0]**2 
             self._line = self._line0.copy()
