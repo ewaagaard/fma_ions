@@ -964,6 +964,12 @@ class Tune_Ripple_SPS:
             ax2 = fig.add_subplot(gs[1, 0], sharex=ax1)
             ax3 = fig.add_subplot(gs[:, 1]) # ax for normalized phase space 
         
+            # Find maximum limit in phase space
+            Zmax = np.max(Z)
+            PZmax = np.max(PZ)
+            max_lim = np.max([Zmax, PZmax])
+            min_lim = -max_lim
+                
             # Iterate over particles to plot
             j = 0
             for particle in ind:
@@ -984,6 +990,9 @@ class Tune_Ripple_SPS:
             ax2.set_xlabel('Turns')
             plt.setp(ax1.get_xticklabels(), visible=False)
             
+            ax3.set_xlim(min_lim, max_lim)
+            ax3.set_ylim(min_lim, max_lim)
+            
             # Add correct labels        
             if plane == 'X':                       
                 ax1.set_ylabel('$J_{x}$')
@@ -995,9 +1004,6 @@ class Tune_Ripple_SPS:
                 ax2.set_ylabel('$Q_{y}$')
                 ax3.set_ylabel(r"$P_{y}$")
                 ax3.set_xlabel(r"$Y$")
-        
-            #ax[1].set_xlim(Zmin, Zmax)
-            #ax[1].set_ylim(PZmin, PZmax)
         
             # Set logscale for action
             if action_in_logscale:
