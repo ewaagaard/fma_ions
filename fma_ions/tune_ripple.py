@@ -420,6 +420,7 @@ class Tune_Ripple_SPS:
                    load_tbt_data=False,
                    save_tbt_data=True,
                    make_single_Jy_trace=True,
+                   use_Gaussian_beam=False,
                    use_symmetric_lattice=True,
                    install_SC_on_line = True,
                    sextupolar_value_to_add=None,
@@ -443,6 +444,8 @@ class Tune_Ripple_SPS:
             flag to save tracking data
         make_single_Jy_trace : bool
             flag to create single trace with unique vertical action
+        use_Gaussian_beam : bool
+            if not uniform beam or single Jy trace, use Gaussian beam for tracking
         use_symmetric_lattice : bool
             flag to use symmetric lattice without QFA and QDA
         install_SC_on_line : bool
@@ -486,7 +489,14 @@ class Tune_Ripple_SPS:
 
         # Generate particles
         fma_sps = FMA(n_linear=self.n_linear, r_min=self.r_min, n_sigma=self.n_sigma)
-        particles = fma_sps.generate_particles(line, BeamParameters_SPS, make_single_Jy_trace=make_single_Jy_trace)
+        
+        # Use Gaussian beam if desired, or uniform beam in action space
+        if use_Gaussian_beam: 
+            particles = SPS_sequence_maker.generate_SPS_gaussian_beam(line, n_part=5000)
+            print('\nGenerated Gaussian beam!\n')
+        else:
+            particles = fma_sps.generate_particles(line, BeamParameters_SPS, make_single_Jy_trace=make_single_Jy_trace)
+            print('\nGenerated uniform beam, with single Jy trace: {}\n'.format(make_single_Jy_trace))
         
         # Empty array for turns
         x = np.zeros([len(particles.x), self.num_turns]) 
@@ -692,7 +702,7 @@ class Tune_Ripple_SPS:
         if load_tbt_data:
             x, y, px, py = self.load_tracking_data()
         else:
-            x, y, px, py = self.run_ripple(dq=dq, plane=plane, make_single_Jy_trace=make_single_Jy_trace, 
+            x, y, px, py = self.run_ripple(dq=dq, plane=plane, make_single_Jy_trace=make_single_Jy_trace, use_symmetric_lattice=use_symmetric_lattice,
                                            install_SC_on_line=install_SC_on_line, sextupolar_value_to_add=sextupolar_value_to_add,
                                            beta_beat=beta_beat, add_non_linear_magnet_errors=add_non_linear_magnet_errors,
                                            plane_beta_beat=plane_beta_beat)
@@ -773,6 +783,38 @@ class Tune_Ripple_SPS:
         self.plot_action_and_tunes(turns, phi, J, Q, Z, PZ, ind, k, plot_random_colors=plot_random_colors,
                                       action_in_logscale=action_in_logscale,
                                       also_show_plot=also_show_plot, num_particles_to_plot=num_particles_to_plot)
+    
+    
+    def run_ripple_with_Gaussian_beam(self, dq=0.05, plane='X',
+                   load_tbt_data=False,
+                   use_symmetric_lattice=True,
+                   install_SC_on_line=True,
+                   Qy_frac=25,
+                   beta_beat=None,
+                   add_non_linear_magnet_errors=False,
+                   sextupolar_value_to_add=None,
+                   plane_beta_beat='Y'
+                   ):
+                                      
+                                      
+        """ 
+        FMA analysis of Gaussian distribution and tails with tune ripple
+        
+        Returns:
+        -------
+        """
+        if load_tbt_data:
+            x, y, px, py = self.load_tracking_data()
+        else:
+            x, y, px, py = self.run_ripple(dq=dq, Qy_frac=Qy_frac, plane=plane, use_Gaussian_beam=True, use_symmetric_lattice=use_symmetric_lattice,
+                                           install_SC_on_line=install_SC_on_line, sextupolar_value_to_add=sextupolar_value_to_add,
+                                           beta_beat=beta_beat, add_non_linear_magnet_errors=add_non_linear_magnet_errors,
+                                           plane_beta_beat=plane_beta_beat)
+            
+        # FMA of tunes
+        
+        # Analysis of tails, and plot tune over beam position
+        
     
     def plot_action_and_tunes(self, 
                               turns,
