@@ -425,7 +425,8 @@ class Tune_Ripple_SPS:
                    sextupolar_value_to_add=None,
                    Qy_frac=25,
                    beta_beat=None,
-                   add_non_linear_magnet_errors=False
+                   add_non_linear_magnet_errors=False,
+                   plane_beta_beat='Y'
                    ):
         """
         Test SPS tune ripple during tracking
@@ -435,7 +436,7 @@ class Tune_Ripple_SPS:
         dq : float
             absolute change in tune amplitude, e.g. 0.05
         plane : str
-            'X' or 'Y' (default is 'X')
+            'X' or 'Y' (default is 'X') in which to perform ripple
         load_tbt_data : bool
             flag to load data if already tracked
         save_tbt_data : bool
@@ -454,6 +455,8 @@ class Tune_Ripple_SPS:
             relative difference in beta functions (Y for SPS)
         add_non_linear_magnet_errors : bool
             whether to add non-linear chromatic errors for SPS
+        plane_beta_beat : str
+            'X' or 'Y' (default is 'X') - in which plane to perform desired beta-beat
         
         Returns:
         --------
@@ -473,7 +476,7 @@ class Tune_Ripple_SPS:
         # Add beta-beat if desired 
         if beta_beat is not None:
             sps_seq = SPS_sequence_maker()
-            line = sps_seq.generate_xsuite_seq_with_beta_beat(beta_beat=beta_beat, line=line)
+            line = sps_seq.generate_xsuite_seq_with_beta_beat(beta_beat=beta_beat, line=line, plane=plane_beta_beat)
 
         if install_SC_on_line:
             fma_sps = FMA()
@@ -640,7 +643,7 @@ class Tune_Ripple_SPS:
                    plot_dead_particles=False,
                    phase_sweep_up_to_turn=None,
                    phase_space_sweep_interval=1000,
-                   
+                   plane_beta_beat='Y'
                    ):
         """
         Run SPS tune ripple wtih tracking and generate phase space plots
@@ -680,6 +683,8 @@ class Tune_Ripple_SPS:
             whether to plot particles that got lost in tracking or not
         phase_space_sweep_interval : int
             number of steps to follow the evolution of phase space
+        plane_beta_beat : str
+            'X' or 'Y' (default is 'X') - in which plane to perform desired beta-beat
         
         Returns:
         --------
@@ -689,7 +694,8 @@ class Tune_Ripple_SPS:
         else:
             x, y, px, py = self.run_ripple(dq=dq, plane=plane, make_single_Jy_trace=make_single_Jy_trace, 
                                            install_SC_on_line=install_SC_on_line, sextupolar_value_to_add=sextupolar_value_to_add,
-                                           beta_beat=beta_beat, add_non_linear_magnet_errors=add_non_linear_magnet_errors)
+                                           beta_beat=beta_beat, add_non_linear_magnet_errors=add_non_linear_magnet_errors,
+                                           plane_beta_beat=plane_beta_beat)
                 
         # Load relevant SPS line and twiss
         self._get_initial_normalized_coord_at_start() # loads normalized coord of starting distribution
@@ -781,7 +787,8 @@ class Tune_Ripple_SPS:
                               plot_random_colors=False,
                               action_in_logscale=False,
                               also_show_plot=False,
-                              num_particles_to_plot=10):
+                              num_particles_to_plot=10,
+                              generate_stroboscopic_view=False):
         """
         Creates plots of action and tune evolution, and phase space
         
@@ -809,8 +816,10 @@ class Tune_Ripple_SPS:
             plots random colors for each particle if True, otherwise colormap depending on starting amplitude
         action_in_logscale: bool, optional
             whether to plot action in logscale or not
-        num_particles_to_plot : 
+        num_particles_to_plot : int
             number of particles to include in plot
+        generate_stroboscopic_view : bool
+            flag whether to generate stroboscopic plots or not
         
         Returns:
         --------
@@ -823,8 +832,9 @@ class Tune_Ripple_SPS:
         else:
             colors = plt.cm.cool(np.linspace(0, 1, len(self._x_norm)))
 
-        # First make stroboscopic view
-        self.generate_stroboscopic_view(turns, phi, J, ind, num_plots = 10, plane='X')
+        # First make stroboscopic view if desired
+        if generate_stroboscopic_view:
+            self.generate_stroboscopic_view(turns, phi, J, ind, num_plots = 10, plane='X')
 
         ######### Action evolution and over time #########
         fig, ax = plt.subplots(2, 1, figsize=(11,7), sharex=True)
@@ -938,7 +948,7 @@ class Tune_Ripple_SPS:
         # Take colors from colormap of normalized phase space
         colors = plt.cm.cool(np.linspace(0, 1, len(self._x_norm)))
     
-        # Create folder for stroboscopic plot if does not exist
+        # Create folder for sweeping plot if does not exist
         output_sweep = '{}/phase_space_sweep'.format(self.output_folder)
         os.makedirs(output_sweep, exist_ok=True)
            
