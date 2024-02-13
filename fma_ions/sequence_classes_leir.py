@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 import os 
 from scipy.optimize import minimize
+import matplotlib.pyplot as plt
 
 import xobjects as xo
 import xtrack as xt
@@ -76,31 +77,35 @@ class LEIR_sequence_maker:
         """
         madx = Madx()
         madx.call("{}/_scripts/macros.madx".format(optics))
-        madx.call("{}/leir.seq".format(optics))
+        madx.call("{}/new_leir_seq.seq".format(optics))
         madx.call('{}/scenarios/nominal/1_flat_bottom/leir_fb_nominal.str'.format(optics))
 
         if add_aperture:
             madx.call("{}/leir.dbx".format(optics))
-
-        # Global correction of the coupling introduced by the electron cooler
-        madx.input('''
-                use, sequence=LEIR;
-                exec, global_correction;;
-                ''')
 
         # Load beam parameters from injection energy
         self.m_in_eV, self.gamma_LEIR_inj, self.p_LEIR_extr = self.generate_LEIR_beam()
 
         madx.input(" \
         Beam, particle=ion, mass={}, charge={}, gamma = {}, sequence='leir'; \
+        exn={}, eyn={};\
         DPP:=BEAM->SIGE*(BEAM->ENERGY/BEAM->PC)^2;  \
-        ".format(self.m_in_eV/1e9, self.Q_LEIR, self.gamma_LEIR_inj))   # convert mass to GeV/c^2
+        ".format(self.m_in_eV/1e9, self.Q_LEIR, self.gamma_LEIR_inj,
+                        BeamParameters_LEIR.exn, BeamParameters_LEIR.eyn))   # convert mass to GeV/c^2
 
         # Slice the sequence
         if make_thin:
             n_slice_per_element = 5
             madx.command.select(flag='MAKETHIN', slice=n_slice_per_element, thick=False)
             madx.command.makethin(sequence='leir', MAKEDIPEDGE=True)  
+
+        # Global correction of the coupling introduced by the electron cooler
+        madx.input('''
+                use, sequence=LEIR;
+                exec, global_correction;;
+                ''')
+                
+        madx.command.save(sequence='leir', file='{}/LEIR_2021_Pb_ions_4D.seq'.format(sequence_path), beam=True)
 
         return madx
         
@@ -117,9 +122,45 @@ class LEIR_sequence_maker:
         # Calculate gamma at injection and extraction
         m_in_eV = self.m_ion * constants.physical_constants['atomic mass unit-electron volt relationship'][0]   # 1 Dalton in eV/c^2 -- atomic mass unit
         gamma_LEIR_inj = (m_in_eV + self.E_kin_ev_per_A_LEIR_inj * self.A) / m_in_eV
-        p_LEIR_extr = 1e9 * (self._Brho_PS_extr * self.Q_LEIR) / 3.3356 # in  [eV/c], if q is number of elementary charges
+        p_LEIR_extr = 1e9 * (self.Brho_LEIR_extr * self.Q_LEIR) / 3.3356 # in  [eV/c], if q is number of elementary charges
+
+        print('\nBeam: gamma = {:.5f}, m_ion = {:3e} eV\n'.format(gamma_LEIR_inj, m_in_eV))
 
         return m_in_eV, gamma_LEIR_inj, p_LEIR_extr
+        
+
+    def load_xsuite_line_and_twiss(self, beta_beat=None, save_new_xtrack_line=True,
+                                   deferred_expressions=False):
+        """
+        Method to load pre-generated LEIR lattice files for Xsuite, or generate new if does not exist
+        
+        Parameters:
+        -----------
+        beta_beat : float
+            relative beta beat, i.e. relative difference between max beta function and max original beta function
+        deferred_expressions : bool
+            whether to use deferred expressions while importing madx sequence into xsuite
+        
+        Returns:
+        -------
+        xsuite line
+        twiss - twiss table from xtrack 
+        """
+        
+        # Load LEIR line, otherwise generate new one
+        leir_fname = '{}/LEIR_2021_Pb_ions.json'.format(sequence_path)
+        print('Attempting to load {}'.format(leir_fname))
+        
+        try:         
+            leir_line = xt.Line.from_json(leir_fname)
+            print('\nLoaded LEIR json sequence file\n')
+        except FileNotFoundError:
+            print('\nDid not find LEIR json sequence file - generating new!\n')
+            leir_line = self.generate_xsuite_seq(deferred_expressions=False, add_aperture=False, save_xsuite_seq=True)
+        
+        twiss_leir = leir_line.twiss() 
+        
+        return leir_line, twiss_leir
         
 
     def generate_xsuite_seq(self, save_madx_seq=False, 
@@ -153,7 +194,16 @@ class LEIR_sequence_maker:
         """
         
         # Load madx instance
-        madx = self.load_madx(add_aperture=add_aperture)
+        try:
+        
+            madx = Madx()
+            madx.call('{}/LEIR_2021_Pb_ions_thin.seq'.format(sequence_path))
+            madx.use(sequence='leir')
+        except FileNotFoundError:
+            madx = self.load_madx(add_aperture=add_aperture)
+
+        # Load beam parameters from injection energy
+        self.m_in_eV, self.gamma_LEIR_inj, self.p_LEIR_extr = self.generate_LEIR_beam()
 
         # Convert madx sequence to xtrack sequence
         line = xt.Line.from_madx_sequence(madx.sequence['leir'], deferred_expressions=deferred_expressions)
@@ -201,3 +251,47 @@ class LEIR_sequence_maker:
 
         if return_xsuite_line:
             return line
+        
+        
+    def plot_twiss_for_LEIR(self, twiss):
+    
+        """ Plot closed orbit and lattice functions """
+        
+        plt.close('all')
+        
+        fig1 = plt.figure(1, figsize=(6.4, 5.5*1.5))
+        spbet = plt.subplot(3,1,1)
+        spco = plt.subplot(3,1,2, sharex=spbet)
+        spdisp = plt.subplot(3,1,3, sharex=spbet)
+        
+        spbet.plot(twiss.s, twiss.betx)
+        spbet.plot(twiss.s, twiss.bety)
+        spbet.set_ylabel(r'$\beta_{x,y}$ [m]', fontsize=12)
+        
+        spco.plot(twiss.s, twiss.x)
+        spco.plot(twiss.s, twiss.y)
+        spco.set_ylabel(r'(Closed orbit)$_{x,y}$ [m]', fontsize=12)
+        
+        spdisp.plot(twiss.s, twiss.dx)
+        spdisp.plot(twiss.s, twiss.dy)
+        spdisp.set_ylabel(r'$D_{x,y}$ [m]', fontsize=12)
+        spdisp.set_xlabel('s [m]')
+        
+        fig1.suptitle(
+            r'$q_x$ = ' f'{twiss.qx:.5f}' r' $q_y$ = ' f'{twiss.qy:.5f}' '\n'
+            r"$Q'_x$ = " f'{twiss.dqx:.2f}' r" $Q'_y$ = " f'{twiss.dqy:.2f}'
+            r' $\gamma_{tr}$ = '  f'{1/np.sqrt(twiss.momentum_compaction_factor):.2f}', fontsize=13
+        )
+        
+        fig1.subplots_adjust(left=.15, right=.92, hspace=.27)
+        plt.show()
+
+        
+    def _print_leir_seq(self, line):            
+        """ Print all elements in line """
+
+        my_dict = line.to_dict()
+        d =  my_dict["elements"]
+        for key, value in d.items():
+            #if value['__class__'] == 'Multipole' and value['_order'] == order:
+            print('{}: {}'.format(key, value['__class__']))
