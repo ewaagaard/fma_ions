@@ -41,6 +41,8 @@ class Tune_Ripple_SPS:
         minimum radial distance from beam center to generate particles, to avoid zero amplitude oscillations for FMA
     n_sigma : float
         max number of beam sizes sigma to generate particles
+    n_part : int
+        number of macroparticles for beam generation
     z0 : float
         initial longitudinal offset zeta
     output_folder : str
@@ -54,6 +56,7 @@ class Tune_Ripple_SPS:
     n_linear: int = 100
     r_min: float = 0.1
     n_sigma: float = 10.0
+    n_part : int = 5000
     z0: float = 0.0
     output_folder: str = 'output_tune_ripple'
     
@@ -427,7 +430,8 @@ class Tune_Ripple_SPS:
                    Qy_frac=25,
                    beta_beat=None,
                    add_non_linear_magnet_errors=False,
-                   plane_beta_beat='Y'
+                   plane_beta_beat='Y',
+                   vary_tune=True
                    ):
         """
         Test SPS tune ripple during tracking
@@ -460,6 +464,8 @@ class Tune_Ripple_SPS:
             whether to add non-linear chromatic errors for SPS
         plane_beta_beat : str
             'X' or 'Y' (default is 'X') - in which plane to perform desired beta-beat
+        vary_tune : bool
+            flag whether to run with ripple (i.e. vary tune) or without as control case
         
         Returns:
         --------
@@ -492,7 +498,7 @@ class Tune_Ripple_SPS:
         
         # Use Gaussian beam if desired, or uniform beam in action space
         if use_Gaussian_beam: 
-            particles = SPS_sequence_maker.generate_SPS_gaussian_beam(line, n_part=5000)
+            particles = SPS_sequence_maker.generate_SPS_gaussian_beam(line, n_part=self.n_part)
             print('\nGenerated Gaussian beam!\n')
         else:
             particles = fma_sps.generate_particles(line, BeamParameters_SPS, make_single_Jy_trace=make_single_Jy_trace)
@@ -516,8 +522,9 @@ class Tune_Ripple_SPS:
             state[:, ii] = particles.state
         
             # Change the strength of the quads
-            line.vars['kqf'] = kqf_vals[ii]
-            line.vars['kqd'] = kqd_vals[ii]
+            if vary_tune:
+                line.vars['kqf'] = kqf_vals[ii]
+                line.vars['kqd'] = kqd_vals[ii]
         
             # Track one turn
             line.track(particles)
@@ -793,29 +800,127 @@ class Tune_Ripple_SPS:
                    beta_beat=None,
                    add_non_linear_magnet_errors=False,
                    sextupolar_value_to_add=None,
-                   plane_beta_beat='Y'
+                   plane_beta_beat='Y',
+                   vary_tune=True
                    ):
                                       
                                       
         """ 
         FMA analysis of Gaussian distribution and tails with tune ripple
-        
+
+        dq : float
+            amplitude of oscillations in chosen plane
+        plane : str
+            'X' or 'Y'
+        load_tbt_data : bool
+            flag to load data if already tracked
+        use_symmetric_lattice : bool
+            flag to use symmetric lattice without QFA and QDA
+        install_SC_on_line : bool
+            flag to install space charge on line with FMA ions
+        Qy_frac : int
+            fractional vertical tune. "19"" means fractional tune Qy = 0.19
+        beta_beat : float 
+            relative difference in beta functions (Y for SPS)
+        add_non_linear_magnet_errors : bool
+            whether to add non-linear chromatic errors for SPS
+        sextupolar_value_to_add : float, optional
+            k2 value of one extraction sextupole in SPS, if not None
+        vary_tune : bool
+            flag whether to enact ripple (i.e. vary tune) or without as control case
+            
         Returns:
         -------
         """
+        if not vary_tune:
+            print('Running tracking WITHOUT tune ripple!')    
+
+        # Load turn-by-turn data or run the tracking with an external tune ripple
         if load_tbt_data:
             x, y, px, py = self.load_tracking_data()
         else:
             x, y, px, py = self.run_ripple(dq=dq, Qy_frac=Qy_frac, plane=plane, use_Gaussian_beam=True, use_symmetric_lattice=use_symmetric_lattice,
                                            install_SC_on_line=install_SC_on_line, sextupolar_value_to_add=sextupolar_value_to_add,
                                            beta_beat=beta_beat, add_non_linear_magnet_errors=add_non_linear_magnet_errors,
-                                           plane_beta_beat=plane_beta_beat)
-            
-        # FMA of tunes
+                                           plane_beta_beat=plane_beta_beat, vary_tune=vary_tune)
+        
+        # Load relevant SPS line and twiss
+        self._get_initial_normalized_coord_at_start() # loads normalized coord of starting distribution
+        sps = SPS_sequence_maker()
+        line, twiss = sps.load_SPS_line_with_deferred_madx_expressions(use_symmetric_lattice=use_symmetric_lattice,
+                                                                        Qy_frac=Qy_frac)
+        
+        # If sextupolar value is set, set this value
+        if sextupolar_value_to_add is not None:
+            line = self._set_LSE_extraction_sextupolar_value(line, k2_value=sextupolar_value_to_add)
+            print('\nSetting klse10602 sextupolar value to {}\n'.format(line.vars['klse10602']._value))
+
+        # FMA of tunes - load tune data if exists
+        k = int(np.ceil(2 / twiss['qs'])) # tune evaluated over two synchrotron periods
+        try:
+            Qx, Qy = self.load_tune_data()
+        except FileNotFoundError:
+            Qx, Qy = self.get_tune_from_tbt_data(x, y, k)
+        
+        # Load turns and quadrupole strengths
+        kqf_vals, kqd_vals, turns = self.load_k_from_xtrack_matching(dq=dq, plane=plane)
+        turns = np.array(turns)
+        
+        # Calculate normalized coordinates
+        X = x / np.sqrt(twiss['betx'][0]) 
+        PX = twiss['alfx'][0] / np.sqrt(twiss['betx'][0]) * x + np.sqrt(twiss['betx'][0]) * px
+        Y = y / np.sqrt(twiss['bety'][0]) 
+        PY = twiss['alfy'][0] / np.sqrt(twiss['bety'][0]) * y + np.sqrt(twiss['bety'][0]) * py
         
         # Analysis of tails, and plot tune over beam position
-        
+        z_bar_tbt_data = X if plane=='X' else Y
+        # HERE - convert instead to position normalized to BEAM SIZE - UPDATE THIS!
+        self.plot_particle_distribution(z_bar_tbt_data, plane=plane)        
     
+
+    def plot_particle_distribution(self, z_bar_tbt_data, plane='X', n_bins=100,
+                                   also_show_plot=False):
+
+        """
+        Generates histogram of particle distribution in terms of beam sigma - at start and at the end
+
+        Parameters:
+        -----------
+        z_bar_tbt_data : numpy.ndarray
+            turn-by-turn data from tracking, either x or y
+        plane : str
+            'X' or 'Y'
+        n_bins : int
+            number of bins for histogram
+        also_show_plot : bool
+            whether to run 'plt.show()' at the end
+
+        Returns:
+        --------
+        None
+        """
+        print('\nGenerating the particle distribution plot\n')
+        # Generate figure object
+        fig, ax = plt.subplots(1, 1, figsize=(8, 6))
+        ax.hist(z_bar_tbt_data[:, 0], bins=n_bins, histtype='step', color='b', alpha=0.6, density=True, label='Start') # first turn
+        ax.hist(z_bar_tbt_data[:, -1], bins=n_bins, histtype='step', color='r', alpha=0.6, density=True, label='End') # last turn
+
+                # Add correct labels        
+        if plane == 'X':                       
+            ax.set_xlabel('$x$ [mm]')
+        elif plane == 'Y':
+            ax.set_xlabel('$y$ [mm]')
+        ax.set_ylabel('Normalized counts')
+        ax.legend()
+        
+         # Save figure
+        fig.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+        fig.savefig('{}/Start_and_end_distribution.png'.format(self.output_folder), dpi=250)
+
+        if also_show_plot:
+            plt.show()
+
+
     def plot_action_and_tunes(self, 
                               turns,
                               phi,
