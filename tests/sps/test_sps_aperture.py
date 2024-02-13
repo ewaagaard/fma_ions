@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 # Generate SPS sequence maker, make sure aperture exists 
 sps = fma_ions.SPS_sequence_maker()
 line, twiss = sps.load_xsuite_line_and_twiss(add_aperture=True)
-line.check_aperture()
+df = line.check_aperture()
 
 # From MADX instance, plot aperture with updated emittances
 madx = sps.load_simple_madx_seq(add_aperture=True)
@@ -30,6 +30,9 @@ madx.select(flag='twiss', column=['name','s','l',
 twiss = madx.twiss()
 new_pos_x, aper_neat_x = acc_lib.madx_tools.get_apertures_real(twiss)
 new_pos_y, aper_neat_y = acc_lib.madx_tools.get_apertures_real(twiss, axis='vertical')
+
+# Print know aperture element for SPS, make sure that it is a LimitRectEllipse
+print(df.iloc[61447])
 
 #### Plot the beam envelope and aperture
 fig = plt.figure(figsize=(10,7))

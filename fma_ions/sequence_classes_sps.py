@@ -95,17 +95,17 @@ class SPS_sequence_maker:
         self.seq_folder = '{}/qy_dot{}'.format(sequence_path, Qy_frac)  
         os.makedirs(self.seq_folder, exist_ok=True)
         
+        # Update fractional vertical tune 
+        self.qy0 = int(self.qy0) + Qy_frac / 100 
+        print('\nTrying to load sequence with Qx, Qy = ({}, {}) and beta-beat = {}!\n'.format(self.qx0, self.qy0, beta_beat))
+        
         if use_symmetric_lattice:
             print('\nLoading symmetric SPS lattice\n')
         if add_non_linear_magnet_errors:
             print('\nLoading lattic with non-linear magnet errors\n')
         if add_aperture:
             print('\nLoading lattice with aperture\n')
-        
-        # Update fractional vertical tune 
-        self.qy0 = int(self.qy0) + Qy_frac / 100 
-        print('\nTrying to load sequence with Qx, Qy = ({}, {}) and beta-beat = {}!\n'.format(self.qx0, self.qy0, beta_beat))
-        
+                
         # Check if pre-generated sequence exists 
         if beta_beat is None or beta_beat == 0.0:
             sps_fname = '{}/SPS_2021_{}{}{}{}{}.json'.format(self.seq_folder, self.ion_type, symmetric_string,
@@ -197,7 +197,8 @@ class SPS_sequence_maker:
         madx.use(sequence='sps')
         twiss_thin = madx.twiss()  
         
-        line = xt.Line.from_madx_sequence(madx.sequence['sps'], deferred_expressions=deferred_expressions)
+        line = xt.Line.from_madx_sequence(madx.sequence['sps'], deferred_expressions=deferred_expressions,
+                                          install_apertures=add_aperture, apply_madx_errors=add_non_linear_magnet_errors)
         line.build_tracker()
         #madx_beam = madx.sequence['sps'].beam
         
@@ -294,7 +295,8 @@ class SPS_sequence_maker:
             madx.use(sequence="sps")
     
             # Convert to line
-            line = xt.Line.from_madx_sequence(madx.sequence['sps'], deferred_expressions=True)
+            line = xt.Line.from_madx_sequence(madx.sequence['sps'], deferred_expressions=True, install_apertures=add_aperture,
+                                              add_non_linear_magnet_errors=add_non_linear_magnet_errors)
             m_in_eV, p_inj_SPS = self.generate_SPS_beam()
             
             line.particle_ref = xp.Particles(
@@ -574,11 +576,6 @@ class SPS_sequence_maker:
                 errtab_ions = madx.table.errtab
                 print('Added non-linear errors!')
 
-            # Add aperture classes
-            if add_aperture:
-                madx.use(sequence='sps')
-                madx.call('{}/aperture/APERTURE_SPS_LS2_30-SEP-2020.seq'.format(optics))
-
             # Flatten and slice line
             if make_thin:
                 madx.use(sequence='sps')
@@ -588,6 +585,12 @@ class SPS_sequence_maker:
                 madx.use("sps")
                 madx.input("select, flag=makethin, slice=5, thick=false;")
                 madx.input("makethin, sequence=sps, style=teapot, makedipedge=True;")
+
+            # Add aperture classes
+            if add_aperture:
+                print('\nAdded aperture!\n')
+                madx.use(sequence='sps')
+                madx.call('{}/aperture/APERTURE_SPS_LS2_30-SEP-2020.seq'.format(optics))
 
             # Use correct tune and chromaticity matching macros
             madx.call("{}/toolkit/macro.madx".format(optics))
