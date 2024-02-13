@@ -59,7 +59,7 @@ class SPS_sequence_maker:
     
     def load_xsuite_line_and_twiss(self, Qy_frac=25, beta_beat=None, use_symmetric_lattice=False,
                                    add_non_linear_magnet_errors=False, save_new_xtrack_line=True,
-                                   deferred_expressions=False):
+                                   deferred_expressions=False, add_aperture=False):
         """
         Method to load pre-generated SPS lattice files for Xsuite, or generate new if does not exist
         
@@ -75,6 +75,9 @@ class SPS_sequence_maker:
             if new sequence is created, save it for future use
         deferred_expressions : bool
             whether to use deferred expressions while importing madx sequence into xsuite
+        add_aperture : bool
+            whether to include aperture for SPS
+        
         
         Returns:
         -------
@@ -86,6 +89,7 @@ class SPS_sequence_maker:
         symmetric_string = '_symmetric' if use_symmetric_lattice else '_nominal'
         err_str = '_with_non_linear_chrom_error' if add_non_linear_magnet_errors else ''
         def_exp_str = '_deferred_exp' if deferred_expressions else ''
+        aperture_str = '_with_aperture' if add_aperture else ''
         
         # Update sequence folder location
         self.seq_folder = '{}/qy_dot{}'.format(sequence_path, Qy_frac)  
@@ -94,7 +98,9 @@ class SPS_sequence_maker:
         if use_symmetric_lattice:
             print('\nLoading symmetric SPS lattice\n')
         if add_non_linear_magnet_errors:
-            print('\nLoading lattic with non-linear chromatic magnet errors\n')
+            print('\nLoading lattic with non-linear magnet errors\n')
+        if add_aperture:
+            print('\nLoading lattice with aperture\n')
         
         # Update fractional vertical tune 
         self.qy0 = int(self.qy0) + Qy_frac / 100 
@@ -102,28 +108,31 @@ class SPS_sequence_maker:
         
         # Check if pre-generated sequence exists 
         if beta_beat is None or beta_beat == 0.0:
-            sps_fname = '{}/SPS_2021_{}{}{}{}.json'.format(self.seq_folder, self.ion_type, symmetric_string,
-                                                                          def_exp_str, err_str)
+            sps_fname = '{}/SPS_2021_{}{}{}{}{}.json'.format(self.seq_folder, self.ion_type, symmetric_string,
+                                                                          def_exp_str, err_str, aperture_str)
         else:                                                  
-            sps_fname = '{}/SPS_2021_{}{}{}_{}_percent_beta_beat{}.json'.format(self.seq_folder, self.ion_type, 
-                                                                                     symmetric_string, def_exp_str, int(beta_beat*100), err_str)
+            sps_fname = '{}/SPS_2021_{}{}{}_{}_percent_beta_beat{}{}.json'.format(self.seq_folder, self.ion_type, 
+                                                                                     symmetric_string, def_exp_str, int(beta_beat*100), 
+                                                                                     err_str, aperture_str)
         # Try to load pre-generated sequence if exists
         try:
             sps_line = xt.Line.from_json(sps_fname)
             print('\nSuccessfully loaded {}\n'.format(sps_fname))
         except FileNotFoundError:
-            print('\nPre-made SPS sequence does not exists, generating new sequence with Qx, Qy = ({}, {}), beta-beat = {} and non-linear error={}!\n{}'.format(self.qx0, 
-                                                                                                                                         self.qy0, 
-                                                                                                                                         beta_beat,
-                                                                                                                                         add_non_linear_magnet_errors,
-                                                                                                                                         sps_fname))
+            print('\nPre-made SPS sequence does not exists, generating new sequence with Qx, Qy = ({}, {}), beta-beat = {} \
+                  and non-linear error={} and aperture= {}\n{}'.format(self.qx0, 
+                                                                        self.qy0, 
+                                                                        beta_beat,
+                                                                        add_non_linear_magnet_errors,
+                                                                        add_aperture,
+                                                                        sps_fname))
             # Make new line with beta-beat and/or non-linear chromatic errors
             if beta_beat is None:
                 sps_line = self.generate_xsuite_seq(use_symmetric_lattice=use_symmetric_lattice, deferred_expressions=deferred_expressions,
-                                                    add_non_linear_magnet_errors=add_non_linear_magnet_errors) 
+                                                    add_non_linear_magnet_errors=add_non_linear_magnet_errors, add_aperture=add_aperture) 
             else:
                 sps_line = self.generate_xsuite_seq_with_beta_beat(use_symmetric_lattice=use_symmetric_lattice, 
-                                                                   add_non_linear_magnet_errors=add_non_linear_magnet_errors)
+                                                                   add_non_linear_magnet_errors=add_non_linear_magnet_errors, add_aperture=add_aperture)
                 
             # Save new Xsuite sequence if desired
             if save_new_xtrack_line:
@@ -143,7 +152,8 @@ class SPS_sequence_maker:
                             return_xsuite_line=True, voltage=3.0e6,
                             use_symmetric_lattice=False,
                             add_non_linear_magnet_errors=False,
-                            deferred_expressions=False):
+                            deferred_expressions=False,
+                            add_aperture=False):
         """
         Load MADX line, match tunes and chroma, add RF and generate Xsuite line
         
@@ -160,7 +170,9 @@ class SPS_sequence_maker:
         add_non_linear_magnet_errors : bool
             whether to add line with non-linear chromatic errors
         deferred_expressions : bool
-            whether to use deferred expressions while importing madx sequence into xsuite
+            whether to use deferred expressions while importing madx sequence into xsuite    
+        add_aperture : bool
+            whether to include aperture for SPS
         
         Returns:
         --------
@@ -175,10 +187,11 @@ class SPS_sequence_maker:
         symmetric_string = '_symmetric' if use_symmetric_lattice else '_nominal'
         err_str = '_with_non_linear_chrom_error' if add_non_linear_magnet_errors else ''
         def_exp_str = '_deferred_exp' if deferred_expressions else ''
+        aperture_str = '_with_aperture' if add_aperture else ''
         
         # Load madx instance with SPS sequence
         madx = self.load_simple_madx_seq(use_symmetric_lattice=use_symmetric_lattice, 
-                                         add_non_linear_magnet_errors=add_non_linear_magnet_errors)
+                                         add_non_linear_magnet_errors=add_non_linear_magnet_errors, add_aperture=add_aperture)
         
         # Create Xsuite line, check that Twiss command works 
         madx.use(sequence='sps')
@@ -242,7 +255,7 @@ class SPS_sequence_maker:
 
 
     def load_SPS_line_with_deferred_madx_expressions(self, use_symmetric_lattice=True, Qy_frac=25,
-                                                     add_non_linear_magnet_errors=False):
+                                                     add_non_linear_magnet_errors=False, add_aperture=False):
         """
         Loads xtrack Pb sequence file with deferred expressions to regulate QD and QF strengths
         or generate from MADX if does not exist
@@ -255,25 +268,29 @@ class SPS_sequence_maker:
             fractional vertical tune. "19"" means fractional tune Qy = 0.19
         add_non_linear_magnet_errors : bool
             whether to add line with non-linear chromatic errors
-        
+        add_aperture : bool
+            whether to include aperture for SPS        
+
         Returns:
         -------
         xtrack line
         """
         err_str = '_with_non_linear_chrom_error' if add_non_linear_magnet_errors else ''
+        aperture_str = '_with_aperture' if add_aperture else ''
         
         # Try loading existing json file, otherwise create new from MADX
         if use_symmetric_lattice:
-            fname = '{}/qy_dot{}/SPS_2021_Pb_symmetric_deferred_exp{}.json'.format(sequence_path, Qy_frac, err_str)
+            fname = '{}/qy_dot{}/SPS_2021_Pb_symmetric_deferred_exp{}{}.json'.format(sequence_path, Qy_frac, err_str, aperture_str)
         else:
-            fname = '{}/qy_dot{}/SPS_2021_Pb_nominal_deferred_exp{}.json'.format(sequence_path, Qy_frac, err_str)
+            fname = '{}/qy_dot{}/SPS_2021_Pb_nominal_deferred_exp{}{}.json'.format(sequence_path, Qy_frac, err_str, aperture_str)
         
         try: 
             line = xt.Line.from_json(fname)
         except FileNotFoundError:
             print('\nSPS sequence file {} not found - generating new!\n'.format(fname))
             #sps = SPS_sequence_maker()
-            madx = self.load_simple_madx_seq(use_symmetric_lattice, Qy_frac=25, add_non_linear_magnet_errors=add_non_linear_magnet_errors)
+            madx = self.load_simple_madx_seq(use_symmetric_lattice, Qy_frac=25, add_non_linear_magnet_errors=add_non_linear_magnet_errors,
+                                             add_aperture=add_aperture)
             madx.use(sequence="sps")
     
             # Convert to line
@@ -302,7 +319,8 @@ class SPS_sequence_maker:
                                            save_xsuite_seq=True, line=None,
                                            use_symmetric_lattice=False,
                                            add_non_linear_magnet_errors=False,
-                                           plane='Y'
+                                           plane='Y',
+                                           add_aperture=False
                                            ):
         """
         Generate Xsuite line with desired beta beat, optimizer quadrupole errors finds
@@ -322,6 +340,8 @@ class SPS_sequence_maker:
             whether to add line with non-linear chromatic errors
         plane : str
             'X' or 'Y' - which plane to find beta-beat for
+        add_aperture : bool
+            whether to include aperture for SPS
         
         Returns:
         -------
@@ -333,7 +353,7 @@ class SPS_sequence_maker:
 
         Qy_frac = int(100*(self.qy0 % 1))
         self._line, twiss0 = self.load_SPS_line_with_deferred_madx_expressions(use_symmetric_lattice=use_symmetric_lattice, Qy_frac=Qy_frac,
-                                                         add_non_linear_magnet_errors=add_non_linear_magnet_errors)
+                                                         add_non_linear_magnet_errors=add_non_linear_magnet_errors, add_aperture=add_aperture)
         
         self._line0 = self._line.copy()
         self._twiss0 = self._line0.twiss()
@@ -514,7 +534,7 @@ class SPS_sequence_maker:
 
 
     def load_simple_madx_seq(self, use_symmetric_lattice=False, Qy_frac=25,
-                             add_non_linear_magnet_errors=False, make_thin=True):
+                             add_non_linear_magnet_errors=False, make_thin=True, add_aperture=False):
         """
         Loads default SPS Pb sequence at flat bottom. 
         
@@ -528,6 +548,8 @@ class SPS_sequence_maker:
             whether to add line with non-linear chromatic errors
         make_thin : bool
             whether to slice the sequence or not
+        add_aperture : bool
+            whether to include aperture for SPS
         
         Returns: 
         --------    
@@ -551,6 +573,11 @@ class SPS_sequence_maker:
                 madx.input('exec, AssignMultipoles;')
                 errtab_ions = madx.table.errtab
                 print('Added non-linear errors!')
+
+            # Add aperture classes
+            if add_aperture:
+                madx.use(sequence='sps')
+                madx.call('{}/aperture/APERTURE_SPS_LS2_30-SEP-2020.seq'.format(optics))
 
             # Flatten and slice line
             if make_thin:
