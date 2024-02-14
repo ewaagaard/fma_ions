@@ -9,12 +9,12 @@ import numpy as np
 # Load lines with and without magnet errors
 sps = fma_ions.SPS_sequence_maker()
 madx = sps.load_simple_madx_seq(add_non_linear_magnet_errors=False)
-line, twiss = sps.load_xsuite_line_and_twiss(add_non_linear_magnet_errors=False)
+line = sps.generate_xsuite_seq(add_non_linear_magnet_errors=False)
 
 # With magnet errors 
 sps2 = fma_ions.SPS_sequence_maker()
 madx2 = sps2.load_simple_madx_seq(add_non_linear_magnet_errors=True)
-line2, twiss2 = sps2.load_xsuite_line_and_twiss(add_non_linear_magnet_errors=True)
+line2 = sps2.generate_xsuite_seq(add_non_linear_magnet_errors=True)
 
 ### Compare non-linear chromatic behaviour of ring 
 delta_values = np.arange(-0.006, 0.006, 0.001)
@@ -27,14 +27,12 @@ for i, delta in enumerate(delta_values):
 
     # MADX thin sequence - for some reason madx.twiss() does not take deltap as input argument    
     madx.input(f'''
-               use,sequence=sps;
                twiss, DELTAP={delta};
               ''')
     qx_values[0, i] = madx.table.summ['q1'][0]
     qy_values[0, i] = madx.table.summ['q2'][0]
     
     madx2.input(f'''
-               use,sequence=sps;
                twiss, DELTAP={delta};
               ''')
     qx_values[1, i] = madx2.table.summ['q1'][0]

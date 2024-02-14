@@ -192,11 +192,7 @@ class SPS_sequence_maker:
         # Load madx instance with SPS sequence
         madx = self.load_simple_madx_seq(use_symmetric_lattice=use_symmetric_lattice, 
                                          add_non_linear_magnet_errors=add_non_linear_magnet_errors, add_aperture=add_aperture)
-        
-        # Create Xsuite line, check that Twiss command works 
-        madx.use(sequence='sps')
-        twiss_thin = madx.twiss()  
-        
+                
         line = xt.Line.from_madx_sequence(madx.sequence['sps'], deferred_expressions=deferred_expressions,
                                           install_apertures=add_aperture, apply_madx_errors=add_non_linear_magnet_errors,
                                           enable_field_errors=add_non_linear_magnet_errors, enable_align_errors=add_non_linear_magnet_errors)
@@ -561,60 +557,59 @@ class SPS_sequence_maker:
         """
         err_str = '_with_non_linear_chrom_error' if add_non_linear_magnet_errors else ''
         
-        try:
-            madx = Madx()
-            if use_symmetric_lattice:
-                madx.call('{}/qy_dot{}/SPS_2021_Pb_symmetric.seq'.format(sequence_path, Qy_frac))
-            else:
-                madx.call('{}/qy_dot{}/SPS_2021_Pb_nominal.seq'.format(sequence_path, Qy_frac))
+        # Load sequence file if exists already, otherwise generate new one from job
+        #try:
+        #    madx = Madx()
+        #    if use_symmetric_lattice:
+        #        madx.call('{}/qy_dot{}/SPS_2021_Pb_symmetric.seq'.format(sequence_path, Qy_frac))
+        #    else:
+        #        madx.call('{}/qy_dot{}/SPS_2021_Pb_nominal.seq'.format(sequence_path, Qy_frac))
+        #except FileNotFoundError:
+        madx = self.load_madx_SPS_from_job()
 
-            # Flatten and slice line
-            if make_thin:
-                madx.use(sequence='sps')
-                madx.input("seqedit, sequence=SPS;")
-                madx.input("flatten;")
-                madx.input("endedit;")
-                madx.use("sps")
-                madx.input("select, flag=makethin, slice=5, thick=false;")
-                madx.input("makethin, sequence=sps, style=teapot, makedipedge=True;")
+        # Flatten and slice line
+        if make_thin:
+            madx.use(sequence='sps')
+            madx.input("seqedit, sequence=SPS;")
+            madx.input("flatten;")
+            madx.input("endedit;")
+            madx.use("sps")
+            madx.input("select, flag=makethin, slice=5, thick=false;")
+            madx.input("makethin, sequence=sps, style=teapot, makedipedge=True;")
 
-            # Add the extra magnet errors
-            if add_non_linear_magnet_errors:
-                madx.use(sequence='sps')
-                madx.call('{}/sps_setMultipoles_upto7.cmd'.format(error_file_path))
-                madx.input('exec, set_Multipoles_26GeV;')
-                madx.call('{}/sps_assignMultipoles_upto7.cmd'.format(error_file_path))
-                madx.input('exec, AssignMultipoles;')
-                errtab_ions = madx.table.errtab
-                print('Added non-linear errors!')
+        madx.call("{}/toolkit/macro.madx".format(optics))
 
-            # Add aperture classes
-            if add_aperture:
-                print('\nAdded aperture!\n')
-                madx.use(sequence='sps')
-                madx.call('{}/aperture/APERTURE_SPS_LS2_30-SEP-2020.seq'.format(optics))
+        # Add aperture classes
+        if add_aperture:
+            print('\nAdded aperture!\n')
+            madx.use(sequence='sps')
+            madx.call('{}/aperture/APERTURE_SPS_LS2_30-SEP-2020.seq'.format(optics))
 
-            # Use correct tune and chromaticity matching macros
-            madx.call("{}/toolkit/macro.madx".format(optics))
-            madx.use('sps')
-            madx.exec(f"sps_match_tunes({self.qx0}, {self.qy0});")
-            madx.exec("sps_define_sext_knobs();")
-            madx.exec("sps_set_chroma_weights_q26();")
-            madx.input(f"""match;
-            global, dq1={self.dq1};
-            global, dq2={self.dq2};
-            vary, name=qph_setvalue;
-            vary, name=qpv_setvalue;
-            jacobian, calls=10, tolerance=1e-25;
-            endmatch;""")
+        # Use correct tune and chromaticity matching macros
+        madx.use('sps')
+        madx.exec(f"sps_match_tunes({self.qx0}, {self.qy0});")
+        madx.exec("sps_define_sext_knobs();")
+        madx.exec("sps_set_chroma_weights_q26();")
+        madx.input(f"""match;
+        global, dq1={self.dq1};
+        global, dq2={self.dq2};
+        vary, name=qph_setvalue;
+        vary, name=qpv_setvalue;
+        jacobian, calls=10, tolerance=1e-25;
+        endmatch;""")
             
-        except FileNotFoundError:
-            raise FileExistsError('\nHave to generate sequence first!\n')
-
+        # Assign magnet errors - disappears if 'use' command is put in
+        if add_non_linear_magnet_errors:
+            madx.call('{}/sps_setMultipoles_upto7.cmd'.format(error_file_path))
+            madx.input('exec, set_Multipoles_26GeV;')
+            madx.call('{}/sps_assignMultipoles_upto7.cmd'.format(error_file_path))
+            madx.input('exec, AssignMultipoles;')
+            print('\nReassigned magnet errors!\n')
+        
         return madx
 
 
-    def load_madx_SPS_from_job(self, make_thin=True, attach_beam=True):
+    def load_madx_SPS_from_job(self, attach_beam=True):
         """
         Loads default SPS Pb sequence at flat bottom for ions as in 
         https://gitlab.cern.ch/acc-models/acc-models-sps/-/tree/2021/scenarios/lhc/lhc_ion?ref_type=heads 
@@ -622,8 +617,8 @@ class SPS_sequence_maker:
         
         Parameters:
         -----------
-        make_thin : bool
-            flag to slice sequence or not
+        attach_beam : bool
+            flag to include beam
         
         Returns: 
         --------    
@@ -643,30 +638,6 @@ class SPS_sequence_maker:
                Beam, particle=ion, mass={}, charge={}, pc = {}, sequence='sps'; \
                DPP:=BEAM->SIGE*(BEAM->ENERGY/BEAM->PC)^2;  \
                ".format(self.m_in_eV/1e9, self.Q_SPS, self.p_inj_SPS/1e9))   # convert mass to GeV/c^2
-
-        # Flatten and slice line
-        if make_thin:
-            madx.use(sequence='sps')
-            madx.input("seqedit, sequence=SPS;")
-            madx.input("flatten;")
-            madx.input("endedit;")
-            madx.use("sps")
-            madx.input("select, flag=makethin, slice=5, thick=false;")
-            madx.input("makethin, sequence=sps, style=teapot, makedipedge=True;")
-
-        # Use correct tune and chromaticity matching macros
-        madx.call("{}/toolkit/macro.madx".format(optics))
-        madx.use('sps')
-        madx.exec(f"sps_match_tunes({self.qx0}, {self.qy0});")
-        madx.exec("sps_define_sext_knobs();")
-        madx.exec("sps_set_chroma_weights_q26();")
-        madx.input(f"""match;
-        global, dq1={self.dq1};
-        global, dq2={self.dq2};
-        vary, name=qph_setvalue;
-        vary, name=qpv_setvalue;
-        jacobian, calls=10, tolerance=1e-25;
-        endmatch;""")
 
         return madx
 
