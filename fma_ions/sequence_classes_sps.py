@@ -198,7 +198,8 @@ class SPS_sequence_maker:
         twiss_thin = madx.twiss()  
         
         line = xt.Line.from_madx_sequence(madx.sequence['sps'], deferred_expressions=deferred_expressions,
-                                          install_apertures=add_aperture, apply_madx_errors=add_non_linear_magnet_errors)
+                                          install_apertures=add_aperture, apply_madx_errors=add_non_linear_magnet_errors,
+                                          enable_field_errors=add_non_linear_magnet_errors, enable_align_errors=add_non_linear_magnet_errors)
         line.build_tracker()
         #madx_beam = madx.sequence['sps'].beam
         
@@ -296,7 +297,8 @@ class SPS_sequence_maker:
     
             # Convert to line
             line = xt.Line.from_madx_sequence(madx.sequence['sps'], deferred_expressions=True, install_apertures=add_aperture,
-                                              add_non_linear_magnet_errors=add_non_linear_magnet_errors)
+                                              apply_madx_errors=add_non_linear_magnet_errors, 
+                                              enable_field_errors=add_non_linear_magnet_errors, enable_align_errors=add_non_linear_magnet_errors)
             m_in_eV, p_inj_SPS = self.generate_SPS_beam()
             
             line.particle_ref = xp.Particles(
@@ -566,16 +568,6 @@ class SPS_sequence_maker:
             else:
                 madx.call('{}/qy_dot{}/SPS_2021_Pb_nominal.seq'.format(sequence_path, Qy_frac))
 
-            # Add the extra magnet errors
-            if add_non_linear_magnet_errors:
-                madx.use(sequence='sps')
-                madx.call('{}/sps_setMultipoles_upto7.cmd'.format(error_file_path))
-                madx.input('exec, set_Multipoles_26GeV;')
-                madx.call('{}/sps_assignMultipoles_upto7.cmd'.format(error_file_path))
-                madx.input('exec, AssignMultipoles;')
-                errtab_ions = madx.table.errtab
-                print('Added non-linear errors!')
-
             # Flatten and slice line
             if make_thin:
                 madx.use(sequence='sps')
@@ -585,6 +577,16 @@ class SPS_sequence_maker:
                 madx.use("sps")
                 madx.input("select, flag=makethin, slice=5, thick=false;")
                 madx.input("makethin, sequence=sps, style=teapot, makedipedge=True;")
+
+            # Add the extra magnet errors
+            if add_non_linear_magnet_errors:
+                madx.use(sequence='sps')
+                madx.call('{}/sps_setMultipoles_upto7.cmd'.format(error_file_path))
+                madx.input('exec, set_Multipoles_26GeV;')
+                madx.call('{}/sps_assignMultipoles_upto7.cmd'.format(error_file_path))
+                madx.input('exec, AssignMultipoles;')
+                errtab_ions = madx.table.errtab
+                print('Added non-linear errors!')
 
             # Add aperture classes
             if add_aperture:
