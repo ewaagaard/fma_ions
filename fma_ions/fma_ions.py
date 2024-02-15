@@ -28,7 +28,7 @@ plt.rcParams.update(
 )
 
 
-import NAFFlib
+import nafflib
 from .sequence_classes_ps import PS_sequence_maker, BeamParameters_PS
 from .sequence_classes_sps import SPS_sequence_maker, BeamParameters_SPS
 from .resonance_lines import resonance_lines
@@ -582,22 +582,22 @@ class FMA:
             if i_part % 2000 == 0:
                 print('NAFF algorithm of particle {}'.format(i_part))
             
-            # Find dominant frequency with NAFFlib - also remember to subtract mean 
-            Qx_1_raw = NAFFlib.get_tunes(x_tbt_data[i_part, :split_ind] \
-                                            - np.mean(x_tbt_data[i_part, :split_ind]), 2)[0]
-            Qx_1[i_part] = Qx_1_raw[np.argmax(Qx_1_raw > Qmin)]  # find most dominant tune larger than this value
+            # Find dominant frequency with nafflib - also remember to subtract mean 
+            Qx_1_raw = nafflib.tune(x_tbt_data[i_part, :split_ind] \
+                                            - np.mean(x_tbt_data[i_part, :split_ind]))
+            Qx_1[i_part] = Qx_1_raw #[np.argmax(Qx_1_raw > Qmin)]  # find most dominant tune larger than this value
             
-            Qy_1_raw = NAFFlib.get_tunes(y_tbt_data[i_part, :split_ind] \
-                                            - np.mean(y_tbt_data[i_part, :split_ind]), 2)[0]
-            Qy_1[i_part] = Qy_1_raw[np.argmax(Qy_1_raw > Qmin)]
+            Qy_1_raw = nafflib.tune(y_tbt_data[i_part, :split_ind] \
+                                            - np.mean(y_tbt_data[i_part, :split_ind]))
+            Qy_1[i_part] = Qy_1_raw #[np.argmax(Qy_1_raw > Qmin)]
                 
-            Qx_2_raw = NAFFlib.get_tunes(x_tbt_data[i_part, split_ind:] \
-                                            - np.mean(x_tbt_data[i_part, split_ind:]), 2)[0]
-            Qx_2[i_part] = Qx_2_raw[np.argmax(Qx_2_raw > Qmin)]
+            Qx_2_raw = nafflib.tune(x_tbt_data[i_part, split_ind:] \
+                                            - np.mean(x_tbt_data[i_part, split_ind:]))
+            Qx_2[i_part] = Qx_2_raw #[np.argmax(Qx_2_raw > Qmin)]
                 
-            Qy_2_raw = NAFFlib.get_tunes(y_tbt_data[i_part, :split_ind] \
-                                            - np.mean(y_tbt_data[i_part, :split_ind]), 2)[0]
-            Qy_2[i_part] = Qy_2_raw[np.argmax(Qy_2_raw > Qmin)]
+            Qy_2_raw = nafflib.tune(y_tbt_data[i_part, :split_ind] \
+                                            - np.mean(y_tbt_data[i_part, :split_ind]))
+            Qy_2[i_part] = Qy_2_raw #[np.argmax(Qy_2_raw > Qmin)]
         
         # Change all zero-valued tunes to NaN
         Qx_1[Qx_1 == 0.0] = np.nan
@@ -764,7 +764,8 @@ class FMA:
                 Qy_frac=25,
                 make_single_Jy_trace=False,
                 use_symmetric_lattice=False,
-                add_non_linear_magnet_errors=False
+                add_non_linear_magnet_errors=False,
+                load_tune_data=True
                 ):
         """
         Default FMA analysis for SPS Pb ions, plot final results and tune diffusion in initial distribution
@@ -784,6 +785,8 @@ class FMA:
             flag to use symmetric lattice without QFA and QDA
         add_non_linear_magnet_errors : bool
             whether to add non-linear chromatic errors for SPS
+        load_tune_data : bool 
+            whether to load tune data or not    
         
         Returns:
         --------
@@ -807,9 +810,12 @@ class FMA:
             particles = self.generate_particles(line, beamParams, make_single_Jy_trace)
             x, y = self.track_particles(particles, line)
   
-        # Extract diffusion coefficient from FMA of turn-by-turn data
-        if load_tbt_data:
-            Qx, Qy, d = self.load_tune_data()
+        # Extract diffusion coefficient from FMA of turn-by-turn data - load if desired, or remake harmonic analysis
+        if load_tune_data:
+            try:
+                Qx, Qy, d = self.load_tune_data()
+            except FileNotFoundError:
+                Qx, Qy, d = self.run_FMA(x, y, Qmin=self.Q_min_SPS)
         else:
             Qx, Qy, d = self.run_FMA(x, y, Qmin=self.Q_min_SPS)
             

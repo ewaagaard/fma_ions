@@ -10,7 +10,7 @@ import matplotlib.gridspec as gridspec
 from pathlib import Path
 import json
 import os
-import NAFFlib
+import nafflib
 
 import xtrack as xt
 import xpart as xp
@@ -623,12 +623,12 @@ class Tune_Ripple_SPS:
                     print('Tune after turn {}'.format(i))
                     
                 # Find dominant frequency with NAFFlib - also remember to subtract mean 
-                Qx_raw = NAFFlib.get_tunes(x_tbt_data[i_part, i:i+k] \
-                                                - np.mean(x_tbt_data[i_part, i:i+k]), 2)[0]
-                Qx[i_part, i] = Qx_raw[np.argmax(Qx_raw > Qmin)]  # find most dominant tune larger than this value
-                Qy_raw = NAFFlib.get_tunes(y_tbt_data[i_part, i:i+k] \
-                                                - np.mean(y_tbt_data[i_part, i:i+k]), 2)[0]
-                Qy[i_part, i] = Qy_raw[np.argmax(Qy_raw > Qmin)]
+                Qx_raw = nafflib.tune(x_tbt_data[i_part, i:i+k] \
+                                                - np.mean(x_tbt_data[i_part, i:i+k]))
+                Qx[i_part, i] = Qx_raw #[np.argmax(Qx_raw > Qmin)]  # find most dominant tune larger than this value
+                Qy_raw = nafflib.tune(y_tbt_data[i_part, i:i+k] \
+                                                - np.mean(y_tbt_data[i_part, i:i+k]))
+                Qy[i_part, i] = Qy_raw #[np.argmax(Qy_raw > Qmin)]
                 
         
         # Change all zero-valued tunes to NaN
