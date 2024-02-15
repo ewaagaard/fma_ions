@@ -194,8 +194,7 @@ class SPS_sequence_maker:
                                          add_non_linear_magnet_errors=add_non_linear_magnet_errors, add_aperture=add_aperture)
                 
         line = xt.Line.from_madx_sequence(madx.sequence['sps'], deferred_expressions=deferred_expressions,
-                                          install_apertures=add_aperture, apply_madx_errors=add_non_linear_magnet_errors,
-                                          enable_field_errors=add_non_linear_magnet_errors, enable_align_errors=add_non_linear_magnet_errors)
+                                          install_apertures=add_aperture, apply_madx_errors=add_non_linear_magnet_errors)
         line.build_tracker()
         #madx_beam = madx.sequence['sps'].beam
         
@@ -289,7 +288,6 @@ class SPS_sequence_maker:
             #sps = SPS_sequence_maker()
             madx = self.load_simple_madx_seq(use_symmetric_lattice, Qy_frac=25, add_non_linear_magnet_errors=add_non_linear_magnet_errors,
                                              add_aperture=add_aperture)
-            madx.use(sequence="sps")
     
             # Convert to line
             line = xt.Line.from_madx_sequence(madx.sequence['sps'], deferred_expressions=True, install_apertures=add_aperture,
