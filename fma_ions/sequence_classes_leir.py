@@ -130,7 +130,7 @@ class LEIR_sequence_maker:
         
 
     def load_xsuite_line_and_twiss(self, beta_beat=None, save_new_xtrack_line=True,
-                                   deferred_expressions=False):
+                                   deferred_expressions=False, add_aperture=False):
         """
         Method to load pre-generated LEIR lattice files for Xsuite, or generate new if does not exist
         
@@ -140,15 +140,18 @@ class LEIR_sequence_maker:
             relative beta beat, i.e. relative difference between max beta function and max original beta function
         deferred_expressions : bool
             whether to use deferred expressions while importing madx sequence into xsuite
+        add_aperture : bool
+            whether to call aperture files 
         
         Returns:
         -------
         xsuite line
         twiss - twiss table from xtrack 
         """
+        aperture_str = 'with_aperture' if add_aperture else ''
         
         # Load LEIR line, otherwise generate new one
-        leir_fname = '{}/LEIR_2021_Pb_ions.json'.format(sequence_path)
+        leir_fname = '{}/LEIR_2021_Pb_ions{}.json'.format(sequence_path, aperture_str)
         print('Attempting to load {}'.format(leir_fname))
         
         try:         
@@ -156,7 +159,7 @@ class LEIR_sequence_maker:
             print('\nLoaded LEIR json sequence file\n')
         except FileNotFoundError:
             print('\nDid not find LEIR json sequence file - generating new!\n')
-            leir_line = self.generate_xsuite_seq(deferred_expressions=False, add_aperture=False, save_xsuite_seq=True)
+            leir_line = self.generate_xsuite_seq(deferred_expressions=False, add_aperture=add_aperture, save_xsuite_seq=True)
         
         twiss_leir = leir_line.twiss() 
         
@@ -192,6 +195,7 @@ class LEIR_sequence_maker:
         --------
         None
         """
+        aperture_str = 'with_aperture' if add_aperture else ''
         
         # Load madx instance
         try:
@@ -201,12 +205,13 @@ class LEIR_sequence_maker:
             madx.use(sequence='leir')
         except FileNotFoundError:
             madx = self.load_madx(add_aperture=add_aperture)
+            madx.command.use(sequence='leir')
 
         # Load beam parameters from injection energy
         self.m_in_eV, self.gamma_LEIR_inj, self.p_LEIR_extr = self.generate_LEIR_beam()
 
         # Convert madx sequence to xtrack sequence
-        line = xt.Line.from_madx_sequence(madx.sequence['leir'], deferred_expressions=deferred_expressions)
+        line = xt.Line.from_madx_sequence(madx.sequence['leir'], deferred_expressions=deferred_expressions, install_apertures=add_aperture)
         line.build_tracker()
 
         # Build reference particle for line
@@ -246,7 +251,7 @@ class LEIR_sequence_maker:
             madx.command.save(sequence='leir', file='{}/LEIR_2021_Pb_ions.seq'.format(sequence_path), beam=True)
 
         if save_xsuite_seq:
-            with open('{}/LEIR_2021_Pb_ions.json'.format(sequence_path), 'w') as fid:
+            with open('{}/LEIR_2021_Pb_ions{}.json'.format(sequence_path, aperture_str), 'w') as fid:
                 json.dump(line.to_dict(), fid, cls=xo.JEncoder)
 
         if return_xsuite_line:
