@@ -6,4 +6,4 @@ from .sequence_classes_leir import LEIR_sequence_maker, BeamParameters_LEIR
 from .resonance_lines import resonance_lines
 from .dynamic_aperture import Dynamic_Aperture
 from .tune_ripple import Tune_Ripple_SPS
-from .flat_bottom_tracking import Flat_Bottom_Tracker
+from .flat_bottom_tracking import SPS_Flat_Bottom_Tracker

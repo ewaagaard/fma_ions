@@ -38,20 +38,29 @@ particles2 = xp.generate_matched_gaussian_bunch(_context=context2,
         particle_ref=line2.particle_ref, line=line2)
 
 # Particles are allocated on the context chosen for the line.
+# Also test loading numpy arrays
+x = np.zeros([n_part, n_turns])
+y = np.zeros([n_part, n_turns])
+x2 = np.zeros([n_part, n_turns])
+y2 = np.zeros([n_part, n_turns])
 
 #### CPU tracking ####
 time00 = time.time()
 for turn in range(n_turns):
    line.track(particles)
+   x[:, turn] = particles.x
+   y[:, turn] = particles.y
    if turn % 5 == 0:
        print('Tracking turn {}'.format(turn))
 time01 = time.time()
 dt0 = time01-time00
 
-#### GPU tracking ####
+#### GPU tracking - remember to get it from CPU context ####
 time10 = time.time()
 for turn in range(n_turns):
    line2.track(particles2)
+   x2[:, turn] = particles2.x.get()
+   y2[:, turn] = particles2.y.get()
    if turn % 5 == 0:
        print('Tracking turn {}'.format(turn))
 time11 = time.time()
