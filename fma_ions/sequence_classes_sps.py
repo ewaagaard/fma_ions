@@ -153,7 +153,8 @@ class SPS_sequence_maker:
                             use_symmetric_lattice=False,
                             add_non_linear_magnet_errors=False,
                             deferred_expressions=False,
-                            add_aperture=False):
+                            add_aperture=False,
+                            nr_slices=5):
         """
         Load MADX line, match tunes and chroma, add RF and generate Xsuite line
         
@@ -173,6 +174,8 @@ class SPS_sequence_maker:
             whether to use deferred expressions while importing madx sequence into xsuite    
         add_aperture : bool
             whether to include aperture for SPS
+        nr_slices : int
+            number of slices when slicing MADX sequence from thick to thin
         
         Returns:
         --------
@@ -191,7 +194,8 @@ class SPS_sequence_maker:
         
         # Load madx instance with SPS sequence
         madx = self.load_simple_madx_seq(use_symmetric_lattice=use_symmetric_lattice, 
-                                         add_non_linear_magnet_errors=add_non_linear_magnet_errors, add_aperture=add_aperture)
+                                         add_non_linear_magnet_errors=add_non_linear_magnet_errors, add_aperture=add_aperture,
+                                         nr_slices=nr_slices)
                 
         line = xt.Line.from_madx_sequence(madx.sequence['sps'], deferred_expressions=deferred_expressions,
                                           install_apertures=add_aperture, apply_madx_errors=add_non_linear_magnet_errors)
@@ -532,7 +536,8 @@ class SPS_sequence_maker:
 
 
     def load_simple_madx_seq(self, use_symmetric_lattice=False, Qy_frac=25,
-                             add_non_linear_magnet_errors=False, make_thin=True, add_aperture=False):
+                             add_non_linear_magnet_errors=False, make_thin=True, add_aperture=False,
+                             nr_slices=5):
         """
         Loads default SPS Pb sequence at flat bottom. 
         
@@ -548,6 +553,8 @@ class SPS_sequence_maker:
             whether to slice the sequence or not
         add_aperture : bool
             whether to include aperture for SPS
+        nr_slices : int
+            number of slices when slicing MADX sequence from thick to thin
         
         Returns: 
         --------    
@@ -572,7 +579,7 @@ class SPS_sequence_maker:
             madx.input("flatten;")
             madx.input("endedit;")
             madx.use("sps")
-            madx.input("select, flag=makethin, slice=5, thick=false;")
+            madx.input("select, flag=makethin, slice={}, thick=false;".format(nr_slices))
             madx.input("makethin, sequence=sps, style=teapot, makedipedge=True;")
 
         madx.call("{}/toolkit/macro.madx".format(optics))
@@ -585,6 +592,16 @@ class SPS_sequence_maker:
 
         # Use correct tune and chromaticity matching macros
         madx.use('sps')
+            
+        # Assign magnet errors - disappears if 'use' command is put in
+        if add_non_linear_magnet_errors:
+            madx.call('{}/sps_setMultipoles_upto7.cmd'.format(error_file_path))
+            madx.input('exec, set_Multipoles_26GeV;')
+            madx.call('{}/sps_assignMultipoles_upto7.cmd'.format(error_file_path))
+            madx.input('exec, AssignMultipoles;')
+            print('\nReassigned magnet errors!\n')
+        print('Sliced sequences in {}'.format(nr_slices))
+
         madx.exec(f"sps_match_tunes({self.qx0}, {self.qy0});")
         madx.exec("sps_define_sext_knobs();")
         madx.exec("sps_set_chroma_weights_q26();")
@@ -595,14 +612,6 @@ class SPS_sequence_maker:
         vary, name=qpv_setvalue;
         jacobian, calls=10, tolerance=1e-25;
         endmatch;""")
-            
-        # Assign magnet errors - disappears if 'use' command is put in
-        if add_non_linear_magnet_errors:
-            madx.call('{}/sps_setMultipoles_upto7.cmd'.format(error_file_path))
-            madx.input('exec, set_Multipoles_26GeV;')
-            madx.call('{}/sps_assignMultipoles_upto7.cmd'.format(error_file_path))
-            madx.input('exec, AssignMultipoles;')
-            print('\nReassigned magnet errors!\n')
         
         return madx
 
