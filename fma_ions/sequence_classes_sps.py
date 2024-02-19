@@ -591,8 +591,8 @@ class SPS_sequence_maker:
             madx.call('{}/aperture/APERTURE_SPS_LS2_30-SEP-2020.seq'.format(optics))
 
         # Use correct tune and chromaticity matching macros
-        madx.use('sps')
-            
+        madx.command.use(sequence='sps')       
+        
         # Assign magnet errors - disappears if 'use' command is put in
         if add_non_linear_magnet_errors:
             madx.call('{}/sps_setMultipoles_upto7.cmd'.format(error_file_path))
@@ -636,15 +636,20 @@ class SPS_sequence_maker:
         madx = Madx()
         madx.call("{}/sps.seq".format(optics))
         madx.call("{}/strengths/lhc_ion.str".format(optics))
-        madx.call("{}/beams/beam_lhc_ion_injection.madx".format(optics))  # attach beam just in case, otherwise error table will be empty
         
         # Generate SPS beam - use default Pb or make custom beam
         self.m_in_eV, self.p_inj_SPS = self.generate_SPS_beam()
         
         madx.input(" \
                Beam, particle=ion, mass={}, charge={}, pc = {}, sequence='sps'; \
-               DPP:=BEAM->SIGE*(BEAM->ENERGY/BEAM->PC)^2;  \
                ".format(self.m_in_eV/1e9, self.Q_SPS, self.p_inj_SPS/1e9))   # convert mass to GeV/c^2
+               
+        ''' 
+        Originally also had   
+        DPP:=BEAM->SIGE*(BEAM->ENERGY/BEAM->PC)^2;
+        but problematic when importing deferred expressions!
+        ''' 
+        madx.command.use(sequence='sps')
 
         return madx
 
