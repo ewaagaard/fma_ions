@@ -13,92 +13,55 @@ import xobjects as xo
 from .sequence_classes_ps import PS_sequence_maker, BeamParameters_PS
 from .sequence_classes_sps import SPS_sequence_maker, BeamParameters_SPS
 from .fma_ions import FMA
-
-####### Helper functions for bunch length, momentum spread and geometric emittances #######
-def _bunch_length(parts: xp.Particles) -> float:
-    return np.std(parts.zeta[parts.state > 0])
-
-
-def _sigma_delta(parts: xp.Particles) -> float:
-    return np.std(parts.delta[parts.state > 0])
-
-
-def _geom_epsx(parts: xp.Particles, twiss: xt.TwissTable) -> float:
-    """
-    We index dx and betx at 0 which corresponds to the beginning / end of
-    the line, since this is where / when we will be applying the kicks.
-    """
-    sigma_x = np.std(parts.x[parts.state > 0])
-    sig_delta = _sigma_delta(parts)
-    return (sigma_x**2 - (twiss["dx"][0] * sig_delta) ** 2) / twiss["betx"][0]
-
-
-def _geom_epsy(parts: xp.Particles, twiss: xt.TwissTable) -> float:
-    """
-    We index dy and bety at 0 which corresponds to the beginning / end of
-    the line, since this is where / when we will be applying the kicks.
-    """
-    sigma_y = np.std(parts.y[parts.state > 0])
-    sig_delta = _sigma_delta(parts)
-    return (sigma_y**2 - (twiss["dy"][0] * sig_delta) ** 2) / twiss["bety"][0]
-
+from .helpers import Records, _bunch_length, _geom_epsx, _geom_epsy, _sigma_delta
 
 @dataclass
-class Records:
-    x: np.ndarray
-    y: np.ndarray
-    nepsilon_x: np.ndarray
-    nepsilon_y: np.ndarray
-    sigma_delta: np.ndarray
-    bunch_length: np.ndarray
-    Nb: np.ndarray
-    state: np.ndarray
-
-    def update_at_turn(self, turn: int, parts: xp.Particles, twiss: xt.TwissTable):
-        """Automatically update the records at given turn from the xpart.Particles."""
-        self.x = parts.x[parts.state > 0]
-        self.y = parts.y[parts.state > 0]
-        self.nepsilon_x[turn] = _geom_epsx(parts, twiss) * parts.beta0[0] * parts.gamma0[0]
-        self.nepsilon_y[turn] = _geom_epsy(parts, twiss) * parts.beta0[0] * parts.gamma0[0]
-        self.Nb[turn] = parts.weight[0]*len(parts.x[parts.state > 0])
-        self.sigma_delta[turn] = _sigma_delta(parts)
-        self.bunch_length[turn] = _bunch_length(parts)
-        self.state[turn] = parts.state
-
-    @classmethod
-    def init_zeroes(cls, n_turns: int) -> Self:  # noqa: F821
-        """Initialize the dataclass with arrays of zeroes."""
-        return cls(
-            x=np.zeros(n_turns, dtype=float),
-            y=np.zeros(n_turns, dtype=float),
-            nepsilon_x=np.zeros(n_turns, dtype=float),
-            nepsilon_y=np.zeros(n_turns, dtype=float),
-            Nb=np.zeros(n_turns, dtype=float),
-            sigma_delta=np.zeros(n_turns, dtype=float),
-            bunch_length=np.zeros(n_turns, dtype=float),
-            state=np.zeros(n_turns, dtype=float)
-        )
-#############################################################################
-
-
 class SPS_Flat_Bottom_Tracker:
     """
-    Container to track particles 
+    Container to track xp.Particles at SPS flat bottom and store beam parameter results
     """
-    num_part:
-    num_turns:
+    num_part: int = 5000
+    num_turns: int = 1000
+    Qy_frac: int = 25
 
-    def track_SPS(self, sc_mode='frozen', save_tbt_data=True, context='gpu'):
+    def track_SPS(self, sc_mode='frozen', 
+                  save_tbt_data=True, 
+                  context='gpu',
+                  add_non_linear_magnet_errors=False, 
+                  add_aperture=True,
+                  beta_beat=None, 
+                  beamParams=None,
+                  install_SC_on_line=True, 
+                  SC_mode='frozen'
+                  ):
         """
         save_tbt: bool
             whether to save turn-by-turn data from tracking
         context : str
             'gpu' or 'cpu'
+        Qy_frac : int
+            fractional part of vertical tune
+        add_non_linear_magnet_errors : bool
+            whether to add line with non-linear chromatic errors
+        add_aperture : bool
+            whether to include aperture for SPS
+        beta_beat : float
+            relative beta beat, i.e. relative difference between max beta function and max original beta function
+        beamParams : dataclass
+            container of exn, eyn, Nb and sigma_z. Default 'None' will load nominal SPS beam parameters 
+        install_SC_on_line : bool
+            whether to install space charge
+        SC_mode : str
+            type of space charge - 'frozen' (recommended), 'quasi-frozen' or 'PIC'
 
         Returns:
         -------
         tbt : data class with numpy.ndarrays
         """
+        # If specific beam parameters are not provided, load default SPS beam parameters
+        if beamParams is None:
+            beamParams = BeamParameters_SPS
+
         # Select relevant context
         if context=='gpu':
             context = xo.ContextCupy()
@@ -107,30 +70,23 @@ class SPS_Flat_Bottom_Tracker:
         else:
             raise ValueError('Context is either "gpu" or "cpu"')
 
-        # Get SPS Pb line with deferred expressions
+        # Get SPS Pb line - with beta-beat, aperture and non-linear magnet errors if desired
         sps = SPS_sequence_maker()
-        line, twiss = sps.load_SPS_line_and_twiss(Qy_frac=Qy_frac, add_aperture=add_aperture, beta_beat=None,
+        line, twiss = sps.load_SPS_line_and_twiss(Qy_frac=self.Qy_frac, add_aperture=add_aperture, beta_beat=None,
                                                    add_non_linear_magnet_errors=add_non_linear_magnet_errors)
-        line.discard_tracker()
-        line.build_tracker(_context=context)
         
 
-        # Fix SC, beta-beat and non-linear magnet errors
-
-        # Install SC, track particles and observe tune diffusion
-        
-        # Add beta-beat if desired 
-        if beta_beat is not None:
-            sps_seq = SPS_sequence_maker()
-            line = sps_seq.generate_xsuite_seq_with_beta_beat(beta_beat=beta_beat, line=line, plane=plane_beta_beat)
-
+    
+        # Install SC and build tracker
         if install_SC_on_line:
             fma_sps = FMA()
-            line = fma_sps.install_SC_and_get_line(line, BeamParameters_SPS(), optimize_for_tracking=False)
+            line = fma_sps.install_SC_and_get_line(line, beamParams, mode=SC_mode, optimize_for_tracking=False, context=context)
             print('Installed space charge on line\n')
-        kqf_vals, kqd_vals, turns = self.load_k_from_xtrack_matching(dq=dq, plane=plane)
+        else:
+            line.discard_tracker()
+            line.build_tracker(_context=context)
 
-        line = self.install_SC_and_get_line(line0, beamParams)
+
         
 
 

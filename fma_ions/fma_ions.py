@@ -89,7 +89,12 @@ class FMA:
     Q_min_PS: float = 0.015
     
     
-    def install_SC_and_get_line(self, line, beamParams, mode='frozen', optimize_for_tracking=True):
+    def install_SC_and_get_line(self, 
+                                line, 
+                                beamParams, 
+                                mode='frozen', 
+                                optimize_for_tracking=True,
+                                context=None):
         """
         Install frozen Space Charge (SC) and generate particles with provided Xsuite line and beam parameters
         
@@ -103,14 +108,17 @@ class FMA:
             type of space charge ('frozen' is recommended)
         optimize_for_tracking : flag
             remove multiple drift spaces and line variables. Should be 'False' if knobs are used
+        context : xo.context
+            xojebts context for tracking
         
         Returns:
         -------
         line : xtrack.line
             xtrack line with space charge installed 
         """
-        # Choose context, and remove tracker if already exists 
-        context = xo.ContextCpu()  # to be upgrade to GPU if needed 
+        # Choose default context if not given, and remove tracker if already exists 
+        if context is None:
+            context = xo.ContextCpu()
         line.discard_tracker()
         
         # Extract Twiss table from before installing space charge
