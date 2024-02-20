@@ -24,20 +24,41 @@ class SPS_Flat_Bottom_Tracker:
     num_turns: int = 1000
     Qy_frac: int = 25
 
-    def track_SPS(self, sc_mode='frozen', 
+    def generate_particles(self, line: xt.Line, context : xo.context, use_Gaussian_distribution=True, beamParams=None):
+        """
+        Generate xp.Particles object: matched Gaussian or other types (to be implemented)
+        """
+        if beamParams is None:
+            beamParams = BeamParameters_SPS
+
+        if use_Gaussian_distribution:
+            particles = xp.generate_matched_gaussian_bunch(_context=context,
+                num_particles=self.num_part, 
+                total_intensity_particles=beamParams.Nb,
+                nemitt_x=beamParams.exn, 
+                nemitt_y=beamParams.eyn, 
+                sigma_z= beamParams.sigma_z,
+                particle_ref=line.particle_ref, 
+                line=line)
+            
+        return particles
+
+
+    def track_SPS(self, 
                   save_tbt_data=True, 
-                  context='gpu',
+                  which_context='gpu',
                   add_non_linear_magnet_errors=False, 
                   add_aperture=True,
                   beta_beat=None, 
                   beamParams=None,
                   install_SC_on_line=True, 
-                  SC_mode='frozen'
+                  SC_mode='frozen',
+                  use_Gaussian_distribution=True
                   ):
         """
         save_tbt: bool
             whether to save turn-by-turn data from tracking
-        context : str
+        which_context : str
             'gpu' or 'cpu'
         Qy_frac : int
             fractional part of vertical tune
@@ -53,6 +74,8 @@ class SPS_Flat_Bottom_Tracker:
             whether to install space charge
         SC_mode : str
             type of space charge - 'frozen' (recommended), 'quasi-frozen' or 'PIC'
+        use_Gaussian_distribution : bool
+            whether to use Gaussian particle distribution for tracking
 
         Returns:
         -------
@@ -63,37 +86,34 @@ class SPS_Flat_Bottom_Tracker:
             beamParams = BeamParameters_SPS
 
         # Select relevant context
-        if context=='gpu':
+        if which_context=='gpu':
             context = xo.ContextCupy()
-        elif context=='cpu':
+        elif which_context=='cpu':
             context = xo.ContextCpu()
         else:
             raise ValueError('Context is either "gpu" or "cpu"')
 
         # Get SPS Pb line - with beta-beat, aperture and non-linear magnet errors if desired
         sps = SPS_sequence_maker()
-        line, twiss = sps.load_SPS_line_and_twiss(Qy_frac=self.Qy_frac, add_aperture=add_aperture, beta_beat=None,
+        line0, twiss = sps.load_xsuite_line_and_twiss(Qy_frac=self.Qy_frac, add_aperture=add_aperture, beta_beat=beta_beat,
                                                    add_non_linear_magnet_errors=add_non_linear_magnet_errors)
         
-
-    
         # Install SC and build tracker
         if install_SC_on_line:
             fma_sps = FMA()
-            line = fma_sps.install_SC_and_get_line(line, beamParams, mode=SC_mode, optimize_for_tracking=False, context=context)
+            line = fma_sps.install_SC_and_get_line(line0, beamParams, mode=SC_mode, optimize_for_tracking=False, context=context)
             print('Installed space charge on line\n')
         else:
+            line = line0.copy()
             line.discard_tracker()
             line.build_tracker(_context=context)
 
+        # Generate particles object to track
+        particles = self.generate_particles(line=line, context=context, use_Gaussian_distribution=use_Gaussian_distribution,
+                                            beamParams=beamParams)
 
-        
-
-
-        # Initialize the dataclasses
+        # Initialize the dataclasses and store the initial values
         tbt = Records.init_zeroes(self.num_turns)
-
-        # Store the initial values
         tbt.update_at_turn(0, particles, twiss)
 
         print('\nStarting tracking...')
@@ -106,6 +126,8 @@ class SPS_Flat_Bottom_Tracker:
             line.track(particles, num_turns=1)
             tbt.update_at_turn(turn, particles, twiss)
             i += 1
+
+        return tbt
 
         # Save data
         # Analyze data / plot
