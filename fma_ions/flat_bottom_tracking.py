@@ -195,7 +195,7 @@ class SPS_Flat_Bottom_Tracker:
         return tbt
 
 
-    def plot_tracking_data(self, tbt):
+    def plot_tracking_data(self, tbt, show_plot=False):
         """Generates emittance plots from TBT data class"""
 
         turns = np.arange(self.num_turns, dtype=int) 
@@ -226,10 +226,12 @@ class SPS_Flat_Bottom_Tracker:
         ax22.set_xlabel('Turns')    
         f2.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
 
-        plt.show()
-
         f.savefig('{}/epsilon_Nb.png'.format(self._output_folder), dpi=250)
         f2.savefig('{}/sigma_z_and_delta.png'.format(self._output_folder), dpi=250)
+
+        if show_plot:
+            plt.show()
+        plt.close()
 
 
     def load_tbt_data_and_plot(self):

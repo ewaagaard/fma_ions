@@ -358,7 +358,7 @@ class SPS_sequence_maker:
                                                          add_non_linear_magnet_errors=add_non_linear_magnet_errors, add_aperture=add_aperture)
         
         self._line0 = self._line.copy()
-        self._twiss0 = self._line0.twiss()
+        # self._twiss0 = self._line0.twiss() # --> unwanted if beta-beat is involved
         
         # Introduce beta to arbitrary QD 
         print('\nFinding optimal QD error for chosen beta-beat {}...\n'.format(beta_beat))
