@@ -15,6 +15,9 @@ from .sequence_classes_sps import SPS_sequence_maker, BeamParameters_SPS
 from .fma_ions import FMA
 from .helpers import Records, _bunch_length, _geom_epsx, _geom_epsy, _sigma_delta
 
+from xibs.inputs import BeamParameters, OpticsParameters
+from xibs.kicks import KineticKickIBS
+
 import os
 import matplotlib.pyplot as plt
 
@@ -58,7 +61,9 @@ class SPS_Flat_Bottom_Tracker:
                   beamParams=None,
                   install_SC_on_line=True, 
                   SC_mode='frozen',
-                  use_Gaussian_distribution=True
+                  use_Gaussian_distribution=True,
+                  apply_kinetic_IBS_kicks=False,
+                  harmonic_nb = 4653
                   ):
         """
         save_tbt: bool
@@ -81,10 +86,10 @@ class SPS_Flat_Bottom_Tracker:
             type of space charge - 'frozen' (recommended), 'quasi-frozen' or 'PIC'
         use_Gaussian_distribution : bool
             whether to use Gaussian particle distribution for tracking
-
-        Returns:
-        -------
-        tbt : data class with numpy.ndarrays
+        add_kinetic_IBS_kicks : bool
+            whether to apply kinetic kicks from xibs 
+        harmonic_nb : int
+            harmonic used for SPS RF system
         """
         # If specific beam parameters are not provided, load default SPS beam parameters
         if beamParams is None:
@@ -102,6 +107,11 @@ class SPS_Flat_Bottom_Tracker:
         sps = SPS_sequence_maker()
         line0, twiss = sps.load_xsuite_line_and_twiss(Qy_frac=self.Qy_frac, add_aperture=add_aperture, beta_beat=beta_beat,
                                                    add_non_linear_magnet_errors=add_non_linear_magnet_errors)
+        
+        # Add longitudinal limit rectangle - to kill particles that fall out of bucket
+        bucket_length = line.get_length()/harmonic_nb
+        line.unfreeze() # if you had already build the tracker
+        line.append_element(element=xt.LongitudinalLimitRect(min_zeta=-bucket_length/2, max_zeta=bucket_length/2), name='long_limit')
         
         # Install SC and build tracker
         if install_SC_on_line:
@@ -121,6 +131,14 @@ class SPS_Flat_Bottom_Tracker:
         tbt = Records.init_zeroes(self.num_turns)
         tbt.update_at_turn(0, particles, twiss)
 
+        ######### IBS kinetic kicks
+        if apply_kinetic_IBS_kicks:
+            beamparams = BeamParameters.from_line(line, n_part=beamParams.Nb)
+            opticsparams = OpticsParameters.from_line(line)
+            IBS = KineticKickIBS(beamparams, opticsparams)
+            kinetic_kick_coefficients = IBS.compute_kick_coefficients(particles)
+            print(kinetic_kick_coefficients)
+
         print('\nStarting tracking...')
         i = 0
         for turn in range(self.num_turns):
@@ -134,17 +152,69 @@ class SPS_Flat_Bottom_Tracker:
 
         if save_tbt_data: 
             os.makedirs(self._output_folder, exist_ok=True)
-            np.save('{}/nepsilon_x.npy'.format(self.output_folder), tbt.nepsilon_x)
-            np.save('{}/nepsilon_y.npy'.format(self.output_folder), tbt.nepsilon_y)
-            np.save('{}/sigma_delta.npy'.format(self.output_folder), tbt.sigma_delta)
-            np.save('{}/bunch_length.npy'.format(self.output_folder), tbt.bunch_length)
-            np.save('{}/Nb.npy'.format(self.output_folder), tbt.Nb)
+            np.save('{}/nepsilon_x.npy'.format(self._output_folder), tbt.nepsilon_x)
+            np.save('{}/nepsilon_y.npy'.format(self._output_folder), tbt.nepsilon_y)
+            np.save('{}/sigma_delta.npy'.format(self._output_folder), tbt.sigma_delta)
+            np.save('{}/bunch_length.npy'.format(self._output_folder), tbt.bunch_length)
+            np.save('{}/Nb.npy'.format(self._output_folder), tbt.Nb)
 
+        self.plot_tracking_data(tbt)
+
+
+    def load_tbt_data(self) -> Records:
+        """
+        Loads numpy data if tracking has already been made
+        """
+
+        # First initialize empty data class to fill with data
+        tbt = Records.init_zeroes(self.num_turns)
+        tbt.nepsilon_x = np.load('{}/nepsilon_x.npy'.format(self._output_folder))
+        tbt.nepsilon_y = np.load('{}/nepsilon_y.npy'.format(self._output_folder))
+        tbt.sigma_delta = np.load('{}/sigma_delta.npy'.format(self._output_folder))
+        tbt.bunch_length = np.load('{}/bunch_length.npy'.format(self._output_folder))
+        tbt.Nb = np.load('{}/Nb.npy'.format(self._output_folder))
+        
         return tbt
 
 
     def plot_tracking_data(self, tbt):
         """Generates emittance plots from TBT data class"""
 
-        fig =
-        
+        turns = np.arange(self.num_turns, dtype=int) 
+
+        # Emittances and bunch intensity 
+        f, (ax1, ax2) = plt.subplots(1, 2, figsize = (10,5))
+
+        ax1.plot(turns, tbt.nepsilon_x * 1e6, alpha=0.7, lw=1.5, label='X')
+        ax1.plot(turns, tbt.nepsilon_y * 1e6, lw=1.5, label='Y')
+        ax2.plot(turns, tbt.Nb, alpha=0.7, lw=1.5, c='r', label='Bunch intensity')
+
+        ax1.set_ylabel(r'$\varepsilon_{x, y}$ [$\mu$m]')
+        ax1.set_xlabel('Turns')
+        ax2.set_ylabel(r'$N_{b}$')
+        ax2.set_xlabel('Turns')
+        ax1.legend()
+        f.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+
+        # Emittances and bunch intensity 
+        f2, (ax12, ax22) = plt.subplots(1, 2, figsize = (8,4))
+
+        ax12.plot(turns, tbt.sigma_delta * 1e3, alpha=0.7, lw=1.5, label='$\sigma_{\delta}$')
+        ax22.plot(turns, tbt.bunch_length, alpha=0.7, lw=1.5, label='Bunch intensity')
+
+        ax12.set_ylabel(r'$\sigma_{\delta}$')
+        ax12.set_xlabel('Turns')
+        ax22.set_ylabel(r'$\sigma_{z}$ [m]')
+        ax22.set_xlabel('Turns')    
+        f2.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+
+        plt.show()
+
+
+    def load_tbt_data_and_plot(self):
+        """Load already tracked data and plot"""
+        try:
+            tbt = self.load_tbt_data()
+            self.plot_tracking_data(tbt)
+        except FileNotFoundError:
+            raise FileNotFoundError('Tracking data does not exist - set correct path or generate the data!')
