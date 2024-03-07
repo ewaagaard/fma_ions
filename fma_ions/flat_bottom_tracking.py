@@ -15,6 +15,9 @@ from .sequence_classes_sps import SPS_sequence_maker, BeamParameters_SPS
 from .fma_ions import FMA
 from .helpers import Records, _bunch_length, _geom_epsx, _geom_epsy, _sigma_delta
 
+import os
+import matplotlib.pyplot as plt
+
 @dataclass
 class SPS_Flat_Bottom_Tracker:
     """
@@ -23,8 +26,10 @@ class SPS_Flat_Bottom_Tracker:
     num_part: int = 5000
     num_turns: int = 1000
     Qy_frac: int = 25
+    _output_folder : str = "output"
 
-    def generate_particles(self, line: xt.Line, context : xo.context, use_Gaussian_distribution=True, beamParams=None):
+    def generate_particles(self, line: xt.Line, context : xo.context, use_Gaussian_distribution=True, beamParams=None
+                           ) -> xp.Particles:
         """
         Generate xp.Particles object: matched Gaussian or other types (to be implemented)
         """
@@ -101,7 +106,7 @@ class SPS_Flat_Bottom_Tracker:
         # Install SC and build tracker
         if install_SC_on_line:
             fma_sps = FMA()
-            line = fma_sps.install_SC_and_get_line(line0, beamParams, mode=SC_mode, optimize_for_tracking=False, context=context)
+            line = fma_sps.install_SC_and_get_line(line0, beamParams, mode=SC_mode, optimize_for_tracking=True, context=context)
             print('Installed space charge on line\n')
         else:
             line = line0.copy()
@@ -127,8 +132,19 @@ class SPS_Flat_Bottom_Tracker:
             tbt.update_at_turn(turn, particles, twiss)
             i += 1
 
+        if save_tbt_data: 
+            os.makedirs(self._output_folder, exist_ok=True)
+            np.save('{}/nepsilon_x.npy'.format(self.output_folder), tbt.nepsilon_x)
+            np.save('{}/nepsilon_y.npy'.format(self.output_folder), tbt.nepsilon_y)
+            np.save('{}/sigma_delta.npy'.format(self.output_folder), tbt.sigma_delta)
+            np.save('{}/bunch_length.npy'.format(self.output_folder), tbt.bunch_length)
+            np.save('{}/Nb.npy'.format(self.output_folder), tbt.Nb)
+
         return tbt
 
-        # Save data
-        # Analyze data / plot
+
+    def plot_tracking_data(self, tbt):
+        """Generates emittance plots from TBT data class"""
+
+        fig =
         

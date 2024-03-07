@@ -3,6 +3,6 @@ First tests of SPS flat bottom tracking class
 """
 import fma_ions
 
-# Test default tracking with GPUs
+# Test default tracking with CPU - test plotting
 sps = fma_ions.SPS_Flat_Bottom_Tracker(num_turns=100)
-sps.track_SPS()
+tbt = sps.track_SPS(which_context='cpu')
