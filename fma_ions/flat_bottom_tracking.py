@@ -29,7 +29,7 @@ class SPS_Flat_Bottom_Tracker:
     num_part: int = 5000
     num_turns: int = 1000
     Qy_frac: int = 25
-    _output_folder : str = "output"
+    _output_folder : str = "output" 
     turn_print_interval : int = 100
 
     def generate_particles(self, line: xt.Line, context : xo.context, use_Gaussian_distribution=True, beamParams=None
@@ -143,23 +143,22 @@ class SPS_Flat_Bottom_Tracker:
             kinetic_kick_coefficients = IBS.compute_kick_coefficients(particles)
             print(kinetic_kick_coefficients)
 
-        print('\nStarting tracking...')
-        i = 0
-        for turn in range(self.num_turns):
+        for turn in range(1, self.num_turns):
             
             if turn % self.turn_print_interval == 0:
-                print('Tracking turn {}'.format(i))            
+                print('Tracking turn {}'.format(turn))            
 
             ########## IBS -> Potentially re-compute the ellitest_parts integrals and IBS growth rates #########
             if apply_kinetic_IBS_kicks and ((turn % ibs_step == 0) or (turn == 1)):
-                print(
-                    "=" * 60 + "\n",
-                    f"Turn {turn:d}: re-computing growth rates and kick coefficients\n",
-                    "=" * 60,
-                )
+                
                 # We compute from values at the previous turn
                 kinetic_kick_coefficients = IBS.compute_kick_coefficients(particles)
-                print(kinetic_kick_coefficients)
+                print(
+                    "\n" + "=" * 60 + "\n",
+                    f"Turn {turn:d}: re-computing growth rates and kick coefficients\n",
+                    kinetic_kick_coefficients,
+                    "\n" + "=" * 60,
+                )
                 
             ########## ----- Apply IBS Kick if desired ----- ##########
             if apply_kinetic_IBS_kicks:
@@ -168,7 +167,6 @@ class SPS_Flat_Bottom_Tracker:
             # ----- Track and update records for tracked particles ----- #
             line.track(particles, num_turns=1)
             tbt.update_at_turn(turn, particles, twiss)
-            i += 1
 
         if save_tbt_data: 
             os.makedirs(self._output_folder, exist_ok=True)
@@ -230,6 +228,9 @@ class SPS_Flat_Bottom_Tracker:
 
         plt.show()
 
+        f.savefig('{}/epsilon_Nb.png'.format(self._output_folder), dpi=250)
+        f2.savefig('{}/sigma_z_and_delta.png'.format(self._output_folder), dpi=250)
+
 
     def load_tbt_data_and_plot(self):
         """Load already tracked data and plot"""
@@ -242,7 +243,7 @@ class SPS_Flat_Bottom_Tracker:
 
     def plot_multiple_sets_of_tracking_data(self, tbt_array, string_array):
         """
-        If multiple runs with turn-by-turn data has been made, provide list with Records class objects and list
+        If multiple runs with turn-by-turn (tbt) data has been made, provide list with Records class objects and list
         of explaining string to generate comparative plots of emittances, bunch intensities, etc
 
         Parameters:
@@ -252,3 +253,23 @@ class SPS_Flat_Bottom_Tracker:
         string:_array : [str1, str2, ...]
             List containing strings to explain the respective tbt data objects (which parameters were used)
         """
+        turns = np.arange(self.num_turns, dtype=int) 
+
+        # Emittances and bunch intensity 
+        f, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize = (14,5))
+
+        # Loop over the tbt records classes 
+        for i, tbt in enumerate(tbt_array):
+            ax1.plot(turns, tbt.nepsilon_x * 1e6, alpha=0.7, lw=1.5, label=string_array[i])
+            ax2.plot(turns, tbt.nepsilon_y * 1e6, lw=1.5, label=string_array[i])
+            ax3.plot(turns, tbt.Nb, alpha=0.7, lw=1.5, c='r', label=string_array[i])
+
+        ax1.set_xlabel('Turns')
+        ax2.set_xlabel('Turns')
+        ax3.set_xlabel('Turns')
+        ax1.set_ylabel(r'$\varepsilon_{x}$ [$\mu$m]')
+        ax2.set_ylabel(r'$\varepsilon_{y}$ [$\mu$m]')
+        ax3.set_ylabel(r'$N_{b}$')
+        ax1.legend()
+        f.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+        f.savefig('{}/result_multiple_trackings.png'.format(self._output_folder), dpi=250)
