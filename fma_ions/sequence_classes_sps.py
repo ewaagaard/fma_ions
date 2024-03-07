@@ -255,8 +255,9 @@ class SPS_sequence_maker:
             return line
 
 
-    def load_SPS_line_with_deferred_madx_expressions(self, use_symmetric_lattice=True, Qy_frac=25,
-                                                     add_non_linear_magnet_errors=False, add_aperture=False):
+    def load_SPS_line_with_deferred_madx_expressions(self, use_symmetric_lattice=False, Qy_frac=25,
+                                                     add_non_linear_magnet_errors=False, add_aperture=False,
+                                                     voltage=3.0e6):
         """
         Loads xtrack Pb sequence file with deferred expressions to regulate QD and QF strengths
         or generate from MADX if does not exist
@@ -271,6 +272,8 @@ class SPS_sequence_maker:
             whether to add line with non-linear chromatic errors
         add_aperture : bool
             whether to include aperture for SPS        
+        voltage : float
+            RF voltage in V
 
         Returns:
         -------
@@ -285,30 +288,52 @@ class SPS_sequence_maker:
         else:
             fname = '{}/qy_dot{}/SPS_2021_Pb_nominal_deferred_exp{}{}.json'.format(sequence_path, Qy_frac, err_str, aperture_str)
         
+        '''
         try: 
             line = xt.Line.from_json(fname)
         except FileNotFoundError:
-            print('\nSPS sequence file {} not found - generating new!\n'.format(fname))
-            #sps = SPS_sequence_maker()
-            madx = self.load_simple_madx_seq(use_symmetric_lattice, Qy_frac=25, add_non_linear_magnet_errors=add_non_linear_magnet_errors,
-                                             add_aperture=add_aperture)
-    
-            # Convert to line
-            line = xt.Line.from_madx_sequence(madx.sequence['sps'], deferred_expressions=True, install_apertures=add_aperture,
-                                              apply_madx_errors=add_non_linear_magnet_errors, 
-                                              enable_field_errors=add_non_linear_magnet_errors, enable_align_errors=add_non_linear_magnet_errors)
-            m_in_eV, p_inj_SPS = self.generate_SPS_beam()
+        '''    
+        print('\nSPS sequence file {} not found - generating new!\n'.format(fname))
+        #sps = SPS_sequence_maker()
+        madx = self.load_simple_madx_seq(use_symmetric_lattice, Qy_frac=25, add_non_linear_magnet_errors=add_non_linear_magnet_errors,
+                                         add_aperture=add_aperture)
+
+        # Convert to line
+        line = xt.Line.from_madx_sequence(madx.sequence['sps'], deferred_expressions=True, install_apertures=add_aperture,
+                                          apply_madx_errors=add_non_linear_magnet_errors, 
+                                          enable_field_errors=add_non_linear_magnet_errors, enable_align_errors=add_non_linear_magnet_errors)
+        m_in_eV, p_inj_SPS = self.generate_SPS_beam()
+        
+        line.particle_ref = xp.Particles(
+                p0c = p_inj_SPS,
+                q0 = self.Q_SPS,
+                mass0 = m_in_eV)
+        line.build_tracker()
+        
+        ############## ADD RF VOLTAGE FOR LONGITUDINAL - DIFFERENT FOR MADX AND XSUITE ##############
+        
+        #### SET CAVITY VOLTAGE - with info from Hannes
+        # 6x200 MHz cavities: actcse, actcsf, actcsh, actcsi (3 modules), actcsg, actcsj (4 modules)
+        # acl 800 MHz cavities
+        # acfca crab cavities
+        # Ions: all 200 MHz cavities: 1.7 MV, h=4653
+        harmonic_nb = 4653
+        nn = 'actcse.31632'
+        
+        # MADX sequence 
+        # different convention between madx and xsuite - MADX uses MV, and requires multiplication by charge
+        madx.sequence.sps.elements[nn].lag = 0
+        madx.sequence.sps.elements[nn].volt = (voltage/1e6) * line.particle_ref.q0 
+        
+        # Xsuite sequence 
+        line[nn].lag = 0  # 0 if below transition
+        line[nn].voltage = voltage # In Xsuite for ions, do not multiply by charge as in MADX
+        line[nn].frequency = madx.sequence['sps'].beam.freq0*1e6*harmonic_nb
+        
+        with open(fname, 'w') as fid:
+            json.dump(line.to_dict(), fid, cls=xo.JEncoder)
             
-            line.particle_ref = xp.Particles(
-                    p0c = p_inj_SPS,
-                    q0 = self.Q_SPS,
-                    mass0 = m_in_eV)
-            line.build_tracker()
-            
-            with open(fname, 'w') as fid:
-                json.dump(line.to_dict(), fid, cls=xo.JEncoder)
-            
-        twiss = line.twiss()
+        twiss = line.twiss(method='6d')
         
         print('\nGenerated SPS Pb beam with gamma = {:.3f}, Qx = {:.3f}, Qy = {:.3f}\n'.format(line.particle_ref.gamma0[0],
                                                                                               twiss['qx'],
@@ -358,7 +383,7 @@ class SPS_sequence_maker:
                                                          add_non_linear_magnet_errors=add_non_linear_magnet_errors, add_aperture=add_aperture)
         
         self._line0 = self._line.copy()
-        # self._twiss0 = self._line0.twiss() # --> unwanted if beta-beat is involved
+        self._twiss0 = self._line0.twiss()
         
         # Introduce beta to arbitrary QD 
         print('\nFinding optimal QD error for chosen beta-beat {}...\n'.format(beta_beat))
