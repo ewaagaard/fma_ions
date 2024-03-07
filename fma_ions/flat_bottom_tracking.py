@@ -30,6 +30,7 @@ class SPS_Flat_Bottom_Tracker:
     num_turns: int = 1000
     Qy_frac: int = 25
     _output_folder : str = "output"
+    turn_print_interval : int = 100
 
     def generate_particles(self, line: xt.Line, context : xo.context, use_Gaussian_distribution=True, beamParams=None
                            ) -> xp.Particles:
@@ -63,7 +64,8 @@ class SPS_Flat_Bottom_Tracker:
                   SC_mode='frozen',
                   use_Gaussian_distribution=True,
                   apply_kinetic_IBS_kicks=False,
-                  harmonic_nb = 4653
+                  harmonic_nb = 4653,
+                  ibs_step = 50
                   ):
         """
         save_tbt: bool
@@ -90,6 +92,8 @@ class SPS_Flat_Bottom_Tracker:
             whether to apply kinetic kicks from xibs 
         harmonic_nb : int
             harmonic used for SPS RF system
+        ibs_step : int
+            turn interval at which to recalculate IBS growth rates
         """
         # If specific beam parameters are not provided, load default SPS beam parameters
         if beamParams is None:
@@ -109,9 +113,9 @@ class SPS_Flat_Bottom_Tracker:
                                                    add_non_linear_magnet_errors=add_non_linear_magnet_errors)
         
         # Add longitudinal limit rectangle - to kill particles that fall out of bucket
-        bucket_length = line.get_length()/harmonic_nb
-        line.unfreeze() # if you had already build the tracker
-        line.append_element(element=xt.LongitudinalLimitRect(min_zeta=-bucket_length/2, max_zeta=bucket_length/2), name='long_limit')
+        bucket_length = line0.get_length()/harmonic_nb
+        line0.unfreeze() # if you had already build the tracker
+        line0.append_element(element=xt.LongitudinalLimitRect(min_zeta=-bucket_length/2, max_zeta=bucket_length/2), name='long_limit')
         
         # Install SC and build tracker
         if install_SC_on_line:
@@ -131,7 +135,7 @@ class SPS_Flat_Bottom_Tracker:
         tbt = Records.init_zeroes(self.num_turns)
         tbt.update_at_turn(0, particles, twiss)
 
-        ######### IBS kinetic kicks
+        ######### IBS kinetic kicks #########
         if apply_kinetic_IBS_kicks:
             beamparams = BeamParameters.from_line(line, n_part=beamParams.Nb)
             opticsparams = OpticsParameters.from_line(line)
@@ -142,9 +146,25 @@ class SPS_Flat_Bottom_Tracker:
         print('\nStarting tracking...')
         i = 0
         for turn in range(self.num_turns):
-            if i % 100 == 0:
-                print('Tracking turn {}'.format(i))
-        
+            
+            if turn % self.turn_print_interval == 0:
+                print('Tracking turn {}'.format(i))            
+
+            ########## IBS -> Potentially re-compute the ellitest_parts integrals and IBS growth rates #########
+            if apply_kinetic_IBS_kicks and ((turn % ibs_step == 0) or (turn == 1)):
+                print(
+                    "=" * 60 + "\n",
+                    f"Turn {turn:d}: re-computing growth rates and kick coefficients\n",
+                    "=" * 60,
+                )
+                # We compute from values at the previous turn
+                kinetic_kick_coefficients = IBS.compute_kick_coefficients(particles)
+                print(kinetic_kick_coefficients)
+                
+            ########## ----- Apply IBS Kick if desired ----- ##########
+            if apply_kinetic_IBS_kicks:
+                IBS.apply_ibs_kick(particles)
+            
             # ----- Track and update records for tracked particles ----- #
             line.track(particles, num_turns=1)
             tbt.update_at_turn(turn, particles, twiss)
@@ -218,3 +238,17 @@ class SPS_Flat_Bottom_Tracker:
             self.plot_tracking_data(tbt)
         except FileNotFoundError:
             raise FileNotFoundError('Tracking data does not exist - set correct path or generate the data!')
+        
+
+    def plot_multiple_sets_of_tracking_data(self, tbt_array, string_array):
+        """
+        If multiple runs with turn-by-turn data has been made, provide list with Records class objects and list
+        of explaining string to generate comparative plots of emittances, bunch intensities, etc
+
+        Parameters:
+        ----------
+        tbt_array : [Records, Records, ...]
+            List containing tbt data in Records class format
+        string:_array : [str1, str2, ...]
+            List containing strings to explain the respective tbt data objects (which parameters were used)
+        """
