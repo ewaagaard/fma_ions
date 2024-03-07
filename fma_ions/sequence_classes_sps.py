@@ -288,12 +288,6 @@ class SPS_sequence_maker:
         else:
             fname = '{}/qy_dot{}/SPS_2021_Pb_nominal_deferred_exp{}{}.json'.format(sequence_path, Qy_frac, err_str, aperture_str)
         
-        '''
-        try: 
-            line = xt.Line.from_json(fname)
-        except FileNotFoundError:
-        '''    
-        print('\nSPS sequence file {} not found - generating new!\n'.format(fname))
         #sps = SPS_sequence_maker()
         madx = self.load_simple_madx_seq(use_symmetric_lattice, Qy_frac=25, add_non_linear_magnet_errors=add_non_linear_magnet_errors,
                                          add_aperture=add_aperture)
