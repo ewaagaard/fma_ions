@@ -232,7 +232,7 @@ class SPS_Flat_Bottom_Tracker:
         if show_plot:
             plt.show()
         plt.close()
-
+    
 
     def load_tbt_data_and_plot(self):
         """Load already tracked data and plot"""
