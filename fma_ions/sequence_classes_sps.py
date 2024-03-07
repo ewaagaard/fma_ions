@@ -131,7 +131,7 @@ class SPS_sequence_maker:
                 sps_line = self.generate_xsuite_seq(use_symmetric_lattice=use_symmetric_lattice, deferred_expressions=deferred_expressions,
                                                     add_non_linear_magnet_errors=add_non_linear_magnet_errors, add_aperture=add_aperture) 
             else:
-                sps_line = self.generate_xsuite_seq_with_beta_beat(use_symmetric_lattice=use_symmetric_lattice, 
+                sps_line = self.generate_xsuite_seq_with_beta_beat(beta_beat=beta_beat, use_symmetric_lattice=use_symmetric_lattice, 
                                                                    add_non_linear_magnet_errors=add_non_linear_magnet_errors, add_aperture=add_aperture)
                 
             # Save new Xsuite sequence if desired
