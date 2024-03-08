@@ -29,7 +29,7 @@ class SPS_Flat_Bottom_Tracker:
     num_part: int = 5000
     num_turns: int = 1000
     Qy_frac: int = 25
-    _output_folder : str = "output" 
+    output_folder : str = "output" 
     turn_print_interval : int = 100
 
     def generate_particles(self, line: xt.Line, context : xo.context, use_Gaussian_distribution=True, beamParams=None
@@ -169,12 +169,12 @@ class SPS_Flat_Bottom_Tracker:
             tbt.update_at_turn(turn, particles, twiss)
 
         if save_tbt_data: 
-            os.makedirs(self._output_folder, exist_ok=True)
-            np.save('{}/nepsilon_x.npy'.format(self._output_folder), tbt.nepsilon_x)
-            np.save('{}/nepsilon_y.npy'.format(self._output_folder), tbt.nepsilon_y)
-            np.save('{}/sigma_delta.npy'.format(self._output_folder), tbt.sigma_delta)
-            np.save('{}/bunch_length.npy'.format(self._output_folder), tbt.bunch_length)
-            np.save('{}/Nb.npy'.format(self._output_folder), tbt.Nb)
+            os.makedirs(self.output_folder, exist_ok=True)
+            np.save('{}/nepsilon_x.npy'.format(self.output_folder), tbt.nepsilon_x)
+            np.save('{}/nepsilon_y.npy'.format(self.output_folder), tbt.nepsilon_y)
+            np.save('{}/sigma_delta.npy'.format(self.output_folder), tbt.sigma_delta)
+            np.save('{}/bunch_length.npy'.format(self.output_folder), tbt.bunch_length)
+            np.save('{}/Nb.npy'.format(self.output_folder), tbt.Nb)
 
         self.plot_tracking_data(tbt)
 
@@ -186,11 +186,11 @@ class SPS_Flat_Bottom_Tracker:
 
         # First initialize empty data class to fill with data
         tbt = Records.init_zeroes(self.num_turns)
-        tbt.nepsilon_x = np.load('{}/nepsilon_x.npy'.format(self._output_folder))
-        tbt.nepsilon_y = np.load('{}/nepsilon_y.npy'.format(self._output_folder))
-        tbt.sigma_delta = np.load('{}/sigma_delta.npy'.format(self._output_folder))
-        tbt.bunch_length = np.load('{}/bunch_length.npy'.format(self._output_folder))
-        tbt.Nb = np.load('{}/Nb.npy'.format(self._output_folder))
+        tbt.nepsilon_x = np.load('{}/nepsilon_x.npy'.format(self.output_folder))
+        tbt.nepsilon_y = np.load('{}/nepsilon_y.npy'.format(self.output_folder))
+        tbt.sigma_delta = np.load('{}/sigma_delta.npy'.format(self.output_folder))
+        tbt.bunch_length = np.load('{}/bunch_length.npy'.format(self.output_folder))
+        tbt.Nb = np.load('{}/Nb.npy'.format(self.output_folder))
         
         return tbt
 
@@ -226,8 +226,8 @@ class SPS_Flat_Bottom_Tracker:
         ax22.set_xlabel('Turns')    
         f2.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
 
-        f.savefig('{}/epsilon_Nb.png'.format(self._output_folder), dpi=250)
-        f2.savefig('{}/sigma_z_and_delta.png'.format(self._output_folder), dpi=250)
+        f.savefig('{}/epsilon_Nb.png'.format(self.output_folder), dpi=250)
+        f2.savefig('{}/sigma_z_and_delta.png'.format(self.output_folder), dpi=250)
 
         if show_plot:
             plt.show()
@@ -243,28 +243,36 @@ class SPS_Flat_Bottom_Tracker:
             raise FileNotFoundError('Tracking data does not exist - set correct path or generate the data!')
         
 
-    def plot_multiple_sets_of_tracking_data(self, tbt_array, string_array):
+    def plot_multiple_sets_of_tracking_data(self, output_str_array, string_array):
         """
         If multiple runs with turn-by-turn (tbt) data has been made, provide list with Records class objects and list
         of explaining string to generate comparative plots of emittances, bunch intensities, etc
 
         Parameters:
         ----------
-        tbt_array : [Records, Records, ...]
-            List containing tbt data in Records class format
+        output_str_array : [outfolder, outfolder, ...]
+            List containing string for outfolder tbt data
         string:_array : [str1, str2, ...]
             List containing strings to explain the respective tbt data objects (which parameters were used)
         """
-        turns = np.arange(self.num_turns, dtype=int) 
+        os.makedirs('main_plots', exist_ok=True)
+
+        # Load TBT data 
+        tbt_array = []
+        for output_folder in output_str_array:
+            self.output_folder = output_folder
+            tbt = self.load_tbt_data()
+            tbt.turns = np.arange(len(tbt.Nb), dtype=int)
+            tbt_array.append(tbt)
 
         # Emittances and bunch intensity 
         f, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize = (14,5))
 
         # Loop over the tbt records classes 
         for i, tbt in enumerate(tbt_array):
-            ax1.plot(turns, tbt.nepsilon_x * 1e6, alpha=0.7, lw=1.5, label=string_array[i])
-            ax2.plot(turns, tbt.nepsilon_y * 1e6, lw=1.5, label=string_array[i])
-            ax3.plot(turns, tbt.Nb, alpha=0.7, lw=1.5, c='r', label=string_array[i])
+            ax1.plot(tbt.turns, tbt.nepsilon_x * 1e6, alpha=0.7, lw=1.5, label=string_array[i])
+            ax2.plot(tbt.turns, tbt.nepsilon_y * 1e6, alpha=0.7, lw=1.5, label=string_array[i])
+            ax3.plot(tbt.turns, tbt.Nb, alpha=0.7, lw=1.5, label=string_array[i])
 
         ax1.set_xlabel('Turns')
         ax2.set_xlabel('Turns')
@@ -272,6 +280,7 @@ class SPS_Flat_Bottom_Tracker:
         ax1.set_ylabel(r'$\varepsilon_{x}$ [$\mu$m]')
         ax2.set_ylabel(r'$\varepsilon_{y}$ [$\mu$m]')
         ax3.set_ylabel(r'$N_{b}$')
-        ax1.legend()
+        ax1.legend(fontsize=12)
         f.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
-        f.savefig('{}/result_multiple_trackings.png'.format(self._output_folder), dpi=250)
+        f.savefig('main_plots/result_multiple_trackings.png', dpi=250)
+        plt.show()
