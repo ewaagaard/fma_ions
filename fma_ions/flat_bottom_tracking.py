@@ -28,7 +28,6 @@ class SPS_Flat_Bottom_Tracker:
     """
     num_part: int = 5000
     num_turns: int = 1000
-    Qy_frac: int = 25
     output_folder : str = "output" 
     turn_print_interval : int = 100
 
@@ -65,7 +64,8 @@ class SPS_Flat_Bottom_Tracker:
                   use_Gaussian_distribution=True,
                   apply_kinetic_IBS_kicks=False,
                   harmonic_nb = 4653,
-                  ibs_step = 50
+                  ibs_step = 50,
+                  Qy_frac: int = 25
                   ):
         """
         save_tbt: bool
@@ -94,6 +94,8 @@ class SPS_Flat_Bottom_Tracker:
             harmonic used for SPS RF system
         ibs_step : int
             turn interval at which to recalculate IBS growth rates
+        Qy_frac : int
+            fractional part of vertical tune, e.g. "19" for 26.19
         """
         # If specific beam parameters are not provided, load default SPS beam parameters
         if beamParams is None:
@@ -109,7 +111,7 @@ class SPS_Flat_Bottom_Tracker:
 
         # Get SPS Pb line - with beta-beat, aperture and non-linear magnet errors if desired
         sps = SPS_sequence_maker()
-        line0, twiss = sps.load_xsuite_line_and_twiss(Qy_frac=self.Qy_frac, add_aperture=add_aperture, beta_beat=beta_beat,
+        line0, twiss = sps.load_xsuite_line_and_twiss(Qy_frac=Qy_frac, add_aperture=add_aperture, beta_beat=beta_beat,
                                                    add_non_linear_magnet_errors=add_non_linear_magnet_errors)
         
         # Add longitudinal limit rectangle - to kill particles that fall out of bucket
@@ -277,8 +279,8 @@ class SPS_Flat_Bottom_Tracker:
         ax1.set_xlabel('Turns')
         ax2.set_xlabel('Turns')
         ax3.set_xlabel('Turns')
-        ax1.set_ylabel(r'$\varepsilon_{x}$ [$\mu$m]')
-        ax2.set_ylabel(r'$\varepsilon_{y}$ [$\mu$m]')
+        ax1.set_ylabel(r'$\varepsilon_{x}^{n}$ [$\mu$m]')
+        ax2.set_ylabel(r'$\varepsilon_{y}^{n}$ [$\mu$m]')
         ax3.set_ylabel(r'$N_{b}$')
         ax1.legend(fontsize=12)
         f.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
