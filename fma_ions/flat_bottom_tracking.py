@@ -30,6 +30,8 @@ class SPS_Flat_Bottom_Tracker:
     num_turns: int = 1000
     output_folder : str = "output" 
     turn_print_interval : int = 100
+    qx0: float = 26.30
+    qy0: float = 26.25
 
     def generate_particles(self, line: xt.Line, context : xo.context, use_Gaussian_distribution=True, beamParams=None
                            ) -> xp.Particles:
@@ -97,9 +99,13 @@ class SPS_Flat_Bottom_Tracker:
         Qy_frac : int
             fractional part of vertical tune, e.g. "19" for 26.19
         """
+        # Update vertical tune if changed
+        self.qy0 = int(self.qy0) + Qy_frac / 100
+
         # If specific beam parameters are not provided, load default SPS beam parameters
         if beamParams is None:
             beamParams = BeamParameters_SPS
+        print('Beam parameters:', beamParams)
 
         # Select relevant context
         if which_context=='gpu':
@@ -109,27 +115,18 @@ class SPS_Flat_Bottom_Tracker:
         else:
             raise ValueError('Context is either "gpu" or "cpu"')
 
-        # Get SPS Pb line - with beta-beat, aperture and non-linear magnet errors if desired
+        # Get SPS Pb line - with aperture and non-linear magnet errors if desired
         sps = SPS_sequence_maker()
-        line0, twiss = sps.load_xsuite_line_and_twiss(Qy_frac=Qy_frac, add_aperture=add_aperture, beta_beat=beta_beat,
+        line, twiss = sps.load_xsuite_line_and_twiss(Qy_frac=Qy_frac, add_aperture=add_aperture, beta_beat=beta_beat,
                                                    add_non_linear_magnet_errors=add_non_linear_magnet_errors)
-        
+                
         # Add longitudinal limit rectangle - to kill particles that fall out of bucket
-        bucket_length = line0.get_length()/harmonic_nb
-        line0.unfreeze() # if you had already build the tracker
-        line0.append_element(element=xt.LongitudinalLimitRect(min_zeta=-bucket_length/2, max_zeta=bucket_length/2), name='long_limit')
-        
-        # Install SC and build tracker
-        if install_SC_on_line:
-            fma_sps = FMA()
-            line = fma_sps.install_SC_and_get_line(line0, beamParams, mode=SC_mode, optimize_for_tracking=True, context=context)
-            print('Installed space charge on line\n')
-        else:
-            line = line0.copy()
-            line.discard_tracker()
-            line.build_tracker(_context=context)
+        bucket_length = line.get_length()/harmonic_nb
+        line.unfreeze() # if you had already build the tracker
+        line.append_element(element=xt.LongitudinalLimitRect(min_zeta=-bucket_length/2, max_zeta=bucket_length/2), name='long_limit')
+        line.build_tracker(_context=context)
 
-        # Generate particles object to track
+        # Generate particles object to track    
         particles = self.generate_particles(line=line, context=context, use_Gaussian_distribution=use_Gaussian_distribution,
                                             beamParams=beamParams)
 
@@ -140,11 +137,18 @@ class SPS_Flat_Bottom_Tracker:
         ######### IBS kinetic kicks #########
         if apply_kinetic_IBS_kicks:
             beamparams = BeamParameters.from_line(line, n_part=beamParams.Nb)
-            opticsparams = OpticsParameters.from_line(line)
+            opticsparams = OpticsParameters.from_line(line) # read from line without space  charge
             IBS = KineticKickIBS(beamparams, opticsparams)
             kinetic_kick_coefficients = IBS.compute_kick_coefficients(particles)
             print(kinetic_kick_coefficients)
 
+        # Install SC and build tracker
+        if install_SC_on_line:
+            fma_sps = FMA()
+            line = fma_sps.install_SC_and_get_line(line, beamParams, mode=SC_mode, optimize_for_tracking=True, context=context)
+            print('Installed space charge on line\n')
+
+        # Start tracking 
         for turn in range(1, self.num_turns):
             
             if turn % self.turn_print_interval == 0:
@@ -179,6 +183,48 @@ class SPS_Flat_Bottom_Tracker:
             np.save('{}/Nb.npy'.format(self.output_folder), tbt.Nb)
 
         self.plot_tracking_data(tbt)
+
+
+    def introduce_beta_beat(self, line : xt.Line, twiss : xt.TwissTable, beta_beat : float) -> xt.Line:
+        """Method to introduce quadrupolar error"""
+
+        # Create knobs controlling all quads
+        ltab = line.get_table()
+        line.vars['k1l.qf'] = 0
+        line.vars['k1l.qd'] = 0
+
+        qftab = ltab.rows['qf.*']
+        for i, nn in enumerate(qftab.name):
+            if qftab.element_type[i] == 'Multipole':
+                line.element_refs[nn].knl[1] = line.vars['k1l.qf']
+
+        qdtab = ltab.rows['qd.*']
+        for i, nn in enumerate(qdtab.name):
+            if qdtab.element_type[i] == 'Multipole':
+                line.element_refs[nn].knl[1] = line.vars['k1l.qd']
+
+        # First add extra knob for the quadrupole
+        line.vars['kk_QD'] = 0
+        line.element_refs['qd.63510..1'].knl[1] = line.vars['kk_QD']
+        
+        # Find where this maximum beta function occurs
+        betx_max_loc = twiss.rows[np.argmax(twiss.betx)].name[0]
+        betx_max = (1 + beta_beat) * twiss.rows[np.argmax(twiss.betx)].betx[0]
+
+        # Rematch the tunes with the knobs
+        line.match(
+            vary=[
+                xt.Vary('k1l.qf', step=1e-8),
+                xt.Vary('k1l.qd', step=1e-8),
+                xt.Vary('kk_QD', step=1e-8),  #vary knobs and quadrupole simulatenously 
+            ],
+            targets = [
+                xt.Target('qx', self.qx0, tol=1e-7),
+                xt.Target('qy', self.qy0, tol=1e-7),
+                xt.Target('betx', value=betx_max, at=betx_max_loc, tol=1e-7)
+            ])
+        
+        return line 
 
 
     def load_tbt_data(self) -> Records:
