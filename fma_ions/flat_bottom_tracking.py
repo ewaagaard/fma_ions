@@ -67,7 +67,8 @@ class SPS_Flat_Bottom_Tracker:
                   apply_kinetic_IBS_kicks=False,
                   harmonic_nb = 4653,
                   ibs_step = 50,
-                  Qy_frac: int = 25
+                  Qy_frac: int = 25,
+                  print_lost_particle_state=False
                   ):
         """
         save_tbt: bool
@@ -173,6 +174,10 @@ class SPS_Flat_Bottom_Tracker:
             # ----- Track and update records for tracked particles ----- #
             line.track(particles, num_turns=1)
             tbt.update_at_turn(turn, particles, twiss)
+
+            if print_lost_particle_state:
+                print('Lost particle state:\n')
+                print(particles.state[particles.state <= 0])
 
         if save_tbt_data: 
             os.makedirs(self.output_folder, exist_ok=True)
