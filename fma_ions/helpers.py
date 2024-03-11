@@ -54,7 +54,7 @@ class Records:
         # Store the particle ensemble quantities
         self.nepsilon_x[turn] = _geom_epsx(parts, twiss) * parts.beta0[0] * parts.gamma0[0]
         self.nepsilon_y[turn] = _geom_epsy(parts, twiss) * parts.beta0[0] * parts.gamma0[0]
-        self.Nb[turn] = parts.weight[0]*len(parts.x[parts.state > 0])
+        self.Nb[turn] = parts.weight[parts.state > 0][0]*len(parts.x[parts.state > 0])
         self.sigma_delta[turn] = _sigma_delta(parts)
         self.bunch_length[turn] = _bunch_length(parts)
 

@@ -68,7 +68,8 @@ class SPS_Flat_Bottom_Tracker:
                   harmonic_nb = 4653,
                   ibs_step = 50,
                   Qy_frac: int = 25,
-                  print_lost_particle_state=False
+                  print_lost_particle_state=False,
+                  minimum_aperture_to_remove=0.035
                   ):
         """
         save_tbt: bool
@@ -99,6 +100,8 @@ class SPS_Flat_Bottom_Tracker:
             turn interval at which to recalculate IBS growth rates
         Qy_frac : int
             fractional part of vertical tune, e.g. "19" for 26.19
+        minimum_aperture_to_remove : float 
+            minimum threshold of horizontal SPS aperture to remove, default is 0.035 (can also be set to None)
         """
         # Update vertical tune if changed
         self.qy0 = int(self.qy0) + Qy_frac / 100
@@ -121,6 +124,9 @@ class SPS_Flat_Bottom_Tracker:
         line, twiss = sps.load_xsuite_line_and_twiss(Qy_frac=Qy_frac, add_aperture=add_aperture, beta_beat=beta_beat,
                                                    add_non_linear_magnet_errors=add_non_linear_magnet_errors)
                 
+        if minimum_aperture_to_remove is not None:
+            line = sps.remove_aperture_below_threshold(line, minimum_aperture_to_remove)
+
         # Add longitudinal limit rectangle - to kill particles that fall out of bucket
         bucket_length = line.get_length()/harmonic_nb
         line.unfreeze() # if you had already build the tracker
@@ -176,7 +182,7 @@ class SPS_Flat_Bottom_Tracker:
             tbt.update_at_turn(turn, particles, twiss)
 
             if print_lost_particle_state:
-                print('Lost particle state:\n')
+                print('\nLost particle state:')
                 print(particles.state[particles.state <= 0])
 
         if save_tbt_data: 
