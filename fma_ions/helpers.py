@@ -69,6 +69,15 @@ class Records:
             bunch_length=np.zeros(n_turns, dtype=float)
         )
     
+    def to_dict(self):
+        return {
+            'exn': self.nepsilon_x,
+            'eyn': self.nepsilon_y,
+            'sigma_delta': self.sigma_delta,
+            'bunch_length': self.bunch_length,
+            'Nb' : self.Nb
+        }
+    
 @dataclass
 class Full_Records:
     """
