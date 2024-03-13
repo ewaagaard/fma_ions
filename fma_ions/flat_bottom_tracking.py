@@ -449,19 +449,26 @@ class SPS_Flat_Bottom_Tracker:
         str_names_def_exp = [f_ideal_def_exp, f_bb_def_exp, f_ideal_def_exp_dot19, f_bb_def_exp_dot19]
 
         # Dump lines to json files
-        if also_save_lines_with_deferred_expressions:
-            lines = lines + lines_def_exp
-            str_names = str_names + str_names_def_exp
-
         for i, line in enumerate(lines):
             sps_fname = f'{output_folder}/{str_names[i]}'
             print(f'Saving {sps_fname}')
             with open(sps_fname, 'w') as fid:
                 json.dump(line.to_dict(), fid, cls=xo.JEncoder)
-
+        
         # Also save strings to 
         with open(f'{output_folder}/line_names.txt', 'w') as outfile:
             outfile.write('\n'.join(str(i) for i in str_names))
+        
+        if also_save_lines_with_deferred_expressions:
+            for i, line in enumerate(lines_def_exp):
+                sps_fname_def_exp = f'{output_folder}/{str_names_def_exp[i]}'
+                print(f'Saving {sps_fname_def_exp}')
+                with open(sps_fname_def_exp, 'w') as fid:
+                    json.dump(line.to_dict(), fid, cls=xo.JEncoder)
+            
+            # Also save strings to 
+            with open(f'{output_folder}/line_names_def_exp.txt', 'w') as outfile:
+                outfile.write('\n'.join(str(i) for i in str_names_def_exp))
 
 
     def track_SPS_with_prepared_line(self, line : xt.Line,

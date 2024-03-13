@@ -14,6 +14,12 @@ __pycache__/
 *.gif
 *.txt
 
+# Files from HTCondor jobs
+*.out
+*.log
+*.err
+*.parquet
+
 # MADX files
 internal_mag_pot.txt
 err.out
