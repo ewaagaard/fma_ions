@@ -12,6 +12,7 @@ __pycache__/
 *.seq
 *.json
 *.gif
+*.txt
 
 # MADX files
 internal_mag_pot.txt

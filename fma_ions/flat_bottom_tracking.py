@@ -126,7 +126,7 @@ class SPS_Flat_Bottom_Tracker:
         if which_context=='gpu':
             context = xo.ContextCupy()
         elif which_context=='cpu':
-            context = xo.ContextCpu()
+            context = xo.ContextCpu(omp_num_threads='auto')
         else:
             raise ValueError('Context is either "gpu" or "cpu"')
 
@@ -414,9 +414,9 @@ class SPS_Flat_Bottom_Tracker:
 
         # Generate name of file
         def_exp_str = '_deferred_exp' if deferred_expressions else ''
-        BB_string = '{}_percent_beta_beat'.format(int(beta_beat*100)) if beta_beat is not None else ''
+        BB_string = '_{}_percent_beta_beat'.format(int(beta_beat*100)) if beta_beat is not None else ''
         err_str = '_with_magnet_errors' if add_non_linear_magnet_errors else ''
-        fname = 'SPS_2021_Pb_Qydot{}_{}{}{}.json'.format(Qy_frac, def_exp_str, BB_string, err_str)
+        fname = 'SPS_2021_Pb_Qydot{}{}{}{}.json'.format(Qy_frac, def_exp_str, BB_string, err_str)
 
         return line, fname
     
@@ -513,7 +513,7 @@ class SPS_Flat_Bottom_Tracker:
         if which_context=='gpu':
             context = xo.ContextCupy()
         elif which_context=='cpu':
-            context = xo.ContextCpu()
+            context = xo.ContextCpu(omp_num_threads='auto')
         else:
             raise ValueError('Context is either "gpu" or "cpu"')
 
