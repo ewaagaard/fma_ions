@@ -10,6 +10,7 @@ class Submitter:
                    python_script_source_path,
                    output_folder_eos='/eos/user/e/elwaagaa/PhD/Projects/fma_ions/htcondor_submission/output',
                    job_flavour="espresso",
+                   extra_output_name_str='',
                    nr_of_CPUs_to_request=8
                    ):
         """Method to submit .py script to HTCondor using CPUs"""
@@ -20,7 +21,7 @@ class Submitter:
         # Initiate settings for output
         settings = {}
         settings['output_directory_afs'] = '/afs/cern.ch/user/e/elwaagaa/public/sps_flat_bottom_tracking/output_logs'
-        settings['output_directory_eos'] = '{}/{date:%Y_%m_%d__%H_%M}'.format(output_folder_eos, date=datetime.datetime.now() )
+        settings['output_directory_eos'] = '{}/{:%Y_%m_%d__%H_%M}{}'.format(output_folder_eos, datetime.datetime.now(), extra_output_name_str)
         os.makedirs(settings['output_directory_afs'], exist_ok=True)
         os.makedirs(settings['output_directory_afs'], exist_ok=True)
         turnbyturn_file_name = 'tbt.parquet'
@@ -70,6 +71,7 @@ class Submitter:
                    python_script_source_path,
                    output_folder_eos='/eos/user/e/elwaagaa/PhD/Projects/fma_ions/htcondor_submission/output',
                    job_flavour="testmatch",
+                   extra_output_name_str='',
                    ):
         """Method to submit .py script to HTCondor with GPUs"""
         
@@ -79,7 +81,7 @@ class Submitter:
         # Initiate settings for output
         settings = {}
         settings['output_directory_afs'] = '/afs/cern.ch/user/e/elwaagaa/public/sps_flat_bottom_tracking/output_logs'
-        settings['output_directory_eos'] = '{}/{date:%Y_%m_%d__%H_%M}'.format(output_folder_eos, date=datetime.datetime.now() )
+        settings['output_directory_eos'] = '{}/{:%Y_%m_%d__%H_%M}{}'.format(output_folder_eos, datetime.datetime.now(), extra_output_name_str)
         os.makedirs(settings['output_directory_afs'], exist_ok=True)
         os.makedirs(settings['output_directory_afs'], exist_ok=True)
         turnbyturn_file_name = 'tbt.parquet'
