@@ -421,7 +421,7 @@ class SPS_Flat_Bottom_Tracker:
         return line, fname
     
 
-    def save_lines_for_all_cases(self, output_folder : str ='lines'):
+    def save_lines_for_all_cases(self, output_folder : str ='lines', also_save_lines_with_deferred_expressions=True):
         """
         Generate lines for all cases of SPS flat bottom tracking: magnet errors, beta-beating, etc
         Used for instance on HTCondor where input file needs to be provided
@@ -430,13 +430,27 @@ class SPS_Flat_Bottom_Tracker:
 
         # Load ideal lattice, and with BB + magnet errors
         line_ideal, f_ideal = self.generate_line(add_aperture=True, beta_beat=None, add_non_linear_magnet_errors=False)
+        line_ideal_def_exp, f_ideal_def_exp = self.generate_line(add_aperture=True, beta_beat=None, add_non_linear_magnet_errors=False,
+                                                           deferred_expressions=True)
         line_bb, f_bb = self.generate_line(add_aperture=True, beta_beat=0.1, add_non_linear_magnet_errors=True)
+        line_bb_def_exp, f_bb_def_exp = self.generate_line(add_aperture=True, beta_beat=0.1, add_non_linear_magnet_errors=True,
+                                                           deferred_expressions=True)
         line_ideal_dot19, f_ideal_dot19 = self.generate_line(Qy_frac=19, add_aperture=True, beta_beat=None, add_non_linear_magnet_errors=False)
+        line_ideal_def_exp_dot19, f_ideal_def_exp_dot19 = self.generate_line(Qy_frac=19, add_aperture=True, beta_beat=None, add_non_linear_magnet_errors=False,
+                                                           deferred_expressions=True)
         line_bb_dot19, f_bb_dot19 = self.generate_line(Qy_frac=19, add_aperture=True, beta_beat=0.1, add_non_linear_magnet_errors=True)
+        line_bb_def_exp_dot19, f_bb_def_exp_dot19 = self.generate_line(Qy_frac=19, add_aperture=True, beta_beat=0.1, add_non_linear_magnet_errors=True,
+                                                           deferred_expressions=True)
         
 
         lines = [line_ideal, line_bb, line_ideal_dot19, line_bb_dot19]
+        lines_def_exp = [line_ideal_def_exp, line_bb_def_exp, line_ideal_def_exp_dot19, line_bb_def_exp_dot19]
         str_names = [f_ideal, f_bb, f_ideal_dot19, f_bb_dot19]
+        str_names_def_exp = [f_ideal_def_exp, f_bb_def_exp, f_ideal_def_exp_dot19, f_bb_def_exp_dot19]
+
+        if also_save_lines_with_deferred_expressions:
+            lines = lines + lines_def_exp
+            str_names = str_names + str_names_def_exp
 
         for i, line in enumerate(lines):
             sps_fname = f'{output_folder}/{str_names[i]}'
@@ -445,7 +459,7 @@ class SPS_Flat_Bottom_Tracker:
                 json.dump(line.to_dict(), fid, cls=xo.JEncoder)
 
 
-    def track_SPS_with_prepared_line_and_return_parquet(self, line : xt.Line,
+    def track_SPS_with_prepared_line(self, line : xt.Line,
                                                         which_context='gpu',
                                                         beamParams=None,
                                                         install_SC_on_line=True, 
