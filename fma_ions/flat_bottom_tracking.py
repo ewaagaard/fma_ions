@@ -448,6 +448,7 @@ class SPS_Flat_Bottom_Tracker:
         str_names = [f_ideal, f_bb, f_ideal_dot19, f_bb_dot19]
         str_names_def_exp = [f_ideal_def_exp, f_bb_def_exp, f_ideal_def_exp_dot19, f_bb_def_exp_dot19]
 
+        # Dump lines to json files
         if also_save_lines_with_deferred_expressions:
             lines = lines + lines_def_exp
             str_names = str_names + str_names_def_exp
@@ -458,16 +459,20 @@ class SPS_Flat_Bottom_Tracker:
             with open(sps_fname, 'w') as fid:
                 json.dump(line.to_dict(), fid, cls=xo.JEncoder)
 
+        # Also save strings to 
+        with open(f'{output_folder}/line_names.txt', 'w') as outfile:
+            outfile.write('\n'.join(str(i) for i in str_names))
+
 
     def track_SPS_with_prepared_line(self, line : xt.Line,
-                                                        which_context='gpu',
-                                                        beamParams=None,
-                                                        install_SC_on_line=True, 
-                                                        SC_mode='frozen',
-                                                        use_Gaussian_distribution=True,
-                                                        apply_kinetic_IBS_kicks=False,
-                                                        ibs_step = 50,
-                                                        ):
+                                        which_context='gpu',
+                                        beamParams=None,
+                                        install_SC_on_line=True, 
+                                        SC_mode='frozen',
+                                        use_Gaussian_distribution=True,
+                                        apply_kinetic_IBS_kicks=False,
+                                        ibs_step = 50,
+                                        ):
         """
         Run full tracking at SPS flat bottom with prepared input line, returning pandas dataframe
         
@@ -496,6 +501,8 @@ class SPS_Flat_Bottom_Tracker:
         --------
         pd.DataFrame
         """
+        # Initial settings for GPU device 
+        gpu_device = 0
 
         # If specific beam parameters are not provided, load default SPS beam parameters
         if beamParams is None:
