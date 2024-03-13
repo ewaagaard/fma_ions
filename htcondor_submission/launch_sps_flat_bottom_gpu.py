@@ -53,13 +53,14 @@ error                 = {os.path.join(settings['output_directory_afs'],"$(Cluste
 log                   = {os.path.join(settings['output_directory_afs'],"$(ClusterId).$(ProcId).log")}
 request_GPUs = 1
 +JobFlavour = "testmatch"
-requirements = regexp("V100", TARGET.CUDADeviceName) || regexp("A100", TARGET.CUDADeviceName)
 queue''')
 
 job_file.close()
 
+# Previously also had: requirements = regexp("V100", TARGET.CUDADeviceName) || regexp("A100", TARGET.CUDADeviceName)
+
 #### IF EXTERNAL SEQUENCE FILE NEEDED, make sure to replace in the job_file above
 # transfer_input_files  = {python_script_source_path},{sequence_file_path}
 
-
+os.system('myschedd bump') # find the least loaded cluster
 os.system(f'condor_submit {job_file_name}')

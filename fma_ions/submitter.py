@@ -117,9 +117,8 @@ class Submitter:
         log                   = {os.path.join(settings['output_directory_afs'],"$(ClusterId).$(ProcId).log")}
         request_GPUs = 1
         +JobFlavour = {job_flavour}
-        requirements = regexp("V100", TARGET.CUDADeviceName) || regexp("A100", TARGET.CUDADeviceName)
         queue''')
-        
+        # previously also included "requirements = regexp("V100", TARGET.CUDADeviceName) || regexp("A100", TARGET.CUDADeviceName)"
         job_file.close()
         
         # Find the least loaded cluster and submit job

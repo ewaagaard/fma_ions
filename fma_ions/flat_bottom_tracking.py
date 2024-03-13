@@ -22,6 +22,7 @@ import pandas as pd
 import os
 import json
 import matplotlib.pyplot as plt
+import time
 
 @dataclass
 class SPS_Flat_Bottom_Tracker:
@@ -58,7 +59,7 @@ class SPS_Flat_Bottom_Tracker:
 
     def track_SPS(self, 
                   save_tbt_data=True, 
-                  which_context='gpu',
+                  which_context='cpu',
                   add_non_linear_magnet_errors=False, 
                   add_aperture=True,
                   beta_beat=None, 
@@ -167,6 +168,7 @@ class SPS_Flat_Bottom_Tracker:
             print('Installed space charge on line\n')
 
         # Start tracking 
+        time00 = time.time()
         for turn in range(1, self.num_turns):
             
             if turn % self.turn_print_interval == 0:
@@ -195,16 +197,16 @@ class SPS_Flat_Bottom_Tracker:
             if print_lost_particle_state:
                 print('\nLost particle state:')
                 print(particles.state[particles.state <= 0])
-
-        if save_tbt_data: 
-            os.makedirs(self.output_folder, exist_ok=True)
-            np.save('{}/nepsilon_x.npy'.format(self.output_folder), tbt.nepsilon_x)
-            np.save('{}/nepsilon_y.npy'.format(self.output_folder), tbt.nepsilon_y)
-            np.save('{}/sigma_delta.npy'.format(self.output_folder), tbt.sigma_delta)
-            np.save('{}/bunch_length.npy'.format(self.output_folder), tbt.bunch_length)
-            np.save('{}/Nb.npy'.format(self.output_folder), tbt.Nb)
-
-        self.plot_tracking_data(tbt)
+        time01 = time.time()
+        dt0 = time01-time00
+        print('\nTracking time: {} s'.format(dt0))
+        
+        # Make parquet file from dictionary
+        if save_tbt_data:
+            tbt_dict = tbt.to_dict()
+            df = pd.DataFrame(tbt_dict)
+        
+            return df
 
 
     def introduce_beta_beat(self, line : xt.Line, twiss : xt.TwissTable, beta_beat : float) -> xt.Line:
@@ -302,6 +304,18 @@ class SPS_Flat_Bottom_Tracker:
         if show_plot:
             plt.show()
         plt.close()
+        
+        ''' OLD way of saving data and then plotting
+        if save_tbt_data: 
+            os.makedirs(self.output_folder, exist_ok=True)
+            np.save('{}/nepsilon_x.npy'.format(self.output_folder), tbt.nepsilon_x)
+            np.save('{}/nepsilon_y.npy'.format(self.output_folder), tbt.nepsilon_y)
+            np.save('{}/sigma_delta.npy'.format(self.output_folder), tbt.sigma_delta)
+            np.save('{}/bunch_length.npy'.format(self.output_folder), tbt.bunch_length)
+            np.save('{}/Nb.npy'.format(self.output_folder), tbt.Nb)
+
+        self.plot_tracking_data(tbt)
+        '''
     
 
     def load_tbt_data_and_plot(self):
