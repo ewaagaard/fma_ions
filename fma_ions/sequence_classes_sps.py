@@ -24,7 +24,7 @@ class BeamParameters_SPS:
     """Data Container for SPS Pb default beam parameters"""
     Nb:  float = 2.2e8 #3.5e8
     sigma_z: float = 0.225
-    exn: float = 1.3e-6
+    exn: float = 1.1e-6
     eyn: float = 0.9e-6
     Qx_int: float = 26.
     Qy_int: float = 26.
