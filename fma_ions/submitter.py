@@ -30,7 +30,7 @@ class Submitter:
         turnbyturn_path_eos = os.path.join(settings['output_directory_eos'], turnbyturn_file_name)
 
         # Create bash script and make executable
-        job_file_name = os.path.join(settings['output_directory_afs'], 'SPS_flat_bottom.job')
+        job_file_name = os.path.join(settings['output_directory_afs'], 'SPS_flat_bottom.sub')
         bash_script_path = os.path.join(settings['output_directory_afs'],'SPS_flat_bottom.sh')
         bash_script_name = os.path.basename(bash_script_path)
         bash_script = open(bash_script_path,'w')
