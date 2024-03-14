@@ -256,6 +256,10 @@ class SPS_Flat_Bottom_Tracker:
         Loads numpy data if tracking has already been made
         """
 
+        # Read the parquet file
+        tbt = pd.read_parquet('{}/tbt.parquet'.format(self.output_folder))
+
+        ''' OLD WAY
         # First initialize empty data class to fill with data
         tbt = Records.init_zeroes(self.num_turns)
         tbt.nepsilon_x = np.load('{}/nepsilon_x.npy'.format(self.output_folder))
@@ -263,7 +267,8 @@ class SPS_Flat_Bottom_Tracker:
         tbt.sigma_delta = np.load('{}/sigma_delta.npy'.format(self.output_folder))
         tbt.bunch_length = np.load('{}/bunch_length.npy'.format(self.output_folder))
         tbt.Nb = np.load('{}/Nb.npy'.format(self.output_folder))
-        
+        '''
+
         return tbt
 
 
