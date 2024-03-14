@@ -1,7 +1,7 @@
 """
 Class container for batch submission to HTCondor
 """
-import os, stat, datetime
+import os, stat, datetime, pathlib
 
 class Submitter:
     """Class to submit jobs to HTCondor more easliy"""
@@ -15,6 +15,8 @@ class Submitter:
                    ):
         """Method to submit .py script to HTCondor using CPUs"""
         
+        print("Launching submit from {}".format(pathlib.Path(__file__).parent.absolute()))
+
         # Specify which line from fma_ions
         python_script_name = os.path.basename(python_script_source_path)
 
@@ -46,6 +48,7 @@ class Submitter:
         xrdcp -f err.txt {os.path.join(settings['output_directory_eos'],"err.txt")}
         xrdcp -f abort.txt {os.path.join(settings['output_directory_eos'],"abort.txt")}
         """)
+        print(bash_script.read())
         bash_script.close()
         os.chmod(bash_script_path, stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IROTH | stat.S_IXOTH)
 
@@ -60,6 +63,7 @@ class Submitter:
         request_CPUs = {nr_of_CPUs_to_request}
         +JobFlavour = {job_flavour}
         queue''')
+        print(job_file.read())
         job_file.close()
 
         # Find the least loaded cluster and submit job
