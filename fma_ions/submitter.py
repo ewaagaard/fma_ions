@@ -12,12 +12,10 @@ class Submitter:
                    job_flavour='espresso',
                    extra_output_name_str=None,
                    nr_of_CPUs_to_request=8,
-                   change_to_best_node=False
+                   change_to_best_node=True
                    ):
         """Method to submit .py script to HTCondor using CPUs"""
         
-        print("Launching submit from {}".format(pathlib.Path(__file__).parent.absolute()))
-
         # Specify which line from fma_ions
         python_script_name = os.path.basename(python_script_source_path)
 
@@ -30,6 +28,8 @@ class Submitter:
         settings['output_directory_eos'] = '{}/{:%Y_%m_%d__%H_%M}{}'.format(output_folder_eos, datetime.datetime.now(), extra_str)
         os.makedirs(settings['output_directory_afs'], exist_ok=True)
         os.makedirs(settings['output_directory_eos'], exist_ok=True)
+        print('\nSaving data to {}'.format(settings['output_directory_eos']))
+
         turnbyturn_file_name = 'tbt.parquet'
         turnbyturn_path_eos = os.path.join(settings['output_directory_eos'], turnbyturn_file_name)
 
@@ -65,7 +65,8 @@ error                 = {os.path.join(settings['output_directory_afs'],"$(Cluste
 log                   = {os.path.join(settings['output_directory_afs'],"$(ClusterId).$(ProcId).log")}
 request_CPUs = {nr_of_CPUs_to_request}
 +JobFlavour = "{job_flavour}"
-queue''')
+queue'''
+        )
         job_file.close()
 
         # Find the least loaded cluster and submit job - better to do it before launching many jobs
@@ -79,7 +80,7 @@ queue''')
                    output_folder_eos='/eos/user/e/elwaagaa/PhD/Projects/fma_ions/htcondor_submission/output',
                    job_flavour='espresso',
                    extra_output_name_str=None,
-                   change_to_best_node=False
+                   change_to_best_node=True
                    ):
         """Method to submit .py script to HTCondor with GPUs"""
         
@@ -95,6 +96,8 @@ queue''')
         settings['output_directory_eos'] = '{}/{:%Y_%m_%d__%H_%M}{}'.format(output_folder_eos, datetime.datetime.now(), extra_str)
         os.makedirs(settings['output_directory_afs'], exist_ok=True)
         os.makedirs(settings['output_directory_eos'], exist_ok=True)
+        print('\nSaving data to {}'.format(settings['output_directory_eos']))
+
         turnbyturn_file_name = 'tbt.parquet'
         turnbyturn_path_eos = os.path.join(settings['output_directory_eos'], turnbyturn_file_name)
         
@@ -105,17 +108,17 @@ queue''')
         bash_script = open(bash_script_path,'w')
         bash_script.write(
         f"""#!/bin/bash\n
-        echo 'sourcing environment'
-        source /afs/cern.ch/work/e/elwaagaa/public/venvs/miniconda/bin/activate
-        date
-        echo 'Running job'
-        python {python_script_name} 1> out.txt 2> err.txt
-        echo 'Done'
-        date
-        xrdcp -f {turnbyturn_file_name} {turnbyturn_path_eos}
-        xrdcp -f out.txt {os.path.join(settings['output_directory_eos'],"out.txt")}
-        xrdcp -f err.txt {os.path.join(settings['output_directory_eos'],"err.txt")}
-        xrdcp -f abort.txt {os.path.join(settings['output_directory_eos'],"abort.txt")}
+echo 'sourcing environment'
+source /afs/cern.ch/work/e/elwaagaa/public/venvs/miniconda/bin/activate
+date
+echo 'Running job'
+python {python_script_name} 1> out.txt 2> err.txt
+echo 'Done'
+date
+xrdcp -f {turnbyturn_file_name} {turnbyturn_path_eos}
+xrdcp -f out.txt {os.path.join(settings['output_directory_eos'],"out.txt")}
+xrdcp -f err.txt {os.path.join(settings['output_directory_eos'],"err.txt")}
+xrdcp -f abort.txt {os.path.join(settings['output_directory_eos'],"abort.txt")}
         """)
         bash_script.close()
         os.chmod(bash_script_path, stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IROTH | stat.S_IXOTH)
@@ -124,13 +127,14 @@ queue''')
         
         job_file.write(
         f'''executable        = {bash_script_path}
-        transfer_input_files  = {python_script_source_path}
-        output                = {os.path.join(settings['output_directory_afs'],"$(ClusterId).$(ProcId).out")}
-        error                 = {os.path.join(settings['output_directory_afs'],"$(ClusterId).$(ProcId).err")}
-        log                   = {os.path.join(settings['output_directory_afs'],"$(ClusterId).$(ProcId).log")}
-        request_GPUs = 1
-        +JobFlavour = "{job_flavour}"
-        queue''')
+transfer_input_files  = {python_script_source_path}
+output                = {os.path.join(settings['output_directory_afs'],"$(ClusterId).$(ProcId).out")}
+error                 = {os.path.join(settings['output_directory_afs'],"$(ClusterId).$(ProcId).err")}
+log                   = {os.path.join(settings['output_directory_afs'],"$(ClusterId).$(ProcId).log")}
+request_GPUs = 1
++JobFlavour = "{job_flavour}"
+queue'''
+        )
         # previously also included "requirements = regexp("V100", TARGET.CUDADeviceName) || regexp("A100", TARGET.CUDADeviceName)"
         job_file.close()
         
