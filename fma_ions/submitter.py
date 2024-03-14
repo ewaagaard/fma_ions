@@ -25,7 +25,7 @@ class Submitter:
         settings['output_directory_afs'] = '/afs/cern.ch/user/e/elwaagaa/public/sps_flat_bottom_tracking/output_logs'
         settings['output_directory_eos'] = '{}/{:%Y_%m_%d__%H_%M}{}'.format(output_folder_eos, datetime.datetime.now(), extra_output_name_str)
         os.makedirs(settings['output_directory_afs'], exist_ok=True)
-        os.makedirs(settings['output_directory_afs'], exist_ok=True)
+        os.makedirs(settings['output_directory_eos'], exist_ok=True)
         turnbyturn_file_name = 'tbt.parquet'
         turnbyturn_path_eos = os.path.join(settings['output_directory_eos'], turnbyturn_file_name)
 
