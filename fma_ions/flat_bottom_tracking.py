@@ -14,6 +14,7 @@ from .sequence_classes_ps import PS_sequence_maker, BeamParameters_PS
 from .sequence_classes_sps import SPS_sequence_maker, BeamParameters_SPS
 from .fma_ions import FMA
 from .helpers import Records, _bunch_length, _geom_epsx, _geom_epsy, _sigma_delta
+from .tune_ripple import Tune_Ripple_SPS
 
 from xibs.inputs import BeamParameters, OpticsParameters
 from xibs.kicks import KineticKickIBS
@@ -72,7 +73,10 @@ class SPS_Flat_Bottom_Tracker:
                   ibs_step = 50,
                   Qy_frac: int = 25,
                   print_lost_particle_state=False,
-                  minimum_aperture_to_remove=0.025
+                  minimum_aperture_to_remove=0.025,
+                  add_tune_ripple=False,
+                  dq=0.01,
+                  ripple_freq=50
                   ):
         """
         Run full tracking at SPS flat bottom
@@ -110,7 +114,13 @@ class SPS_Flat_Bottom_Tracker:
         minimum_aperture_to_remove : float 
             minimum threshold of horizontal SPS aperture to remove, default is 0.025 (can also be set to None)
             as faulty IPM aperture has 0.01 m, which is too small
-        
+        add_tune_ripple : bool
+            whether to add external tune ripple from the Tune_Ripple_SPS class
+        dq : float
+            amplitude for tune ripple, if applied
+        ripple_freq : float
+            ripple frequency in Hz
+            
         Returns:
         --------
         None
@@ -131,10 +141,14 @@ class SPS_Flat_Bottom_Tracker:
         else:
             raise ValueError('Context is either "gpu" or "cpu"')
 
+        # Deferred expressions only needed for tune ripple
+        load_line_with_deferred_expressions = True if add_tune_ripple else False
+
         # Get SPS Pb line - with aperture and non-linear magnet errors if desired
         sps = SPS_sequence_maker()
         line, twiss = sps.load_xsuite_line_and_twiss(Qy_frac=Qy_frac, add_aperture=add_aperture, beta_beat=beta_beat,
-                                                   add_non_linear_magnet_errors=add_non_linear_magnet_errors)
+                                                   add_non_linear_magnet_errors=add_non_linear_magnet_errors, 
+                                                   deferred_expressions=load_line_with_deferred_expressions)
                 
         if minimum_aperture_to_remove is not None:
             line = sps.remove_aperture_below_threshold(line, minimum_aperture_to_remove)
@@ -167,6 +181,13 @@ class SPS_Flat_Bottom_Tracker:
             line = fma_sps.install_SC_and_get_line(line, beamParams, mode=SC_mode, optimize_for_tracking=True, context=context)
             print('Installed space charge on line\n')
 
+        # Add tune ripple
+        if add_tune_ripple:
+            if ripple_freq is None:
+                ripple_period = ### CALCULATE with twiss.Trev0, test
+            ripple = Tune_Ripple_SPS(Qy_frac=Qy_frac, beta_beat=beta_beat, num_turns=self.num_turns, ripple_period=ripple_period)
+            kqf_vals, kqd_vals, turns = ripple.load_k_from_xtrack_matching(dq=dq, plane='X')
+
         # Start tracking 
         time00 = time.time()
         for turn in range(1, self.num_turns):
@@ -190,6 +211,11 @@ class SPS_Flat_Bottom_Tracker:
             if apply_kinetic_IBS_kicks:
                 IBS.apply_ibs_kick(particles)
             
+            ########## ----- Exert TUNE RIPPLE if desired ----- ##########
+            if add_tune_ripple:
+                line.vars['kqf'] = kqf_vals[turn-1]
+                line.vars['kqd'] = kqd_vals[turn-1]
+
             # ----- Track and update records for tracked particles ----- #
             line.track(particles, num_turns=1)
             tbt.update_at_turn(turn, particles, twiss)
