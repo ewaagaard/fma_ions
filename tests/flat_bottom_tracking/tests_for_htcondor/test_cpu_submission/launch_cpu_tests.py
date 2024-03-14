@@ -14,7 +14,7 @@ sub = fma_ions.Submitter()
 
 # Launch the Python scripts in this folder
 for script in script_names:
-    f = os.path.join(dir_path, script)
-    print(f)
-    sub.submit_CPU(f)
+    file_name = os.path.join(dir_path, script)
+    print(f"Submitting {file_name}")
+    sub.submit_CPU(file_name)
 
