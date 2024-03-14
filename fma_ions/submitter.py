@@ -11,7 +11,8 @@ class Submitter:
                    output_folder_eos='/eos/user/e/elwaagaa/PhD/Projects/fma_ions/htcondor_submission/output',
                    job_flavour='espresso',
                    extra_output_name_str=None,
-                   nr_of_CPUs_to_request=8
+                   nr_of_CPUs_to_request=8,
+                   change_to_best_node=False
                    ):
         """Method to submit .py script to HTCondor using CPUs"""
         
@@ -67,8 +68,9 @@ request_CPUs = {nr_of_CPUs_to_request}
 queue''')
         job_file.close()
 
-        # Find the least loaded cluster and submit job
-        os.system('myschedd bump')
+        # Find the least loaded cluster and submit job - better to do it before launching many jobs
+        if change_to_best_node:
+            os.system('myschedd bump')
         os.system(f'condor_submit {job_file_name}')
     
     
@@ -76,7 +78,8 @@ queue''')
                    python_script_source_path,
                    output_folder_eos='/eos/user/e/elwaagaa/PhD/Projects/fma_ions/htcondor_submission/output',
                    job_flavour='espresso',
-                   extra_output_name_str='',
+                   extra_output_name_str=None,
+                   change_to_best_node=False
                    ):
         """Method to submit .py script to HTCondor with GPUs"""
         
@@ -131,6 +134,7 @@ queue''')
         # previously also included "requirements = regexp("V100", TARGET.CUDADeviceName) || regexp("A100", TARGET.CUDADeviceName)"
         job_file.close()
         
-        # Find the least loaded cluster and submit job
-        os.system('myschedd bump')
+        # Find the least loaded cluster and submit job - better to do it before launching many jobs
+        if change_to_best_node:
+            os.system('myschedd bump')
         os.system(f'condor_submit {job_file_name}')

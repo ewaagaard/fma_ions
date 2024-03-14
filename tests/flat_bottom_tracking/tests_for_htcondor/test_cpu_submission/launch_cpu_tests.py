@@ -13,6 +13,7 @@ script_names = ['sps_ideal_lattice_sc.py', 'sps_BB_sc.py']
 sub = fma_ions.Submitter() 
 
 # Launch the Python scripts in this folder
+os.system('myschedd bump')
 for script in script_names:
     file_name = os.path.join(dir_path, script)
     print(f"Submitting {file_name}")
