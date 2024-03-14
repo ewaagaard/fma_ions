@@ -7,12 +7,13 @@ class Submitter:
     """Class to submit jobs to HTCondor more easliy"""
     
     def submit_CPU(self, 
-                   python_script_source_path,
-                   output_folder_eos='/eos/user/e/elwaagaa/PhD/Projects/fma_ions/htcondor_submission/output',
-                   job_flavour='espresso',
-                   extra_output_name_str=None,
-                   nr_of_CPUs_to_request=8,
-                   change_to_best_node=True
+                   python_script_source_path : str,
+                   output_folder_eos: str = '/eos/user/e/elwaagaa/PhD/Projects/fma_ions/htcondor_submission/output',
+                   job_flavour: str = 'espresso',
+                   extra_output_name_str : str = None,
+                   nr_of_CPUs_to_request : int = 8,
+                   change_to_best_node : bool = True,
+                   number_of_turn_string : str = ''
                    ):
         """Method to submit .py script to HTCondor using CPUs"""
         
@@ -26,7 +27,8 @@ class Submitter:
         settings = {}
         settings['output_directory_afs'] = '/afs/cern.ch/user/e/elwaagaa/public/sps_flat_bottom_tracking/output_logs/{:%Y_%m_%d__%H_%M}{}'.format(datetime.datetime.now(), 
                                                                                                                                                   extra_str)
-        settings['output_directory_eos'] = '{}/{:%Y_%m_%d__%H_%M}_cpu{}'.format(output_folder_eos, datetime.datetime.now(), extra_str)
+        settings['output_directory_eos'] = '{}/{:%Y_%m_%d__%H_%M}_{}_gpu{}'.format(output_folder_eos, datetime.datetime.now(), 
+                                                                                number_of_turn_string, extra_str)
         os.makedirs(settings['output_directory_afs'], exist_ok=True)
         os.makedirs(settings['output_directory_eos'], exist_ok=True)
         print('\nSaving EOS data to {}'.format(settings['output_directory_eos']))
@@ -78,11 +80,12 @@ queue'''
     
     
     def submit_GPU(self, 
-                   python_script_source_path,
-                   output_folder_eos='/eos/user/e/elwaagaa/PhD/Projects/fma_ions/htcondor_submission/output',
-                   job_flavour='espresso',
-                   extra_output_name_str=None,
-                   change_to_best_node=True
+                   python_script_source_path : str,
+                   output_folder_eos : str = '/eos/user/e/elwaagaa/PhD/Projects/fma_ions/htcondor_submission/output',
+                   job_flavour : str ='espresso',
+                   extra_output_name_str : str = None,
+                   change_to_best_node : bool = True,
+                   number_of_turn_string : str = ''
                    ):
         """Method to submit .py script to HTCondor with GPUs"""
         
@@ -96,7 +99,8 @@ queue'''
         settings = {}
         settings['output_directory_afs'] = '/afs/cern.ch/user/e/elwaagaa/public/sps_flat_bottom_tracking/output_logs/{:%Y_%m_%d__%H_%M}{}'.format(datetime.datetime.now(), 
                                                                                                                                                   extra_str)
-        settings['output_directory_eos'] = '{}/{:%Y_%m_%d__%H_%M}_gpu{}'.format(output_folder_eos, datetime.datetime.now(), extra_str)
+        settings['output_directory_eos'] = '{}/{:%Y_%m_%d__%H_%M}_{}_gpu{}'.format(output_folder_eos, datetime.datetime.now(), 
+                                                                                number_of_turn_string, extra_str)
         os.makedirs(settings['output_directory_afs'], exist_ok=True)
         os.makedirs(settings['output_directory_eos'], exist_ok=True)
         print('\nSaving EOS data to {}'.format(settings['output_directory_eos']))
