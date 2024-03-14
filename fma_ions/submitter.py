@@ -9,7 +9,7 @@ class Submitter:
     def submit_CPU(self, 
                    python_script_source_path,
                    output_folder_eos='/eos/user/e/elwaagaa/PhD/Projects/fma_ions/htcondor_submission/output',
-                   job_flavour="espresso",
+                   job_flavour='espresso',
                    extra_output_name_str='',
                    nr_of_CPUs_to_request=8
                    ):
@@ -67,7 +67,7 @@ class Submitter:
         xrdcp -f abort.txt {os.path.join(settings['output_directory_eos'],"abort.txt")}
         """)
         print("\n")
-        
+
         # Make job file
         job_file = open(job_file_name,'w')
         print(
@@ -77,7 +77,7 @@ class Submitter:
         error                 = {os.path.join(settings['output_directory_afs'],"$(ClusterId).$(ProcId).err")}
         log                   = {os.path.join(settings['output_directory_afs'],"$(ClusterId).$(ProcId).log")}
         request_CPUs = {nr_of_CPUs_to_request}
-        +JobFlavour = {job_flavour}
+        +JobFlavour = "{job_flavour}"
         queue''')
         job_file.write(
         f'''executable        = {bash_script_path}
@@ -86,7 +86,7 @@ class Submitter:
         error                 = {os.path.join(settings['output_directory_afs'],"$(ClusterId).$(ProcId).err")}
         log                   = {os.path.join(settings['output_directory_afs'],"$(ClusterId).$(ProcId).log")}
         request_CPUs = {nr_of_CPUs_to_request}
-        +JobFlavour = {job_flavour}
+        +JobFlavour = "{job_flavour}"
         queue''')
         job_file.close()
 
