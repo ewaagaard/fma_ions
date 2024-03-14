@@ -251,37 +251,27 @@ class SPS_Flat_Bottom_Tracker:
         return line 
 
 
-    def load_tbt_data(self) -> Records:
+    def load_tbt_data(self, output_folder=None) -> Records:
         """
         Loads numpy data if tracking has already been made
         """
+        folder_path = '{}/'.format(self.output_folder) if output_folder is not None else ''
 
         # Read the parquet file
-        tbt = pd.read_parquet('{}/tbt.parquet'.format(self.output_folder))
-
-        ''' OLD WAY
-        # First initialize empty data class to fill with data
-        tbt = Records.init_zeroes(self.num_turns)
-        tbt.nepsilon_x = np.load('{}/nepsilon_x.npy'.format(self.output_folder))
-        tbt.nepsilon_y = np.load('{}/nepsilon_y.npy'.format(self.output_folder))
-        tbt.sigma_delta = np.load('{}/sigma_delta.npy'.format(self.output_folder))
-        tbt.bunch_length = np.load('{}/bunch_length.npy'.format(self.output_folder))
-        tbt.Nb = np.load('{}/Nb.npy'.format(self.output_folder))
-        '''
-
+        tbt = pd.read_parquet('tbt.parquet')
         return tbt
 
 
     def plot_tracking_data(self, tbt, show_plot=False):
         """Generates emittance plots from TBT data class"""
 
-        turns = np.arange(self.num_turns, dtype=int) 
+        turns = np.arange(len(tbt.exn), dtype=int) 
 
         # Emittances and bunch intensity 
         f, (ax1, ax2) = plt.subplots(1, 2, figsize = (10,5))
 
-        ax1.plot(turns, tbt.nepsilon_x * 1e6, alpha=0.7, lw=1.5, label='X')
-        ax1.plot(turns, tbt.nepsilon_y * 1e6, lw=1.5, label='Y')
+        ax1.plot(turns, tbt.exn * 1e6, alpha=0.7, lw=1.5, label='X')
+        ax1.plot(turns, tbt.eyn * 1e6, lw=1.5, label='Y')
         ax2.plot(turns, tbt.Nb, alpha=0.7, lw=1.5, c='r', label='Bunch intensity')
 
         ax1.set_ylabel(r'$\varepsilon_{x, y}$ [$\mu$m]')
@@ -303,6 +293,8 @@ class SPS_Flat_Bottom_Tracker:
         ax22.set_xlabel('Turns')    
         f2.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
 
+        # Save figures
+        os.makedirs(self.output_folder, exist_ok=True)
         f.savefig('{}/epsilon_Nb.png'.format(self.output_folder), dpi=250)
         f2.savefig('{}/sigma_z_and_delta.png'.format(self.output_folder), dpi=250)
 
@@ -310,24 +302,12 @@ class SPS_Flat_Bottom_Tracker:
             plt.show()
         plt.close()
         
-        ''' OLD way of saving data and then plotting
-        if save_tbt_data: 
-            os.makedirs(self.output_folder, exist_ok=True)
-            np.save('{}/nepsilon_x.npy'.format(self.output_folder), tbt.nepsilon_x)
-            np.save('{}/nepsilon_y.npy'.format(self.output_folder), tbt.nepsilon_y)
-            np.save('{}/sigma_delta.npy'.format(self.output_folder), tbt.sigma_delta)
-            np.save('{}/bunch_length.npy'.format(self.output_folder), tbt.bunch_length)
-            np.save('{}/Nb.npy'.format(self.output_folder), tbt.Nb)
-
-        self.plot_tracking_data(tbt)
-        '''
     
-
-    def load_tbt_data_and_plot(self):
+    def load_tbt_data_and_plot(self, show_plot=False):
         """Load already tracked data and plot"""
         try:
             tbt = self.load_tbt_data()
-            self.plot_tracking_data(tbt)
+            self.plot_tracking_data(tbt, show_plot=show_plot)
         except FileNotFoundError:
             raise FileNotFoundError('Tracking data does not exist - set correct path or generate the data!')
         
