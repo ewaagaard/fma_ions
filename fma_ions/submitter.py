@@ -10,7 +10,7 @@ class Submitter:
                    python_script_source_path,
                    output_folder_eos='/eos/user/e/elwaagaa/PhD/Projects/fma_ions/htcondor_submission/output',
                    job_flavour='espresso',
-                   extra_output_name_str='',
+                   extra_output_name_str=None,
                    nr_of_CPUs_to_request=8
                    ):
         """Method to submit .py script to HTCondor using CPUs"""
@@ -20,10 +20,13 @@ class Submitter:
         # Specify which line from fma_ions
         python_script_name = os.path.basename(python_script_source_path)
 
+        # Whether to create extra subfolder or not
+        extra_str = '/{}'.format(extra_output_name_str) if extra_output_name_str is not None else ''
+
         # Initiate settings for output
         settings = {}
         settings['output_directory_afs'] = '/afs/cern.ch/user/e/elwaagaa/public/sps_flat_bottom_tracking/output_logs'
-        settings['output_directory_eos'] = '{}/{:%Y_%m_%d__%H_%M}{}'.format(output_folder_eos, datetime.datetime.now(), extra_output_name_str)
+        settings['output_directory_eos'] = '{}/{:%Y_%m_%d__%H_%M}{}'.format(output_folder_eos, datetime.datetime.now(), extra_str)
         os.makedirs(settings['output_directory_afs'], exist_ok=True)
         os.makedirs(settings['output_directory_eos'], exist_ok=True)
         turnbyturn_file_name = 'tbt.parquet'
@@ -59,8 +62,8 @@ transfer_input_files  = {python_script_source_path}
 output                = {os.path.join(settings['output_directory_afs'],"$(ClusterId).$(ProcId).out")}
 error                 = {os.path.join(settings['output_directory_afs'],"$(ClusterId).$(ProcId).err")}
 log                   = {os.path.join(settings['output_directory_afs'],"$(ClusterId).$(ProcId).log")}
-request_CPUs = 4
-+JobFlavour = "espresso"
+request_CPUs = {nr_of_CPUs_to_request}
++JobFlavour = "{job_flavour}"
 queue''')
         job_file.close()
 
@@ -72,7 +75,7 @@ queue''')
     def submit_GPU(self, 
                    python_script_source_path,
                    output_folder_eos='/eos/user/e/elwaagaa/PhD/Projects/fma_ions/htcondor_submission/output',
-                   job_flavour="testmatch",
+                   job_flavour='espresso',
                    extra_output_name_str='',
                    ):
         """Method to submit .py script to HTCondor with GPUs"""
@@ -80,12 +83,15 @@ queue''')
         # Specify which line from fma_ions
         python_script_name = os.path.basename(python_script_source_path)
         
+        # Whether to create extra subfolder or not
+        extra_str = '/{}'.format(extra_output_name_str) if extra_output_name_str is not None else ''
+
         # Initiate settings for output
         settings = {}
         settings['output_directory_afs'] = '/afs/cern.ch/user/e/elwaagaa/public/sps_flat_bottom_tracking/output_logs'
-        settings['output_directory_eos'] = '{}/{:%Y_%m_%d__%H_%M}{}'.format(output_folder_eos, datetime.datetime.now(), extra_output_name_str)
+        settings['output_directory_eos'] = '{}/{:%Y_%m_%d__%H_%M}{}'.format(output_folder_eos, datetime.datetime.now(), extra_str)
         os.makedirs(settings['output_directory_afs'], exist_ok=True)
-        os.makedirs(settings['output_directory_afs'], exist_ok=True)
+        os.makedirs(settings['output_directory_eos'], exist_ok=True)
         turnbyturn_file_name = 'tbt.parquet'
         turnbyturn_path_eos = os.path.join(settings['output_directory_eos'], turnbyturn_file_name)
         
@@ -120,7 +126,7 @@ queue''')
         error                 = {os.path.join(settings['output_directory_afs'],"$(ClusterId).$(ProcId).err")}
         log                   = {os.path.join(settings['output_directory_afs'],"$(ClusterId).$(ProcId).log")}
         request_GPUs = 1
-        +JobFlavour = {job_flavour}
+        +JobFlavour = "{job_flavour}"
         queue''')
         # previously also included "requirements = regexp("V100", TARGET.CUDADeviceName) || regexp("A100", TARGET.CUDADeviceName)"
         job_file.close()
