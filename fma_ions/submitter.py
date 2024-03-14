@@ -51,8 +51,34 @@ class Submitter:
         bash_script.close()
         os.chmod(bash_script_path, stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IROTH | stat.S_IXOTH)
 
+        print("\n")
+        print(
+        f"""#!/bin/bash\n
+        echo 'sourcing environment'
+        source /afs/cern.ch/work/e/elwaagaa/public/venvs/miniconda/bin/activate
+        date
+        echo 'Running job'
+        python {python_script_name} 1> out.txt 2> err.txt
+        echo 'Done'
+        date
+        xrdcp -f {turnbyturn_file_name} {turnbyturn_path_eos}
+        xrdcp -f out.txt {os.path.join(settings['output_directory_eos'],"out.txt")}
+        xrdcp -f err.txt {os.path.join(settings['output_directory_eos'],"err.txt")}
+        xrdcp -f abort.txt {os.path.join(settings['output_directory_eos'],"abort.txt")}
+        """)
+        print("\n")
+        
         # Make job file
         job_file = open(job_file_name,'w')
+        print(
+        f'''executable        = {bash_script_path}
+        transfer_input_files  = {python_script_source_path}
+        output                = {os.path.join(settings['output_directory_afs'],"$(ClusterId).$(ProcId).out")}
+        error                 = {os.path.join(settings['output_directory_afs'],"$(ClusterId).$(ProcId).err")}
+        log                   = {os.path.join(settings['output_directory_afs'],"$(ClusterId).$(ProcId).log")}
+        request_CPUs = {nr_of_CPUs_to_request}
+        +JobFlavour = {job_flavour}
+        queue''')
         job_file.write(
         f'''executable        = {bash_script_path}
         transfer_input_files  = {python_script_source_path}
