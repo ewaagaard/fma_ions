@@ -29,12 +29,12 @@ class SPS_Flat_Bottom_Tracker:
     """
     Container to track xp.Particles at SPS flat bottom and store beam parameter results
     """
-    num_part: int = 5000
+    num_part: int = 10_000
     num_turns: int = 1000
     output_folder : str = "output" 
     turn_print_interval : int = 100
     qx0: float = 26.30
-    qy0: float = 26.25
+    qy0: float = 26.19
 
     def generate_particles(self, line: xt.Line, context : xo.context, use_Gaussian_distribution=True, beamParams=None
                            ) -> xp.Particles:
