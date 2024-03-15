@@ -17,7 +17,6 @@ class Submitter:
                    copy_plot_scripts_to_output : bool = True
                    ):
         """Method to submit .py script to HTCondor using CPUs"""
-        self.output_folder_eos = output_folder_eos
 
         # Specify which line from fma_ions
         python_script_name = os.path.basename(python_script_source_path)
@@ -31,6 +30,8 @@ class Submitter:
                                                                                                                                                   extra_str)
         settings['output_directory_eos'] = '{}/{:%Y_%m_%d__%H_%M}_{}_gpu{}'.format(output_folder_eos, datetime.datetime.now(), 
                                                                                 number_of_turn_string, extra_str)
+        self.output_folder_eos = '{}/{:%Y_%m_%d__%H_%M}_{}_gpu{}'.format(output_folder_eos, datetime.datetime.now(), 
+                                                                                number_of_turn_string)
         os.makedirs(settings['output_directory_afs'], exist_ok=True)
         os.makedirs(settings['output_directory_eos'], exist_ok=True)
         print('\nSaving EOS data to {}'.format(settings['output_directory_eos']))
@@ -95,7 +96,6 @@ queue'''
                    copy_plot_scripts_to_output : bool = True
                    ):
         """Method to submit .py script to HTCondor with GPUs"""        
-        self.output_folder_eos = output_folder_eos
 
         # Specify which line from fma_ions
         python_script_name = os.path.basename(python_script_source_path)
@@ -109,6 +109,8 @@ queue'''
                                                                                                                                                   extra_str)
         settings['output_directory_eos'] = '{}/{:%Y_%m_%d__%H_%M}_{}_gpu{}'.format(output_folder_eos, datetime.datetime.now(), 
                                                                                 number_of_turn_string, extra_str)
+        self.output_folder_eos = '{}/{:%Y_%m_%d__%H_%M}_{}_gpu{}'.format(output_folder_eos, datetime.datetime.now(), 
+                                                                                number_of_turn_string)
         os.makedirs(settings['output_directory_afs'], exist_ok=True)
         os.makedirs(settings['output_directory_eos'], exist_ok=True)
         print('\nSaving EOS data to {}'.format(settings['output_directory_eos']))
