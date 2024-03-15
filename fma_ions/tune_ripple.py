@@ -161,7 +161,8 @@ class Tune_Ripple_SPS:
         return kqf_vals, kqd_vals, turns
         
       
-    def find_k_from_xtrack_matching(self, dq=0.05, nr_matches=10, use_symmetric_lattice=True, plane='X', Qy_frac=25):
+    def find_k_from_xtrack_matching(self, dq=0.05, nr_matches=10, use_symmetric_lattice=True, plane='X', Qy_frac=25,
+                                    show_plot=False):
         """
         Find desired tune amplitude modulation dQx or dQy by matching the global
         variable kqf and kqd
@@ -235,7 +236,9 @@ class Tune_Ripple_SPS:
             ax[1].set_xlabel('$Q_{x}$')
             ax[1].set_ylabel('kqd')
             fig.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
-            plt.show()
+            if show_plot:
+                plt.show()
+            plt.close()
             
         elif plane == 'Y':
             Qy_target = np.linspace(np.round(twiss['qy'], 2), np.round(twiss['qy'], 2) + dq, num=nr_matches)
@@ -262,16 +265,18 @@ class Tune_Ripple_SPS:
                 Qx_vals[i] = twiss['qx']
                 Qy_vals[i] = twiss['qy']
                 
-                # Plot tune evolution over time
-                fig, ax = plt.subplots(1, 2, figsize=(12,6))
-                ax[0].plot(Qy_vals, kqfs, '-', color='blue')
-                ax[1].plot(Qy_vals, kqds, '-', color='red')
-                ax[0].set_xlabel('$Q_{y}$')
-                ax[0].set_ylabel('kqf')
-                ax[1].set_xlabel('$Q_{y}$')
-                ax[1].set_ylabel('kqd')
-                fig.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+            # Plot tune evolution over time
+            fig, ax = plt.subplots(1, 2, figsize=(12,6))
+            ax[0].plot(Qy_vals, kqfs, '-', color='blue')
+            ax[1].plot(Qy_vals, kqds, '-', color='red')
+            ax[0].set_xlabel('$Q_{y}$')
+            ax[0].set_ylabel('kqf')
+            ax[1].set_xlabel('$Q_{y}$')
+            ax[1].set_ylabel('kqd')
+            fig.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+            if show_plot:
                 plt.show()
+            plt.close()
         else:
             raise ValueError('Plane not valid - X or Y!')
         
