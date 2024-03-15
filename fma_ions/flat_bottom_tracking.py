@@ -33,7 +33,7 @@ class SPS_Flat_Bottom_Tracker:
     num_part: int = 10_000
     num_turns: int = 1000
     output_folder : str = "output" 
-    turn_print_interval : int = 100
+    turn_print_interval : int = 500
     qx0: float = 26.30
     qy0: float = 26.19
 
@@ -70,9 +70,9 @@ class SPS_Flat_Bottom_Tracker:
                   use_Gaussian_distribution=True,
                   apply_kinetic_IBS_kicks=False,
                   harmonic_nb = 4653,
-                  ibs_step = 50,
+                  ibs_step = 100,
                   Qy_frac: int = 25,
-                  print_lost_particle_state=False,
+                  print_lost_particle_state=True,
                   minimum_aperture_to_remove=0.025,
                   add_tune_ripple=False,
                   dq=0.01,
@@ -175,25 +175,25 @@ class SPS_Flat_Bottom_Tracker:
             kinetic_kick_coefficients = IBS.compute_kick_coefficients(particles)
             print(kinetic_kick_coefficients)
 
-        # Install SC and build tracker
+        # Install SC and build tracker - optimize line if line variables for tune ripple not needed
         if install_SC_on_line:
             fma_sps = FMA()
-            line = fma_sps.install_SC_and_get_line(line, beamParams, mode=SC_mode, optimize_for_tracking=True, context=context)
+            line = fma_sps.install_SC_and_get_line(line, beamParams, mode=SC_mode, optimize_for_tracking=(not add_tune_ripple), context=context)
             print('Installed space charge on line\n')
 
         # Add tune ripple
         if add_tune_ripple:
-            if ripple_freq is None:
-                ripple_period = ### CALCULATE with twiss.Trev0, test
+            turns_per_sec = 1/twiss['T_rev0']
+            ripple_period = int(turns_per_sec/ripple_freq)  # number of turns particle makes during one ripple oscillation
             ripple = Tune_Ripple_SPS(Qy_frac=Qy_frac, beta_beat=beta_beat, num_turns=self.num_turns, ripple_period=ripple_period)
-            kqf_vals, kqd_vals, turns = ripple.load_k_from_xtrack_matching(dq=dq, plane='X')
+            kqf_vals, kqd_vals, _ = ripple.load_k_from_xtrack_matching(dq=dq, plane='X')
 
         # Start tracking 
         time00 = time.time()
         for turn in range(1, self.num_turns):
             
             if turn % self.turn_print_interval == 0:
-                print('Tracking turn {}'.format(turn))            
+                print('\nTracking turn {}'.format(turn))            
 
             ########## IBS -> Potentially re-compute the ellitest_parts integrals and IBS growth rates #########
             if apply_kinetic_IBS_kicks and ((turn % ibs_step == 0) or (turn == 1)):
@@ -220,9 +220,11 @@ class SPS_Flat_Bottom_Tracker:
             line.track(particles, num_turns=1)
             tbt.update_at_turn(turn, particles, twiss)
 
-            if print_lost_particle_state:
-                print('\nLost particle state:')
-                print(particles.state[particles.state <= 0])
+            if particles.state[particles.state <= 0].size > 0:
+                if print_lost_particle_state and turn % self.turn_print_interval == 0:
+                    print('Lost particle state: most common code: "-{}" for {} particles out of {} lost in total'.format(np.bincount(np.abs(particles.state[particles.state <= 0])).argmax(),
+                                                                                                          np.max(np.bincount(np.abs(particles.state[particles.state <= 0]))),
+                                                                                                          len(particles.state[particles.state <= 0])))
         time01 = time.time()
         dt0 = time01-time00
         print('\nTracking time: {} s'.format(dt0))
@@ -281,10 +283,10 @@ class SPS_Flat_Bottom_Tracker:
         """
         Loads numpy data if tracking has already been made
         """
-        folder_path = '{}/'.format(self.output_folder) if output_folder is not None else ''
+        folder_path = '{}/'.format(output_folder) if output_folder is not None else ''
 
         # Read the parquet file
-        tbt = pd.read_parquet('tbt.parquet')
+        tbt = pd.read_parquet('{}tbt.parquet'.format(folder_path))
         return tbt
 
 
@@ -356,8 +358,8 @@ class SPS_Flat_Bottom_Tracker:
         tbt_array = []
         for output_folder in output_str_array:
             self.output_folder = output_folder
-            tbt = self.load_tbt_data()
-            tbt.turns = np.arange(len(tbt.Nb), dtype=int)
+            tbt = self.load_tbt_data(output_folder)
+            tbt['turns'] = np.arange(len(tbt.Nb), dtype=int)
             tbt_array.append(tbt)
 
         # Emittances and bunch intensity 
@@ -365,8 +367,8 @@ class SPS_Flat_Bottom_Tracker:
 
         # Loop over the tbt records classes 
         for i, tbt in enumerate(tbt_array):
-            ax1.plot(tbt.turns, tbt.nepsilon_x * 1e6, alpha=0.7, lw=1.5, label=string_array[i])
-            ax2.plot(tbt.turns, tbt.nepsilon_y * 1e6, alpha=0.7, lw=1.5, label=string_array[i])
+            ax1.plot(tbt.turns, tbt.exn * 1e6, alpha=0.7, lw=1.5, label=string_array[i])
+            ax2.plot(tbt.turns, tbt.eyn * 1e6, alpha=0.7, lw=1.5, label=string_array[i])
             ax3.plot(tbt.turns, tbt.Nb, alpha=0.7, lw=1.5, label=string_array[i])
 
         ax1.set_xlabel('Turns')
