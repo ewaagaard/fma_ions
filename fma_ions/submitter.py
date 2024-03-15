@@ -13,10 +13,12 @@ class Submitter:
                    extra_output_name_str : str = None,
                    nr_of_CPUs_to_request : int = 8,
                    change_to_best_node : bool = True,
-                   number_of_turn_string : str = ''
+                   number_of_turn_string : str = '',
+                   copy_plot_scripts_to_output : bool = True
                    ):
         """Method to submit .py script to HTCondor using CPUs"""
-        
+        self.output_folder_eos = output_folder_eos
+
         # Specify which line from fma_ions
         python_script_name = os.path.basename(python_script_source_path)
 
@@ -77,6 +79,10 @@ queue'''
         if change_to_best_node:
             os.system('myschedd bump')
         os.system(f'condor_submit {job_file_name}')
+
+        # Copy plot scripts to output folder
+        if copy_plot_scripts_to_output:
+            self.copy_plot_script(settings['output_directory_eos'])
     
     
     def submit_GPU(self, 
@@ -85,10 +91,12 @@ queue'''
                    job_flavour : str ='nextweek',
                    extra_output_name_str : str = None,
                    change_to_best_node : bool = True,
-                   number_of_turn_string : str = ''
+                   number_of_turn_string : str = '',
+                   copy_plot_scripts_to_output : bool = True
                    ):
-        """Method to submit .py script to HTCondor with GPUs"""
-        
+        """Method to submit .py script to HTCondor with GPUs"""        
+        self.output_folder_eos = output_folder_eos
+
         # Specify which line from fma_ions
         python_script_name = os.path.basename(python_script_source_path)
         
@@ -150,3 +158,31 @@ queue'''
         if change_to_best_node:
             os.system('myschedd bump')
         os.system(f'condor_submit {job_file_name}')
+
+        # Copy plot scripts to output folder
+        if copy_plot_scripts_to_output:
+            self.copy_plot_script(settings['output_directory_eos'])
+
+
+    def copy_plot_script(self, eos_output_directory):
+        """Create a simple TBT data plot script in the output directory"""
+        plot_file = open('plot_tbt.py','w')
+        plot_file.write(
+        '''\nimport fma_ions\nsps = fma_ions.SPS_Flat_Bottom_Tracker()\nsps.load_tbt_data_and_plot(show_plot=True)'''
+        )
+        plot_file.close()
+        os.system(f'cp plot_tbt.py {os.path.join(eos_output_directory,"plot_tbt.py")}')
+
+
+    def copy_master_plot_script(self, folder_names, string_names):
+        """After all jobs have been submitted, create master plot script in the output directory with folders and legend strings specified"""
+
+        plot_file = open('plot_combined_output.py','w')
+        plot_file.write(
+        f'''folder_names = {folder_names}\nstring_array = {string_names}\nimport fma_ions\n\nsps = fma_ions.SPS_Flat_Bottom_Tracker()
+sps.plot_multiple_sets_of_tracking_data(output_str_array=folder_names, string_array=string_array)
+        '''
+        )
+        plot_file.close()
+        os.system(f'cp plot_combined_output.py {os.path.join(self.eos_output_directory,"plot_combined_output.py")}')
+        print(f'Successfully copied plot file to {self.eos_output_directory}')
