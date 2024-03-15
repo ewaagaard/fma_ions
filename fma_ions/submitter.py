@@ -30,7 +30,7 @@ class Submitter:
                                                                                                                                                   extra_str)
         settings['output_directory_eos'] = '{}/{:%Y_%m_%d__%H_%M}_{}_gpu{}'.format(output_folder_eos, datetime.datetime.now(), 
                                                                                 number_of_turn_string, extra_str)
-        self.output_folder_eos = '{}/{:%Y_%m_%d__%H_%M}_{}_gpu{}'.format(output_folder_eos, datetime.datetime.now(), 
+        self.output_folder_eos = '{}/{:%Y_%m_%d__%H_%M}_{}_gpu'.format(output_folder_eos, datetime.datetime.now(), 
                                                                                 number_of_turn_string)
         os.makedirs(settings['output_directory_afs'], exist_ok=True)
         os.makedirs(settings['output_directory_eos'], exist_ok=True)
@@ -109,7 +109,7 @@ queue'''
                                                                                                                                                   extra_str)
         settings['output_directory_eos'] = '{}/{:%Y_%m_%d__%H_%M}_{}_gpu{}'.format(output_folder_eos, datetime.datetime.now(), 
                                                                                 number_of_turn_string, extra_str)
-        self.output_folder_eos = '{}/{:%Y_%m_%d__%H_%M}_{}_gpu{}'.format(output_folder_eos, datetime.datetime.now(), 
+        self.output_folder_eos = '{}/{:%Y_%m_%d__%H_%M}_{}_gpu'.format(output_folder_eos, datetime.datetime.now(), 
                                                                                 number_of_turn_string)
         os.makedirs(settings['output_directory_afs'], exist_ok=True)
         os.makedirs(settings['output_directory_eos'], exist_ok=True)
