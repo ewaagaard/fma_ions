@@ -9,7 +9,7 @@ class Submitter:
     def submit_CPU(self, 
                    python_script_source_path : str,
                    output_folder_eos: str = '/eos/user/e/elwaagaa/PhD/Projects/fma_ions/htcondor_submission/output',
-                   job_flavour: str = 'espresso',
+                   job_flavour: str = 'nextweek',
                    extra_output_name_str : str = None,
                    nr_of_CPUs_to_request : int = 8,
                    change_to_best_node : bool = True,
@@ -82,7 +82,7 @@ queue'''
     def submit_GPU(self, 
                    python_script_source_path : str,
                    output_folder_eos : str = '/eos/user/e/elwaagaa/PhD/Projects/fma_ions/htcondor_submission/output',
-                   job_flavour : str ='espresso',
+                   job_flavour : str ='nextweek',
                    extra_output_name_str : str = None,
                    change_to_best_node : bool = True,
                    number_of_turn_string : str = ''
