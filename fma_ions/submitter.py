@@ -184,5 +184,5 @@ sps.plot_multiple_sets_of_tracking_data(output_str_array=folder_names, string_ar
         '''
         )
         plot_file.close()
-        os.system(f'cp plot_combined_output.py {os.path.join(self.eos_output_directory,"plot_combined_output.py")}')
-        print(f'Successfully copied plot file to {self.eos_output_directory}')
+        os.system(f'cp plot_combined_output.py {os.path.join(self.output_folder_eos,"plot_combined_output.py")}')
+        print(f'Successfully copied plot file to {self.output_folder_eos}')
