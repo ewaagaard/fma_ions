@@ -227,7 +227,7 @@ class SPS_Flat_Bottom_Tracker:
                                                                                                           len(particles.state[particles.state <= 0])))
         time01 = time.time()
         dt0 = time01-time00
-        print('\nTracking time: {} s'.format(dt0))
+        print('\nTracking time: {:.1f} s = {:.1f} h'.format(dt0, dt0/3600))
         
         # Make parquet file from dictionary
         if save_tbt_data:
