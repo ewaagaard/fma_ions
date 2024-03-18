@@ -19,6 +19,7 @@ __pycache__/
 *.log
 *.err
 *.parquet
+*htcondor_submission/output/
 
 # MADX files
 internal_mag_pot.txt
