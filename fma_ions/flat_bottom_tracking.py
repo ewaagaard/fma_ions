@@ -19,11 +19,16 @@ from .tune_ripple import Tune_Ripple_SPS
 from xibs.inputs import BeamParameters, OpticsParameters
 from xibs.kicks import KineticKickIBS
 
+from pathlib import Path
+
 import pandas as pd
 import os
 import json
 import matplotlib.pyplot as plt
 import time
+
+# Load default emittance measurement data from 2023_10_16
+emittance_data_path = Path(__file__).resolve().parent.joinpath('../data/emittance_data/full_WS_data_SPS_2023_10_16.json').absolute()
 
 @dataclass
 class SPS_Flat_Bottom_Tracker:
@@ -253,35 +258,86 @@ class SPS_Flat_Bottom_Tracker:
         return tbt
 
 
-    def plot_tracking_data(self, tbt, show_plot=False):
-        """Generates emittance plots from TBT data class"""
+    def plot_tracking_data(self, 
+                           tbt : pd.DataFrame, 
+                           include_emittance_measurements=False,
+                           show_plot=False,
+                           x_unit_in_turns=True):
+        """
+        Generates emittance plots from turn-by-turn (TBT) data class from simulations,
+        compare with emittance measurements (default 2023-10-16) if desired.
+        
+        Parameters:
+        tbt : pd.DataFrame
+            dataframe containing the TBT data
+        include_emittance_measurements : bool
+            whether to include measured emittance or not
+        show_plot : bool
+            whether to run "plt.show()" in addtion
+        x_units_in_turns : bool
+            if True, x axis units will be turn, otherwise in seconds
+        """
 
-        turns = np.arange(len(tbt.exn), dtype=int) 
+        # Convert measured emittances to turns if this unit is used, otherwise keep seconds
+        
+        if x_unit_in_turns:
+            turns = np.arange(len(tbt.exn), dtype=int)             
+            time_units = turns
+        else:
+            if 'Seconds' in tbt.index:
+                time_units = tbt['Seconds']
+            else:
+                sps = SPS_sequence_maker()
+                _, twiss = sps.load_xsuite_line_and_twiss()
+                turns_per_sec = 1 / twiss.T_rev0
+                seconds = self.num_turns / turns_per_sec # number of seconds we are running for
+                tbt['Seconds'] = np.linspace(0.0, seconds, num=int(len(tbt.exn)))
+                time_units = tbt['Seconds']
+                
+        # Load emittance measurements
+        if include_emittance_measurements:
+            if x_unit_in_turns:
+                _, twiss = sps.load_xsuite_line_and_twiss()
+                turns_per_sec = 1 / twiss.T_rev0
+            
+            full_data = self.load_emittance_data()
+            time_units_x = (turns_per_sec * full_data['Ctime_X']) if x_unit_in_turns else full_data['Ctime_X']
+            time_units_y = (turns_per_sec * full_data['Ctime_Y']) if x_unit_in_turns else full_data['Ctime_Y']
 
         # Emittances and bunch intensity 
-        f, (ax1, ax2) = plt.subplots(1, 2, figsize = (10,5))
+        f, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize = (14,5))
 
-        ax1.plot(turns, tbt.exn * 1e6, alpha=0.7, lw=1.5, label='X')
-        ax1.plot(turns, tbt.eyn * 1e6, lw=1.5, label='Y')
-        ax2.plot(turns, tbt.Nb, alpha=0.7, lw=1.5, c='r', label='Bunch intensity')
+        ax1.plot(time_units, tbt.exn * 1e6, alpha=0.7, lw=1.5, label='Simulated')
+        ax1.plot(time_units, tbt.eyn * 1e6, lw=1.5, label='Simulated')
+        ax2.plot(time_units, tbt.Nb, alpha=0.7, lw=1.5, c='r', label='Bunch intensity')
 
-        ax1.set_ylabel(r'$\varepsilon_{x, y}$ [$\mu$m]')
-        ax1.set_xlabel('Turns')
-        ax2.set_ylabel(r'$N_{b}$')
-        ax2.set_xlabel('Turns')
+        if include_emittance_measurements:
+            ax1.errorbar(time_units_x, 1e6 * np.array(full_data['N_avg_emitX']), yerr=1e6 * full_data['N_emitX_error'], 
+                       color='blue', fmt="o", label="Measured")
+            ax2.errorbar(time_units_y, 1e6 * np.array(full_data['N_avg_emitY']), yerr=1e6 * full_data['N_emitY_error'], 
+                       color='orange', fmt="o", label="Measured")
+
+        ax1.set_xlabel('Turns' if x_unit_in_turns else 'Time [s]')
+        ax2.set_xlabel('Turns' if x_unit_in_turns else 'Time [s]')
+        ax3.set_xlabel('Turns' if x_unit_in_turns else 'Time [s]')
+        ax1.set_ylabel(r'$\varepsilon_{x}^{n}$ [$\mu$m]')
+        ax2.set_ylabel(r'$\varepsilon_{y}^{n}$ [$\mu$m]')
+        ax3.set_ylabel(r'$N_{b}$')
+        ax3.set_xlabel('Turns')
         ax1.legend()
+        ax2.legend()
         f.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
 
-        # Emittances and bunch intensity 
+        # Sigma_delta and bunch length
         f2, (ax12, ax22) = plt.subplots(1, 2, figsize = (8,4))
 
-        ax12.plot(turns, tbt.sigma_delta * 1e3, alpha=0.7, lw=1.5, label='$\sigma_{\delta}$')
-        ax22.plot(turns, tbt.bunch_length, alpha=0.7, lw=1.5, label='Bunch intensity')
+        ax12.plot(time_units, tbt.sigma_delta * 1e3, alpha=0.7, lw=1.5, label='$\sigma_{\delta}$')
+        ax22.plot(time_units, tbt.bunch_length, alpha=0.7, lw=1.5, label='Bunch intensity')
 
         ax12.set_ylabel(r'$\sigma_{\delta}$')
-        ax12.set_xlabel('Turns')
+        ax12.set_xlabel('Turns' if x_unit_in_turns else 'Time [s]')
         ax22.set_ylabel(r'$\sigma_{z}$ [m]')
-        ax22.set_xlabel('Turns')    
+        ax22.set_xlabel('Turns' if x_unit_in_turns else 'Time [s]')    
         f2.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
 
         # Save figures
@@ -293,7 +349,7 @@ class SPS_Flat_Bottom_Tracker:
             plt.show()
         plt.close()
         
-    
+        
     def load_tbt_data_and_plot(self, show_plot=False):
         """Load already tracked data and plot"""
         try:
@@ -345,4 +401,37 @@ class SPS_Flat_Bottom_Tracker:
         f.savefig('main_plots/result_multiple_trackings.png', dpi=250)
         plt.show()
 
+
+    def load_emittance_data(self, path : str = emittance_data_path) -> pd.DataFrame:
+        """
+        Loads measured emittance data from SPS MDs, processed with CCC miner
+        https://github.com/ewaagaard/ccc_miner, returns pd.DataFrame
+        
+        Default date - 2023-10-16 with (Qx, Qy) = (26.3, 26.19) in SPS
+        """
+        
+        # Load dictionary with emittance data
+        try:
+            with open(path, 'r') as fp:
+                full_data = json.load(fp)
+        except FileNotFoundError:
+            print('\nFILE NOT FOUND - check input path!\n')
+            return
+        
+        # Convert timestamp strings to datetime, and find spread
+        full_data['TimestampX_datetime'] = pd.to_datetime(full_data['UTC_timestamp_X'])
+        full_data['TimestampY_datetime'] = pd.to_datetime(full_data['UTC_timestamp_Y'])
+        
+        full_data['N_emitX_error'] = np.std(full_data['N_emittances_X'], axis=1)
+        full_data['N_emitY_error'] = np.std(full_data['N_emittances_Y'], axis=1)
+        
+        # Only keep the average emittances, not full emittance tables
+        #del full_data['N_emittances_X'], full_data['N_emittances_Y']
+        
+        df = pd.DataFrame(dict([ (k, pd.Series(v)) for k,v in full_data.items() ]))
+        
+        # Remove emittance data after ramping starts, i.e. from around 48.5 s
+        df = df[df['Ctime_Y'] < 48.5]
+        
+        return df
 
