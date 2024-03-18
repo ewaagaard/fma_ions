@@ -297,6 +297,7 @@ class SPS_Flat_Bottom_Tracker:
         # Load emittance measurements
         if include_emittance_measurements:
             if x_unit_in_turns:
+                sps = SPS_sequence_maker()
                 _, twiss = sps.load_xsuite_line_and_twiss()
                 turns_per_sec = 1 / twiss.T_rev0
             
@@ -308,14 +309,21 @@ class SPS_Flat_Bottom_Tracker:
         f, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize = (14,5))
 
         ax1.plot(time_units, tbt.exn * 1e6, alpha=0.7, lw=1.5, label='Simulated')
-        ax1.plot(time_units, tbt.eyn * 1e6, lw=1.5, label='Simulated')
-        ax2.plot(time_units, tbt.Nb, alpha=0.7, lw=1.5, c='r', label='Bunch intensity')
+        ax2.plot(time_units, tbt.eyn * 1e6, alpha=0.7, c='orange', lw=1.5, label='Simulated')
+        ax3.plot(time_units, tbt.Nb, alpha=0.7, lw=1.5, c='r', label='Bunch intensity')
 
         if include_emittance_measurements:
             ax1.errorbar(time_units_x, 1e6 * np.array(full_data['N_avg_emitX']), yerr=1e6 * full_data['N_emitX_error'], 
                        color='blue', fmt="o", label="Measured")
             ax2.errorbar(time_units_y, 1e6 * np.array(full_data['N_avg_emitY']), yerr=1e6 * full_data['N_emitY_error'], 
-                       color='orange', fmt="o", label="Measured")
+                       color='darkorange', fmt="o", label="Measured")
+            
+        # Find min and max emittance values - set window limits 
+        all_emit = np.concatenate((tbt.exn, tbt.eyn))
+        if include_emittance_measurements:
+            all_emit = np.concatenate((all_emit, np.array(full_data['N_avg_emitX']), np.array(full_data['N_avg_emitY'])))
+        min_emit = 1e6 * np.min(all_emit)
+        max_emit = 1e6 * np.max(all_emit)
 
         ax1.set_xlabel('Turns' if x_unit_in_turns else 'Time [s]')
         ax2.set_xlabel('Turns' if x_unit_in_turns else 'Time [s]')
@@ -326,6 +334,8 @@ class SPS_Flat_Bottom_Tracker:
         ax3.set_xlabel('Turns')
         ax1.legend()
         ax2.legend()
+        ax1.set_ylim(min_emit-0.08, max_emit+0.1)
+        ax2.set_ylim(min_emit-0.08, max_emit+0.1)
         f.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
 
         # Sigma_delta and bunch length
@@ -350,11 +360,14 @@ class SPS_Flat_Bottom_Tracker:
         plt.close()
         
         
-    def load_tbt_data_and_plot(self, show_plot=False):
+    def load_tbt_data_and_plot(self, include_emittance_measurements=False, x_unit_in_turns=True, show_plot=False, output_folder=None):
         """Load already tracked data and plot"""
         try:
-            tbt = self.load_tbt_data()
-            self.plot_tracking_data(tbt, show_plot=show_plot)
+            tbt = self.load_tbt_data(output_folder=output_folder)
+            self.plot_tracking_data(tbt, 
+                                    include_emittance_measurements=include_emittance_measurements,
+                                    x_unit_in_turns=x_unit_in_turns,
+                                    show_plot=show_plot)
         except FileNotFoundError:
             raise FileNotFoundError('Tracking data does not exist - set correct path or generate the data!')
         
