@@ -168,7 +168,7 @@ class SPS_Flat_Bottom_Tracker:
         # Generate particles object to track    
         particles = self.generate_particles(line=line, context=context, use_Gaussian_distribution=use_Gaussian_distribution,
                                             beamParams=beamParams)
-        particles = particles.reorganize()
+        particles.reorganize()
 
         # Initialize the dataclasses and store the initial values
         tbt = Records.init_zeroes(self.num_turns)
