@@ -181,7 +181,7 @@ queue'''
 
         plot_file = open('plot_combined_output.py','w')
         plot_file.write(
-        f'''folder_names = {folder_names}\nstring_array = {string_names}\nimport fma_ions\n\nsps = fma_ions.SPS_Flat_Bottom_Tracker()
+        f'''import fma_ions\nfolder_names = {folder_names}\nstring_array = {string_names}\n\nsps = fma_ions.SPS_Flat_Bottom_Tracker()
 sps.plot_multiple_sets_of_tracking_data(output_str_array=folder_names, string_array=string_array)
         '''
         )
