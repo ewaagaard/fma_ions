@@ -18,6 +18,7 @@ from .tune_ripple import Tune_Ripple_SPS
 
 from xibs.inputs import BeamParameters, OpticsParameters
 from xibs.kicks import KineticKickIBS
+from xibs.analytical import NagaitsevIBS
 
 from pathlib import Path
 
@@ -448,3 +449,168 @@ class SPS_Flat_Bottom_Tracker:
         
         return df
 
+
+    def run_analytical_vs_kinetic_emittance_evolution(self,
+                                                      Qy_frac : int = 25,
+                                                      which_context='cpu',
+                                                      add_non_linear_magnet_errors=False, 
+                                                      beta_beat=None, 
+                                                      beamParams=None,
+                                                      ibs_step : int = 50,
+                                                      show_plot=False,
+                                                      print_lost_particle_state=True
+                                                      ):
+        """
+        Propagate emittances of Nagaitsev analytical and kinetic formalism.
+        Adapted from https://fsoubelet.github.io/xibs/gallery/demo_kinetic_kicks.html#sphx-glr-gallery-demo-kinetic-kicks-py
+        
+        Parameters:
+        -----------
+        which_context : str
+            'gpu' or 'cpu'
+        Qy_frac : int
+            fractional part of vertical tune
+        add_non_linear_magnet_errors : bool
+            whether to add line with non-linear chromatic errors
+        beta_beat : float
+            relative beta beat, i.e. relative difference between max beta function and max original beta function
+        beamParams : dataclass
+            container of exn, eyn, Nb and sigma_z. Default 'None' will load nominal SPS beam parameters 
+        ibs_step : int
+            turn interval at which to recalculate IBS growth rates
+        Qy_frac : int
+            fractional part of vertical tune, e.g. "19" for 26.19
+        """
+        
+        # Update vertical tune if changed
+        self.qy0 = int(self.qy0) + Qy_frac / 100
+        
+        # If specific beam parameters are not provided, load default SPS beam parameters
+        if beamParams is None:
+            beamParams = BeamParameters_SPS
+        print('Beam parameters:', beamParams)
+
+        # Select relevant context
+        if which_context=='gpu':
+            context = xo.ContextCupy()
+        elif which_context=='cpu':
+            context = xo.ContextCpu(omp_num_threads='auto')
+        else:
+            raise ValueError('Context is either "gpu" or "cpu"')
+
+        # Get SPS Pb line - with aperture and non-linear magnet errors if desired
+        sps = SPS_sequence_maker()
+        line, twiss = sps.load_xsuite_line_and_twiss(Qy_frac=Qy_frac, add_aperture=False, beta_beat=beta_beat,
+                                                   add_non_linear_magnet_errors=add_non_linear_magnet_errors)
+                
+        # Generate particles object to track    
+        particles = self.generate_particles(line=line, context=context, beamParams=beamParams)
+
+        # Initialize the dataclasses and store the initial values
+        tbt = Records.init_zeroes(self.num_turns)
+        tbt.update_at_turn(0, particles, twiss)
+
+        ######### IBS kinetic kicks and analytical model #########
+        beamparams = BeamParameters.from_line(line, n_part=beamParams.Nb)
+        opticsparams = OpticsParameters.from_line(line) # read from line without space  charge
+        IBS = KineticKickIBS(beamparams, opticsparams)
+        NIBS = NagaitsevIBS(beamparams, opticsparams)
+
+        # Initialize the dataclasses
+        kicked_tbt = Records.init_zeroes(self.num_turns)
+        analytical_tbt = Records.init_zeroes(self.num_turns)
+         
+        # Store the initial values
+        kicked_tbt.update_at_turn(0, particles, twiss)
+        analytical_tbt.update_at_turn(0, particles, twiss)
+        
+        
+        # We loop here now
+        time00 = time.time()
+        for turn in range(1, self.num_turns):
+            # ----- Potentially re-compute the IBS growth rates and kick coefficients ----- #
+            if (turn % ibs_step == 0) or (turn == 1):
+                print(f"Turn {turn:d}: re-computing diffusion and friction terms")
+                # Compute kick coefficients from the particle distribution at this moment
+                IBS.compute_kick_coefficients(particles)
+                # Compute analytical values from those at the previous turn
+                NIBS.growth_rates(
+                    analytical_tbt.nepsilon_x[turn - 1],
+                    analytical_tbt.nepsilon_y[turn - 1],
+                    analytical_tbt.sigma_delta[turn - 1],
+                    analytical_tbt.bunch_length[turn - 1],
+                )
+
+            if turn % self.turn_print_interval == 0:
+                print('\nTracking turn {}'.format(turn))       
+        
+            # ----- Manually Apply IBS Kick and Track Turn ----- #
+            IBS.apply_ibs_kick(particles)
+            line.track(particles, num_turns=1)
+        
+            # ----- Update records for tracked particles ----- #
+            kicked_tbt.update_at_turn(turn, particles, twiss)
+        
+            # ----- Compute analytical Emittances from previous turn values & update records----- #
+            ana_emit_x, ana_emit_y, ana_sig_delta, ana_bunch_length = NIBS.emittance_evolution(
+                analytical_tbt.nepsilon_x[turn - 1],
+                analytical_tbt.nepsilon_y[turn - 1],
+                analytical_tbt.sigma_delta[turn - 1],
+                analytical_tbt.bunch_length[turn - 1],
+            )
+            analytical_tbt.nepsilon_x[turn] = ana_emit_x
+            analytical_tbt.nepsilon_y[turn] = ana_emit_y
+            analytical_tbt.sigma_delta[turn] = ana_sig_delta
+            analytical_tbt.bunch_length[turn] = ana_bunch_length
+            
+            if particles.state[particles.state <= 0].size > 0:
+                if print_lost_particle_state and turn % self.turn_print_interval == 0:
+                    print('Lost particle state: most common code: "-{}" for {} particles out of {} lost in total'.format(np.bincount(np.abs(particles.state[particles.state <= 0])).argmax(),
+                                                                                                          np.max(np.bincount(np.abs(particles.state[particles.state <= 0]))),
+                                                                                                          len(particles.state[particles.state <= 0])))
+        
+        time01 = time.time()
+        dt0 = time01-time00
+        print('\nTracking time: {:.1f} s = {:.1f} h'.format(dt0, dt0/3600))
+        
+        # Plot the results
+        turns = np.arange(self.num_turns, dtype=int)  # array of turns
+        fig, axs = plt.subplot_mosaic([["epsx", "epsy"], ["sigd", "bl"]], sharex=True, figsize=(15, 7))
+        
+        # Plot from tracked & kicked particles
+        axs["epsx"].plot(turns, kicked_tbt.nepsilon_x * 1e6, lw=2, label="Kinetic Kicks")
+        axs["epsy"].plot(turns, kicked_tbt.nepsilon_y * 1e6, lw=2, label="Kinetic Kicks")
+        axs["sigd"].plot(turns, kicked_tbt.sigma_delta * 1e3, lw=2, label="Kinetic Kicks")
+        axs["bl"].plot(turns, kicked_tbt.bunch_length * 1e3, lw=2, label="Kinetic Kicks")
+        
+        # Plot from analytical values
+        axs["epsx"].plot(turns, analytical_tbt.nepsilon_x * 1e6, lw=2.5, label="Analytical")
+        axs["epsy"].plot(turns, analytical_tbt.nepsilon_y * 1e6, lw=2.5, label="Analytical")
+        axs["sigd"].plot(turns, analytical_tbt.sigma_delta * 1e3, lw=2.5, label="Analytical")
+        axs["bl"].plot(turns, analytical_tbt.bunch_length * 1e3, lw=2.5, label="Analytical")
+        
+        # Axes parameters
+        axs["epsx"].set_ylabel(r"$\varepsilon_x$ [$\mu$m]")
+        axs["epsy"].set_ylabel(r"$\varepsilon_y$ [$\mu$m]")
+        axs["sigd"].set_ylabel(r"$\sigma_{\delta}$ [$10^{-3}$]")
+        axs["bl"].set_ylabel(r"Bunch length [mm]")
+        
+        for axis in (axs["epsy"], axs["bl"]):
+            axis.yaxis.set_label_position("right")
+            axis.yaxis.tick_right()
+        
+        for axis in (axs["sigd"], axs["bl"]):
+            axis.set_xlabel("Turn Number")
+        
+        for axis in axs.values():
+            axis.yaxis.set_major_locator(plt.MaxNLocator(3))
+            axis.legend(loc=9, ncols=4)
+        
+        fig.align_ylabels((axs["epsx"], axs["sigd"]))
+        fig.align_ylabels((axs["epsy"], axs["bl"]))
+        
+        plt.tight_layout()
+        
+        os.makedirs('main_plots_{}'.format(which_context), exist_ok=True)
+        fig.savefig('main_plots_{}/analytical_vs_kinetic_emittance.png'.format(which_context), dpi=250)
+        plt.show()
