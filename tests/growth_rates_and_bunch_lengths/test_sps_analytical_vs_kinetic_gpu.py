@@ -3,6 +3,10 @@ Test tracking with kinetic IBS kicks vs Nagaitsev formalism, for SPS set-up - wi
 (Qx, Qy) = (26.30, 26.19) - ideal lattice
 """
 import fma_ions
+import xobjects as xo
+
+# Define cupy context
+context = xo.ContextCupy()
 
 # Test default tracking with space charge on GPU context - then test plotting
 sps = fma_ions.SPS_Flat_Bottom_Tracker(num_part=5000, num_turns=10_000, turn_print_interval=100)
@@ -18,8 +22,8 @@ beamParams3.sigma_z = 0.15
 
 # First test 
 sps.run_analytical_vs_kinetic_emittance_evolution(Qy_frac=19, which_context='gpu', ibs_step=300,
-                                                  beamParams=beamParams1, extra_plot_string='_ideal_lattice_sigmaZ_0dot225')
+                                                  beamParams=beamParams1, context=context, extra_plot_string='_ideal_lattice_sigmaZ_0dot225')
 sps.run_analytical_vs_kinetic_emittance_evolution(Qy_frac=19, which_context='gpu', ibs_step=300,
-                                                  beamParams=beamParams2, extra_plot_string='_ideal_lattice_sigmaZ_0dot19')
+                                                  beamParams=beamParams2, context=context, extra_plot_string='_ideal_lattice_sigmaZ_0dot19')
 sps.run_analytical_vs_kinetic_emittance_evolution(Qy_frac=19, which_context='gpu', ibs_step=300,
-                                                  beamParams=beamParams3, extra_plot_string='_ideal_lattice_sigmaZ_0dot15')
+                                                  beamParams=beamParams3, context=context, extra_plot_string='_ideal_lattice_sigmaZ_0dot15')
