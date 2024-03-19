@@ -91,6 +91,7 @@ class Records_Growth_Rates:
     epsilon_y: np.ndarray
     sigma_delta: np.ndarray
     bunch_length: np.ndarray
+    Nb: np.ndarray
     Tx: np.ndarray
     Ty: np.ndarray
     Tz: np.ndarray
@@ -98,6 +99,7 @@ class Records_Growth_Rates:
     def update_at_turn(self, turn: int, parts: xp.Particles, twiss: xt.TwissTable):
         self.epsilon_x[turn] = _geom_epsx(parts, twiss)
         self.epsilon_y[turn] = _geom_epsy(parts, twiss)
+        self.Nb[turn] = parts.weight[parts.state > 0][0]*len(parts.x[parts.state > 0])
         self.sigma_delta[turn] = _sigma_delta(parts)
         self.bunch_length[turn] = _bunch_length(parts)
 
@@ -108,6 +110,7 @@ class Records_Growth_Rates:
             epsilon_y=np.zeros(n_turns, dtype=float),
             sigma_delta=np.zeros(n_turns, dtype=float),
             bunch_length=np.zeros(n_turns, dtype=float),
+            Nb=np.zeros(n_turns, dtype=float),
             Tx=np.zeros(n_turns, dtype=float),
             Ty=np.zeros(n_turns, dtype=float),
             Tz=np.zeros(n_turns, dtype=float)

@@ -136,7 +136,7 @@ class SPS_Flat_Bottom_Tracker:
 
         # If specific beam parameters are not provided, load default SPS beam parameters
         if beamParams is None:
-            beamParams = BeamParameters_SPS
+            beamParams = BeamParameters_SPS()
         print('Beam parameters:', beamParams)
 
         # Select relevant context
@@ -459,7 +459,11 @@ class SPS_Flat_Bottom_Tracker:
                                                       beamParams=None,
                                                       ibs_step : int = 50,
                                                       show_plot=False,
-                                                      print_lost_particle_state=True
+                                                      print_lost_particle_state=True,
+                                                      plot_longitudinal_phase_space=True,
+                                                      harmonic_nb = 4653,
+                                                      extra_plot_string='',
+                                                      show_plot=False
                                                       ):
         """
         Propagate emittances of Nagaitsev analytical and kinetic formalism.
@@ -481,6 +485,10 @@ class SPS_Flat_Bottom_Tracker:
             turn interval at which to recalculate IBS growth rates
         Qy_frac : int
             fractional part of vertical tune, e.g. "19" for 26.19
+        print_lost_particle_state : bool
+            whether to print the state of lost particles
+        plot_longitudinal_phase_space
+            whether to plot the final longitudinal particle distribution 
         """
         
         # Update vertical tune if changed
@@ -488,7 +496,7 @@ class SPS_Flat_Bottom_Tracker:
         
         # If specific beam parameters are not provided, load default SPS beam parameters
         if beamParams is None:
-            beamParams = BeamParameters_SPS
+            beamParams = BeamParameters_SPS()
         print('Beam parameters:', beamParams)
 
         # Select relevant context
@@ -632,11 +640,20 @@ class SPS_Flat_Bottom_Tracker:
         fig.align_ylabels((axs["epsy"], axs["bl"]))
         plt.tight_layout()
         
-        fig.savefig('output_data_and_plots_{}/analytical_vs_kinetic_emittance.png'.format(which_context), dpi=250)
+        fig.savefig('output_data_and_plots_{}/analytical_vs_kinetic_emittance{}.png'.format(which_context, extra_plot_string), dpi=250)
 
 
-        # Plot growth rates
-        f, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize = (16,5))
+        ############# GROWTH RATES #############
+        plt.rcParams.update(
+            {
+                "font.size": 14,
+                "axes.titlesize": 15,
+                "axes.labelsize": 15,
+                "xtick.labelsize": 14,
+                "ytick.labelsize": 14,
+            }
+        )
+        f, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize = (13,5))
 
         ax1.plot(turns, analytical_tbt.Tx, alpha=0.7, lw=1.5, label='Analytical Nagaitsev')
         ax1.plot(turns, kicked_tbt.Tx, label='Kinetic')
@@ -652,7 +669,24 @@ class SPS_Flat_Bottom_Tracker:
         ax3.set_ylabel(r'$T_{z}$')
         ax3.set_xlabel('Turns')
         ax1.legend(fontsize=12)
-        f.savefig('output_data_and_plots_{}/analytical_vs_kinetic_growth_rates.png'.format(which_context), dpi=250)
-
+        f.savefig('output_data_and_plots_{}/analytical_vs_kinetic_growth_rates{}.png'.format(which_context, extra_plot_string), dpi=250)
         plt.tight_layout()
-        plt.show()
+        
+        # Plot longitudinal phase space if desired
+        if plot_longitudinal_phase_space:
+        
+            bucket_length = line.get_length()/harmonic_nb
+            
+            fig3, ax3 = plt.subplots(1, 1, figsize = (10,5))
+            fig3.suptitle(r'SPS PB. Last turn {} Longitudinal Phase Space. $\sigma_{{z}}$={} m'.format(self.num_turns, beamParams.sigma_z), fontsize=16)
+            ax3.plot(particles.zeta, particles.delta*1000, '.', markersize=3)
+            ax3.axvline(x=bucket_length/2, color='r', linestyle='dashed')
+            ax3.axvline(x=-bucket_length/2, color='r', linestyle='dashed')
+            ax3.set_xlabel(r'$\zeta$ [m]')
+            ax3.set_ylabel(r'$\delta$ [1e-3]')
+            fig3.savefig('output_data_and_plots_{}/SPS_Pb_ions_longitudinal_bucket_{}turns{}.png'.format(which_context, self.num_turns, extra_plot_string), dpi=250)
+            plt.tight_layout()
+
+        if show_plot:
+            plt.show()
+        plt.close()
