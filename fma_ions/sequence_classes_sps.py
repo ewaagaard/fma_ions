@@ -22,7 +22,7 @@ error_file_path = Path(__file__).resolve().parent.joinpath('../data/sps_sequence
 @dataclass
 class BeamParameters_SPS:
     """Data Container for SPS Pb default beam parameters"""
-    Nb:  float = 2.2e8 #3.5e8
+    Nb:  float = 2.4e8 # measured 2e10 charges per bunch = 2.4e8 ions per bunch on 2023-10-16
     sigma_z: float = 0.225
     exn: float = 1.1e-6
     eyn: float = 0.9e-6
