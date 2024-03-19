@@ -597,7 +597,7 @@ class SPS_Flat_Bottom_Tracker:
             analytical_tbt.bunch_length[turn] = ana_bunch_length
             
             if print_lost_particle_state and turn % self.turn_print_interval == 0:
-                print('Particles out of bucket: {}'.format(len(particles.zeta[(particles.zeta < max_zeta) & (particles.zeta > -max_zeta)])))
+                print('Particles out of bucket: {}'.format(len(particles.zeta) - len(particles.zeta[(particles.zeta < max_zeta) & (particles.zeta > -max_zeta)])))
         
         time01 = time.time()
         dt0 = time01-time00
