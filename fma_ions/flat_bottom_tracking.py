@@ -462,8 +462,10 @@ class SPS_Flat_Bottom_Tracker:
                                                       beta_beat=None, 
                                                       beamParams=None,
                                                       ibs_step : int = 50,
+                                                      context = None,
                                                       show_plot=False,
                                                       print_lost_particle_state=True,
+                                                      install_longitudinal_rect=False,
                                                       plot_longitudinal_phase_space=True,
                                                       harmonic_nb = 4653,
                                                       extra_plot_string=''
@@ -486,10 +488,14 @@ class SPS_Flat_Bottom_Tracker:
             container of exn, eyn, Nb and sigma_z. Default 'None' will load nominal SPS beam parameters 
         ibs_step : int
             turn interval at which to recalculate IBS growth rates
+        context : xo.context
+            external xobjects context, if none is provided a new will be generated
         Qy_frac : int
             fractional part of vertical tune, e.g. "19" for 26.19
         print_lost_particle_state : bool
             whether to print the state of lost particles
+        install_longitudinal_rect : bool
+            whether to install the longitudinal LimitRect or not, to kill particles outside of bucket
         plot_longitudinal_phase_space
             whether to plot the final longitudinal particle distribution 
         """
@@ -502,18 +508,25 @@ class SPS_Flat_Bottom_Tracker:
         print('Beam parameters:', beamParams)
 
         # Select relevant context
-        if which_context=='gpu':
-            context = xo.ContextCupy()
-        elif which_context=='cpu':
-            context = xo.ContextCpu(omp_num_threads='auto')
-        else:
-            raise ValueError('Context is either "gpu" or "cpu"')
+        if context is None:
+            if which_context=='gpu':
+                context = xo.ContextCupy()
+            elif which_context=='cpu':
+                context = xo.ContextCpu(omp_num_threads='auto')
+            else:
+                raise ValueError('Context is either "gpu" or "cpu"')
 
         # Get SPS Pb line - with aperture and non-linear magnet errors if desired
         sps = SPS_sequence_maker()
         line, twiss = sps.load_xsuite_line_and_twiss(Qy_frac=Qy_frac, add_aperture=False, beta_beat=beta_beat,
                                                    add_non_linear_magnet_errors=add_non_linear_magnet_errors)
-        line.discard_tracker()
+        
+        if install_longitudinal_rect:
+            line.unfreeze() # if you had already build the tracker
+            line.append_element(element=xt.LongitudinalLimitRect(min_zeta=-bucket_length/2, max_zeta=bucket_length/2), name='long_limit')
+            print('\nInstalled longitudinal limitRect\n')
+        else:
+            line.discard_tracker()
         line.build_tracker(_context=context)
                 
         # Find bucket length
@@ -596,8 +609,14 @@ class SPS_Flat_Bottom_Tracker:
             analytical_tbt.sigma_delta[turn] = ana_sig_delta
             analytical_tbt.bunch_length[turn] = ana_bunch_length
             
+            # Print how many particles are lost or outside of the bucket, depending on if longitudinal LimitRect is installed
             if print_lost_particle_state and turn % self.turn_print_interval == 0:
-                print('Particles out of bucket: {}'.format(len(particles.zeta) - len(particles.zeta[(particles.zeta < max_zeta) & (particles.zeta > -max_zeta)])))
+                if particles.state[particles.state <= 0].size > 0 and install_longitudinal_rect:
+                    print('Lost particle state: most common code: "-{}" for {} particles out of {} lost in total'.format(np.bincount(np.abs(particles.state[particles.state <= 0])).argmax(),
+                                                                                                          np.max(np.bincount(np.abs(particles.state[particles.state <= 0]))),
+                                                                                                          len(particles.state[particles.state <= 0])))
+                else:
+                    print('Particles out of bucket: {}'.format(len(particles.zeta) - len(particles.zeta[(particles.zeta < max_zeta) & (particles.zeta > -max_zeta)])))
         
         time01 = time.time()
         dt0 = time01-time00
