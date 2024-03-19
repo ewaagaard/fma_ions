@@ -161,7 +161,7 @@ class Tune_Ripple_SPS:
         return kqf_vals, kqd_vals, turns
         
       
-    def find_k_from_xtrack_matching(self, dq=0.05, nr_matches=10, use_symmetric_lattice=True, plane='X', Qy_frac=25,
+    def find_k_from_xtrack_matching(self, dq=0.05, nr_matches=10, use_symmetric_lattice=False, plane='X', Qy_frac=25,
                                     show_plot=False):
         """
         Find desired tune amplitude modulation dQx or dQy by matching the global
@@ -176,7 +176,7 @@ class Tune_Ripple_SPS:
         use_symmetric_lattice : bool
             flag to use symmetric lattice without QFA and QDA
         plane : str
-            'X' or 'Y' (default is 'X')
+            'X' or 'Y' or 'both' (default is 'X')
         Qy_frac : int
             fractional vertical tune. "19"" means fractional tune Qy = 0.19
         
@@ -191,8 +191,12 @@ class Tune_Ripple_SPS:
         """
         # Load Xsuite line with deferred expressions from MADx
         sps = SPS_sequence_maker()
-        line, twiss = sps.load_SPS_line_with_deferred_madx_expressions(use_symmetric_lattice=use_symmetric_lattice,
-                                                                        Qy_frac=Qy_frac)
+        
+        if use_symmetric_lattice:
+            line, twiss = sps.load_SPS_line_with_deferred_madx_expressions(use_symmetric_lattice=use_symmetric_lattice,
+                                                                            Qy_frac=Qy_frac)
+        else:
+            line, twiss = sps.load_xsuite_line_and_twiss(Qy_frac=Qy_frac, deferred_expressions=True)
         
         # Empty arrays of quadrupolar strenghts:
         kqfs = np.zeros(nr_matches)
@@ -202,84 +206,53 @@ class Tune_Ripple_SPS:
     
         # Investigate linear dependence
         if plane == 'X':
-            Qx_target = np.linspace(np.round(twiss['qx'], 2), np.round(twiss['qx'], 2) + dq, num=nr_matches)
-            
-            for i, Q in enumerate(Qx_target): 
-            
-                print('\nMatching Qx = {}'.format(Q))
-                
-                # Match tunes to assigned values
-                line.match(
-                    vary=[
-                        xt.Vary('kqf', step=1e-8),
-                        xt.Vary('kqd', step=1e-8),
-                    ],
-                    targets = [
-                        xt.Target('qx', Q, tol=1e-7),
-                        xt.Target('qy', twiss['qy'], tol=1e-7)])
-                
-                twiss = line.twiss()
-                
-                # Add first values 
-                kqfs[i] = line.vars['kqf']._value
-                kqds[i] = line.vars['kqd']._value
-                Qx_vals[i] = twiss['qx']
-                Qy_vals[i] = twiss['qy']
-                
-                
-            # Plot tune evolution over time
-            fig, ax = plt.subplots(1, 2, figsize=(12,6))
-            ax[0].plot(Qx_vals, kqfs, '-', color='blue')
-            ax[1].plot(Qx_vals, kqds, '-', color='red')
-            ax[0].set_xlabel('$Q_{x}$')
-            ax[0].set_ylabel('kqf')
-            ax[1].set_xlabel('$Q_{x}$')
-            ax[1].set_ylabel('kqd')
-            fig.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
-            if show_plot:
-                plt.show()
-            plt.close()
-            
+            dqx, dqy = dq, 0.0
         elif plane == 'Y':
-            Qy_target = np.linspace(np.round(twiss['qy'], 2), np.round(twiss['qy'], 2) + dq, num=nr_matches)
-            
-            for i, Q in enumerate(Qy_target): 
-            
-                print('\nMatching Qx = {}'.format(Q))
-                
-                # Match tunes to assigned values
-                line.match(
-                    vary=[
-                        xt.Vary('kqf', step=1e-8),
-                        xt.Vary('kqd', step=1e-8),
-                    ],
-                    targets = [
-                        xt.Target('qx', twiss['qx'], tol=1e-5),
-                        xt.Target('qy', Q, tol=1e-5)])
-                
-                twiss = line.twiss()
-                    
-                # Add first values 
-                kqfs[i] = line.vars['kqf']._value
-                kqds[i] = line.vars['kqd']._value
-                Qx_vals[i] = twiss['qx']
-                Qy_vals[i] = twiss['qy']
-                
-            # Plot tune evolution over time
-            fig, ax = plt.subplots(1, 2, figsize=(12,6))
-            ax[0].plot(Qy_vals, kqfs, '-', color='blue')
-            ax[1].plot(Qy_vals, kqds, '-', color='red')
-            ax[0].set_xlabel('$Q_{y}$')
-            ax[0].set_ylabel('kqf')
-            ax[1].set_xlabel('$Q_{y}$')
-            ax[1].set_ylabel('kqd')
-            fig.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
-            if show_plot:
-                plt.show()
-            plt.close()
+            dqx, dqy = 0.0, dq
+        elif plane == 'both':
+            dqx, dqy = dq, dq
         else:
             raise ValueError('Plane not valid - X or Y!')
+            
+        Qx_target = np.linspace(np.round(twiss['qx'], 2), np.round(twiss['qx'], 2) + dqx, num=nr_matches)
+        Qy_target = np.linspace(np.round(twiss['qy'], 2), np.round(twiss['qy'], 2) + dqy, num=nr_matches)
         
+        for i, Q in enumerate(Qx_target): 
+        
+            print('\nMatching Qx = {}, Qy = {}'.format(Qx_target[i], Qy_target[i]))
+            
+            # Match tunes to assigned values
+            line.match(
+                vary=[
+                    xt.Vary('kqf', step=1e-8),
+                    xt.Vary('kqd', step=1e-8),
+                ],
+                targets = [
+                    xt.Target('qx', Qx_target[i], tol=1e-7),
+                    xt.Target('qy', Qy_target[i], tol=1e-7)])
+            
+            twiss = line.twiss()
+            
+            # Add first values 
+            kqfs[i] = line.vars['kqf']._value
+            kqds[i] = line.vars['kqd']._value
+            Qx_vals[i] = twiss['qx']
+            Qy_vals[i] = twiss['qy']
+            
+            
+        # Plot tune evolution over time
+        fig, ax = plt.subplots(1, 2, figsize=(12,6))
+        ax[0].plot(Qx_vals, kqfs, '-', color='blue')
+        ax[1].plot(Qy_vals, kqds, '-', color='red')
+        ax[0].set_xlabel('$Q_{x}$')
+        ax[0].set_ylabel('kqf')
+        ax[1].set_xlabel('$Q_{y}$')
+        ax[1].set_ylabel('kqd')
+        fig.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+        if show_plot:
+            plt.show()
+        plt.close()
+            
         # Find amplitudes
         amp_kqf = kqfs[-1] - kqfs[0]
         amp_kqd = kqds[-1] - kqds[0]
@@ -307,7 +280,7 @@ class Tune_Ripple_SPS:
         return kqf_vals, kqd_vals, turns
         
         
-    def load_k_from_xtrack_matching(self, dq=0.05, use_symmetric_lattice=True, plane='X'):
+    def load_k_from_xtrack_matching(self, dq=0.05, use_symmetric_lattice=False, plane='X'):
         """
         Parameters:
         -----------
@@ -318,7 +291,7 @@ class Tune_Ripple_SPS:
         use_symmetric_lattice : bool
             flag to use symmetric lattice without QFA and QDA
         plane : str
-            'X' or 'Y' (default is 'X')
+            'X' or 'Y' or 'both' (default is 'X')
 
         Returns:
         --------
@@ -350,7 +323,7 @@ class Tune_Ripple_SPS:
         except FileNotFoundError:
             print('Did not find k_strength json file - creating new!\n')
             
-            kqf_vals, kqd_vals, turns = self.find_k_from_xtrack_matching(dq, use_symmetric_lattice=use_symmetric_lattice)
+            kqf_vals, kqd_vals, turns = self.find_k_from_xtrack_matching(dq, plane=plane, use_symmetric_lattice=use_symmetric_lattice)
     
         return kqf_vals, kqd_vals, turns
     
@@ -364,7 +337,7 @@ class Tune_Ripple_SPS:
         dq : float
             absolute change in tune amplitude, e.g. 0.05
         plane : str
-            'X' or 'Y' (default is 'X')
+            'X' or 'Y' or 'both (default is 'X')
         use_xtrack_matching : bool
             flag to use xtrack or MADX qh_setvalue for the matching
         
@@ -380,7 +353,7 @@ class Tune_Ripple_SPS:
         
         # Get SPS Pb line with deferred expressions
         sps = SPS_sequence_maker()
-        line, twiss = sps.load_SPS_line_with_deferred_madx_expressions()
+        line, twiss = sps.load_xsuite_line_and_twiss(deferred_expressions=True)
         if use_xtrack_matching:
             kqf_vals, kqd_vals, turns = self.load_k_from_xtrack_matching(dq=dq, plane=plane)
         else:   
@@ -429,7 +402,7 @@ class Tune_Ripple_SPS:
                    save_tbt_data=True,
                    make_single_Jy_trace=True,
                    use_Gaussian_beam=False,
-                   use_symmetric_lattice=True,
+                   use_symmetric_lattice=False,
                    install_SC_on_line = True,
                    sextupolar_value_to_add=None,
                    Qy_frac=25,
@@ -652,7 +625,7 @@ class Tune_Ripple_SPS:
                    load_tbt_data=False,
                    make_single_Jy_trace=True,
                    action_limits=None,
-                   use_symmetric_lattice=True,
+                   use_symmetric_lattice=False,
                    install_SC_on_line=True,
                    Qy_frac=25,
                    beta_beat=None,
@@ -799,7 +772,7 @@ class Tune_Ripple_SPS:
     
     def run_ripple_with_Gaussian_beam(self, dq=0.05, plane='X',
                    load_tbt_data=False,
-                   use_symmetric_lattice=True,
+                   use_symmetric_lattice=False,
                    install_SC_on_line=True,
                    Qy_frac=25,
                    beta_beat=None,
