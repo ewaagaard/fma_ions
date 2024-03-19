@@ -462,8 +462,7 @@ class SPS_Flat_Bottom_Tracker:
                                                       print_lost_particle_state=True,
                                                       plot_longitudinal_phase_space=True,
                                                       harmonic_nb = 4653,
-                                                      extra_plot_string='',
-                                                      show_plot=False
+                                                      extra_plot_string=''
                                                       ):
         """
         Propagate emittances of Nagaitsev analytical and kinetic formalism.
@@ -511,6 +510,8 @@ class SPS_Flat_Bottom_Tracker:
         sps = SPS_sequence_maker()
         line, twiss = sps.load_xsuite_line_and_twiss(Qy_frac=Qy_frac, add_aperture=False, beta_beat=beta_beat,
                                                    add_non_linear_magnet_errors=add_non_linear_magnet_errors)
+        line.discard_tracker()
+        line.build_tracker(_context=context)
                 
         # Generate particles object to track    
         particles = self.generate_particles(line=line, context=context, beamParams=beamParams)
@@ -639,20 +640,10 @@ class SPS_Flat_Bottom_Tracker:
         fig.align_ylabels((axs["epsx"], axs["sigd"]))
         fig.align_ylabels((axs["epsy"], axs["bl"]))
         plt.tight_layout()
-        
         fig.savefig('output_data_and_plots_{}/analytical_vs_kinetic_emittance{}.png'.format(which_context, extra_plot_string), dpi=250)
 
 
         ############# GROWTH RATES #############
-        plt.rcParams.update(
-            {
-                "font.size": 14,
-                "axes.titlesize": 15,
-                "axes.labelsize": 15,
-                "xtick.labelsize": 14,
-                "ytick.labelsize": 14,
-            }
-        )
         f, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize = (13,5))
 
         ax1.plot(turns, analytical_tbt.Tx, alpha=0.7, lw=1.5, label='Analytical Nagaitsev')
@@ -669,12 +660,12 @@ class SPS_Flat_Bottom_Tracker:
         ax3.set_ylabel(r'$T_{z}$')
         ax3.set_xlabel('Turns')
         ax1.legend(fontsize=12)
-        f.savefig('output_data_and_plots_{}/analytical_vs_kinetic_growth_rates{}.png'.format(which_context, extra_plot_string), dpi=250)
         plt.tight_layout()
+        f.savefig('output_data_and_plots_{}/analytical_vs_kinetic_growth_rates{}.png'.format(which_context, extra_plot_string), dpi=250)
+
         
         # Plot longitudinal phase space if desired
         if plot_longitudinal_phase_space:
-        
             bucket_length = line.get_length()/harmonic_nb
             
             fig3, ax3 = plt.subplots(1, 1, figsize = (10,5))
@@ -684,8 +675,8 @@ class SPS_Flat_Bottom_Tracker:
             ax3.axvline(x=-bucket_length/2, color='r', linestyle='dashed')
             ax3.set_xlabel(r'$\zeta$ [m]')
             ax3.set_ylabel(r'$\delta$ [1e-3]')
-            fig3.savefig('output_data_and_plots_{}/SPS_Pb_ions_longitudinal_bucket_{}turns{}.png'.format(which_context, self.num_turns, extra_plot_string), dpi=250)
             plt.tight_layout()
+            fig3.savefig('output_data_and_plots_{}/SPS_Pb_ions_longitudinal_bucket_{}turns{}.png'.format(which_context, self.num_turns, extra_plot_string), dpi=250)
 
         if show_plot:
             plt.show()
