@@ -27,6 +27,7 @@ import os
 import json
 import matplotlib.pyplot as plt
 import time
+import cupy as cp
 
 # Load default emittance measurement data from 2023_10_16
 emittance_data_path = Path(__file__).resolve().parent.joinpath('../data/emittance_data/full_WS_data_SPS_2023_10_16.json').absolute()
@@ -81,6 +82,7 @@ class SPS_Flat_Bottom_Tracker:
                   print_lost_particle_state=True,
                   minimum_aperture_to_remove=0.025,
                   add_tune_ripple=False,
+                  ripple_plane='both',
                   dq=0.01,
                   ripple_freq=50
                   ):
@@ -122,6 +124,8 @@ class SPS_Flat_Bottom_Tracker:
             as faulty IPM aperture has 0.01 m, which is too small
         add_tune_ripple : bool
             whether to add external tune ripple from the Tune_Ripple_SPS class
+        ripple_plane : str
+            plane in which to add the tune ripple: 'X', 'Y' or 'both'
         dq : float
             amplitude for tune ripple, if applied
         ripple_freq : float
@@ -193,7 +197,7 @@ class SPS_Flat_Bottom_Tracker:
             turns_per_sec = 1/twiss['T_rev0']
             ripple_period = int(turns_per_sec/ripple_freq)  # number of turns particle makes during one ripple oscillation
             ripple = Tune_Ripple_SPS(Qy_frac=Qy_frac, beta_beat=beta_beat, num_turns=self.num_turns, ripple_period=ripple_period)
-            kqf_vals, kqd_vals, _ = ripple.load_k_from_xtrack_matching(dq=dq, plane='X')
+            kqf_vals, kqd_vals, _ = ripple.load_k_from_xtrack_matching(dq=dq, plane=ripple_plane)
 
         # Start tracking 
         time00 = time.time()
@@ -489,7 +493,6 @@ class SPS_Flat_Bottom_Tracker:
         plot_longitudinal_phase_space
             whether to plot the final longitudinal particle distribution 
         """
-        
         # Update vertical tune if changed
         self.qy0 = int(self.qy0) + Qy_frac / 100
         
@@ -513,6 +516,10 @@ class SPS_Flat_Bottom_Tracker:
         line.discard_tracker()
         line.build_tracker(_context=context)
                 
+        # Find bucket length
+        bucket_length = line.get_length()/harmonic_nb
+        max_zeta = bucket_length/2
+
         # Generate particles object to track    
         particles = self.generate_particles(line=line, context=context, beamParams=beamParams)
 
@@ -589,11 +596,8 @@ class SPS_Flat_Bottom_Tracker:
             analytical_tbt.sigma_delta[turn] = ana_sig_delta
             analytical_tbt.bunch_length[turn] = ana_bunch_length
             
-            if particles.state[particles.state <= 0].size > 0:
-                if print_lost_particle_state and turn % self.turn_print_interval == 0:
-                    print('Lost particle state: most common code: "-{}" for {} particles out of {} lost in total'.format(np.bincount(np.abs(particles.state[particles.state <= 0])).argmax(),
-                                                                                                          np.max(np.bincount(np.abs(particles.state[particles.state <= 0]))),
-                                                                                                          len(particles.state[particles.state <= 0])))
+            if print_lost_particle_state and turn % self.turn_print_interval == 0:
+                print('Particles out of bucket: {}'.format(len(particles.zeta[(particles.zeta < max_zeta) & (particles.zeta > -max_zeta)])))
         
         time01 = time.time()
         dt0 = time01-time00
@@ -666,13 +670,13 @@ class SPS_Flat_Bottom_Tracker:
         
         # Plot longitudinal phase space if desired
         if plot_longitudinal_phase_space:
-            bucket_length = line.get_length()/harmonic_nb
-            
             fig3, ax3 = plt.subplots(1, 1, figsize = (10,5))
             fig3.suptitle(r'SPS PB. Last turn {} Longitudinal Phase Space. $\sigma_{{z}}$={} m'.format(self.num_turns, beamParams.sigma_z), fontsize=16)
-            ax3.plot(particles.zeta, particles.delta*1000, '.', markersize=3)
-            ax3.axvline(x=bucket_length/2, color='r', linestyle='dashed')
-            ax3.axvline(x=-bucket_length/2, color='r', linestyle='dashed')
+            ax3.plot(particles.zeta.get() if which_context=='gpu' else particles.zeta, 
+                     particles.delta.get()*1000 if which_context=='gpu' else particles.delta*1000, 
+                     '.', markersize=3)
+            ax3.axvline(x=max_zeta, color='r', linestyle='dashed')
+            ax3.axvline(x=-max_zeta, color='r', linestyle='dashed')
             ax3.set_xlabel(r'$\zeta$ [m]')
             ax3.set_ylabel(r'$\delta$ [1e-3]')
             plt.tight_layout()
