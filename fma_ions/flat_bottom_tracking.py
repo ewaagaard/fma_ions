@@ -13,7 +13,7 @@ import xobjects as xo
 from .sequence_classes_ps import PS_sequence_maker, BeamParameters_PS
 from .sequence_classes_sps import SPS_sequence_maker, BeamParameters_SPS
 from .fma_ions import FMA
-from .helpers import Records, _bunch_length, _geom_epsx, _geom_epsy, _sigma_delta
+from .helpers import Records, Records_Growth_Rates, _bunch_length, _geom_epsx, _geom_epsy, _sigma_delta
 from .tune_ripple import Tune_Ripple_SPS
 
 from xibs.inputs import BeamParameters, OpticsParameters
@@ -507,10 +507,6 @@ class SPS_Flat_Bottom_Tracker:
         # Generate particles object to track    
         particles = self.generate_particles(line=line, context=context, beamParams=beamParams)
 
-        # Initialize the dataclasses and store the initial values
-        tbt = Records.init_zeroes(self.num_turns)
-        tbt.update_at_turn(0, particles, twiss)
-
         ######### IBS kinetic kicks and analytical model #########
         beamparams = BeamParameters.from_line(line, n_part=beamParams.Nb)
         opticsparams = OpticsParameters.from_line(line) # read from line without space  charge
@@ -518,12 +514,24 @@ class SPS_Flat_Bottom_Tracker:
         NIBS = NagaitsevIBS(beamparams, opticsparams)
 
         # Initialize the dataclasses
-        kicked_tbt = Records.init_zeroes(self.num_turns)
-        analytical_tbt = Records.init_zeroes(self.num_turns)
+        kicked_tbt = Records_Growth_Rates.init_zeroes(self.num_turns)
+        analytical_tbt = Records_Growth_Rates.init_zeroes(self.num_turns)
          
         # Store the initial values
         kicked_tbt.update_at_turn(0, particles, twiss)
         analytical_tbt.update_at_turn(0, particles, twiss)
+        
+        
+        # Calculate initial growth rates and initialize
+        kinetic_kick_coefficients = IBS.compute_kick_coefficients(particles)
+        growth_rates = NIBS.growth_rates(analytical_tbt.epsilon_x[0], analytical_tbt.epsilon_y[0], 
+                                         analytical_tbt.sigma_delta[0], analytical_tbt.bunch_length[0])
+        kicked_tbt.Tx[0] = kinetic_kick_coefficients.Kx
+        kicked_tbt.Ty[0] = kinetic_kick_coefficients.Ky
+        kicked_tbt.Tz[0] = kinetic_kick_coefficients.Kz
+        analytical_tbt.Tx[0] = growth_rates.Tx
+        analytical_tbt.Ty[0] = growth_rates.Ty
+        analytical_tbt.Tz[0] = growth_rates.Tz
         
         
         # We loop here now
@@ -533,17 +541,25 @@ class SPS_Flat_Bottom_Tracker:
             if (turn % ibs_step == 0) or (turn == 1):
                 print(f"Turn {turn:d}: re-computing diffusion and friction terms")
                 # Compute kick coefficients from the particle distribution at this moment
-                IBS.compute_kick_coefficients(particles)
+                kinetic_kick_coefficients = IBS.compute_kick_coefficients(particles)
                 # Compute analytical values from those at the previous turn
-                NIBS.growth_rates(
-                    analytical_tbt.nepsilon_x[turn - 1],
-                    analytical_tbt.nepsilon_y[turn - 1],
+                growth_rates = NIBS.growth_rates(
+                    analytical_tbt.epsilon_x[turn - 1],
+                    analytical_tbt.epsilon_y[turn - 1],
                     analytical_tbt.sigma_delta[turn - 1],
                     analytical_tbt.bunch_length[turn - 1],
                 )
 
             if turn % self.turn_print_interval == 0:
                 print('\nTracking turn {}'.format(turn))       
+                
+            # Add the growth rates
+            kicked_tbt.Tx[turn] = kinetic_kick_coefficients.Kx
+            kicked_tbt.Ty[turn] = kinetic_kick_coefficients.Ky
+            kicked_tbt.Tz[turn] = kinetic_kick_coefficients.Kz
+            analytical_tbt.Tx[turn] = growth_rates.Tx
+            analytical_tbt.Ty[turn] = growth_rates.Ty
+            analytical_tbt.Tz[turn] = growth_rates.Tz
         
             # ----- Manually Apply IBS Kick and Track Turn ----- #
             IBS.apply_ibs_kick(particles)
@@ -554,13 +570,13 @@ class SPS_Flat_Bottom_Tracker:
         
             # ----- Compute analytical Emittances from previous turn values & update records----- #
             ana_emit_x, ana_emit_y, ana_sig_delta, ana_bunch_length = NIBS.emittance_evolution(
-                analytical_tbt.nepsilon_x[turn - 1],
-                analytical_tbt.nepsilon_y[turn - 1],
+                analytical_tbt.epsilon_x[turn - 1],
+                analytical_tbt.epsilon_y[turn - 1],
                 analytical_tbt.sigma_delta[turn - 1],
                 analytical_tbt.bunch_length[turn - 1],
             )
-            analytical_tbt.nepsilon_x[turn] = ana_emit_x
-            analytical_tbt.nepsilon_y[turn] = ana_emit_y
+            analytical_tbt.epsilon_x[turn] = ana_emit_x
+            analytical_tbt.epsilon_y[turn] = ana_emit_y
             analytical_tbt.sigma_delta[turn] = ana_sig_delta
             analytical_tbt.bunch_length[turn] = ana_bunch_length
             
@@ -574,19 +590,24 @@ class SPS_Flat_Bottom_Tracker:
         dt0 = time01-time00
         print('\nTracking time: {:.1f} s = {:.1f} h'.format(dt0, dt0/3600))
         
+        # Save the data
+        os.makedirs('output_data_and_plots_{}'.format(which_context), exist_ok=True)
+        df_kick = kicked_tbt.to_pandas()
+        df_analytical = analytical_tbt.to_pandas()
+        
         # Plot the results
         turns = np.arange(self.num_turns, dtype=int)  # array of turns
         fig, axs = plt.subplot_mosaic([["epsx", "epsy"], ["sigd", "bl"]], sharex=True, figsize=(15, 7))
         
         # Plot from tracked & kicked particles
-        axs["epsx"].plot(turns, kicked_tbt.nepsilon_x * 1e6, lw=2, label="Kinetic Kicks")
-        axs["epsy"].plot(turns, kicked_tbt.nepsilon_y * 1e6, lw=2, label="Kinetic Kicks")
+        axs["epsx"].plot(turns, kicked_tbt.epsilon_x * 1e6, lw=2, label="Kinetic Kicks")
+        axs["epsy"].plot(turns, kicked_tbt.epsilon_y * 1e6, lw=2, label="Kinetic Kicks")
         axs["sigd"].plot(turns, kicked_tbt.sigma_delta * 1e3, lw=2, label="Kinetic Kicks")
         axs["bl"].plot(turns, kicked_tbt.bunch_length * 1e3, lw=2, label="Kinetic Kicks")
         
         # Plot from analytical values
-        axs["epsx"].plot(turns, analytical_tbt.nepsilon_x * 1e6, lw=2.5, label="Analytical")
-        axs["epsy"].plot(turns, analytical_tbt.nepsilon_y * 1e6, lw=2.5, label="Analytical")
+        axs["epsx"].plot(turns, analytical_tbt.epsilon_x * 1e6, lw=2.5, label="Analytical")
+        axs["epsy"].plot(turns, analytical_tbt.epsilon_y * 1e6, lw=2.5, label="Analytical")
         axs["sigd"].plot(turns, analytical_tbt.sigma_delta * 1e3, lw=2.5, label="Analytical")
         axs["bl"].plot(turns, analytical_tbt.bunch_length * 1e3, lw=2.5, label="Analytical")
         
@@ -609,9 +630,29 @@ class SPS_Flat_Bottom_Tracker:
         
         fig.align_ylabels((axs["epsx"], axs["sigd"]))
         fig.align_ylabels((axs["epsy"], axs["bl"]))
-        
         plt.tight_layout()
         
-        os.makedirs('main_plots_{}'.format(which_context), exist_ok=True)
-        fig.savefig('main_plots_{}/analytical_vs_kinetic_emittance.png'.format(which_context), dpi=250)
+        fig.savefig('output_data_and_plots_{}/analytical_vs_kinetic_emittance.png'.format(which_context), dpi=250)
+
+
+        # Plot growth rates
+        f, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize = (16,5))
+
+        ax1.plot(turns, analytical_tbt.Tx, alpha=0.7, lw=1.5, label='Analytical Nagaitsev')
+        ax1.plot(turns, kicked_tbt.Tx, label='Kinetic')
+        ax2.plot(turns, analytical_tbt.Ty, alpha=0.7, lw=1.5, label='Analytical Nagaitsev')
+        ax2.plot(turns, kicked_tbt.Ty, label='Kinetic')
+        ax3.plot(turns, analytical_tbt.Tz, alpha=0.7, lw=1.5, label='Analytical Nagaitsev')
+        ax3.plot(turns, kicked_tbt.Tz, label='Kinetic')
+
+        ax1.set_ylabel(r'$T_{x}$')
+        ax1.set_xlabel('Turns')
+        ax2.set_ylabel(r'$T_{y}$')
+        ax2.set_xlabel('Turns')
+        ax3.set_ylabel(r'$T_{z}$')
+        ax3.set_xlabel('Turns')
+        ax1.legend(fontsize=12)
+        f.savefig('output_data_and_plots_{}/analytical_vs_kinetic_growth_rates.png'.format(which_context), dpi=250)
+
+        plt.tight_layout()
         plt.show()

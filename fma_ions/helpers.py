@@ -6,6 +6,7 @@ import xpart as xp
 import xtrack as xt
 from dataclasses import dataclass
 from typing import Self
+import pandas as pd
 
 ####### Helper functions for bunch length, momentum spread and geometric emittances #######
 def _bunch_length(parts: xp.Particles) -> float:
@@ -40,7 +41,8 @@ def _geom_epsy(parts: xp.Particles, twiss: xt.TwissTable) -> float:
 @dataclass
 class Records:
     """
-    Data class to store numpy.ndarray of results during tracking - only ensemble quantities
+    Data class to store numpy.ndarray of results during tracking 
+    - here NORMALIZED emittance is used
     """
     nepsilon_x: np.ndarray
     nepsilon_y: np.ndarray
@@ -77,6 +79,56 @@ class Records:
             'bunch_length': self.bunch_length,
             'Nb' : self.Nb
         }
+    
+# Set up a dataclass to store the results - also growth rates 
+@dataclass
+class Records_Growth_Rates:
+    """
+    Data class to store numpy.ndarray of results during tracking 
+    Here GEOMETRIC emittance is used to facilitate growth rate calculation
+    """
+    epsilon_x: np.ndarray
+    epsilon_y: np.ndarray
+    sigma_delta: np.ndarray
+    bunch_length: np.ndarray
+    Tx: np.ndarray
+    Ty: np.ndarray
+    Tz: np.ndarray
+
+    def update_at_turn(self, turn: int, parts: xp.Particles, twiss: xt.TwissTable):
+        self.epsilon_x[turn] = _geom_epsx(parts, twiss)
+        self.epsilon_y[turn] = _geom_epsy(parts, twiss)
+        self.sigma_delta[turn] = _sigma_delta(parts)
+        self.bunch_length[turn] = _bunch_length(parts)
+
+    @classmethod
+    def init_zeroes(cls, n_turns: int) -> Self:  # noqa: F821
+        return cls(
+            epsilon_x=np.zeros(n_turns, dtype=float),
+            epsilon_y=np.zeros(n_turns, dtype=float),
+            sigma_delta=np.zeros(n_turns, dtype=float),
+            bunch_length=np.zeros(n_turns, dtype=float),
+            Tx=np.zeros(n_turns, dtype=float),
+            Ty=np.zeros(n_turns, dtype=float),
+            Tz=np.zeros(n_turns, dtype=float)
+        )
+    
+    def to_dict(self):
+        return {
+            'ex': self.epsilon_x,
+            'ey': self.epsilon_y,
+            'sigma_delta': self.sigma_delta,
+            'bunch_length': self.bunch_length,
+            'Nb' : self.Nb,
+            'Tx' : self.Tx,
+            'Ty' : self.Ty,
+            'Tz' : self.Tz
+        }
+    
+    def to_pandas(self):
+        df = pd.DataFrame(self.to_dict())
+        return df
+        
     
 @dataclass
 class Full_Records:
