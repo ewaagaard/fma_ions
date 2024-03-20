@@ -289,17 +289,19 @@ class SPS_Flat_Bottom_Tracker:
         if x_unit_in_turns:
             turns = np.arange(len(tbt.exn), dtype=int)             
             time_units = turns
+            print('Set time units to turns')
         else:
-            if 'Seconds' in tbt.index:
+            if 'Seconds' in tbt.columns:
                 time_units = tbt['Seconds']
             else:
                 sps = SPS_sequence_maker()
                 _, twiss = sps.load_xsuite_line_and_twiss()
                 turns_per_sec = 1 / twiss.T_rev0
-                seconds = self.num_turns / turns_per_sec # number of seconds we are running for
+                seconds = len(tbt.exn) / turns_per_sec # number of seconds we are running for
                 tbt['Seconds'] = np.linspace(0.0, seconds, num=int(len(tbt.exn)))
-                time_units = tbt['Seconds']
-                
+                time_units = tbt['Seconds'].copy()
+                print('Set time units to seconds')
+
         # Load emittance measurements
         if include_emittance_measurements:
             if x_unit_in_turns:
@@ -310,7 +312,7 @@ class SPS_Flat_Bottom_Tracker:
             full_data = self.load_emittance_data()
             time_units_x = (turns_per_sec * full_data['Ctime_X']) if x_unit_in_turns else full_data['Ctime_X']
             time_units_y = (turns_per_sec * full_data['Ctime_Y']) if x_unit_in_turns else full_data['Ctime_Y']
-
+            
         # Emittances and bunch intensity 
         f, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize = (14,5))
 
