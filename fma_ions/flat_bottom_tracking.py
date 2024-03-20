@@ -521,6 +521,10 @@ class SPS_Flat_Bottom_Tracker:
         line, twiss = sps.load_xsuite_line_and_twiss(Qy_frac=Qy_frac, add_aperture=False, beta_beat=beta_beat,
                                                    add_non_linear_magnet_errors=add_non_linear_magnet_errors)
         
+        # Find bucket length
+        bucket_length = line.get_length()/harmonic_nb
+        max_zeta = bucket_length/2
+
         if install_longitudinal_rect:
             line.unfreeze() # if you had already build the tracker
             line.append_element(element=xt.LongitudinalLimitRect(min_zeta=-bucket_length/2, max_zeta=bucket_length/2), name='long_limit')
@@ -529,10 +533,6 @@ class SPS_Flat_Bottom_Tracker:
             line.discard_tracker()
         line.build_tracker(_context=context)
                 
-        # Find bucket length
-        bucket_length = line.get_length()/harmonic_nb
-        max_zeta = bucket_length/2
-
         # Generate particles object to track    
         particles = self.generate_particles(line=line, context=context, beamParams=beamParams)
 
