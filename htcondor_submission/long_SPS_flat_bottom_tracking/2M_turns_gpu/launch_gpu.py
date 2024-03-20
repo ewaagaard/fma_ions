@@ -7,17 +7,12 @@ import pathlib
 
 # Find path of script being run
 dir_path = pathlib.Path(__file__).parent.absolute()
-'''
 script_names = ['sps_ideal_lattice.py', 'sps_ideal_lattice_sc.py', 'sps_ideal_lattice_only_ibs.py', 'sps_ideal_lattice_sc_ibs.py',
                 'sps_BB.py', 'sps_BB_sc.py', 'sps_BB_sc_ibs.py', 'sps_BB_only_ibs.py']
 folder_names = ['sps_ideal_lattice_2M_turns', 'sps_ideal_lattice_sc_2M_turns', 'sps_ideal_lattice_only_ibs_2M_turns', 'sps_ideal_lattice_sc_ibs_2M_turns',
                 'sps_BB_2M_turns', 'sps_BB_sc_2M_turns', 'sps_BB_sc_ibs_2M_turns', 'sps_BB_only_ibs_2M_turns']
 string_array = ['Ideal lattice, no SC', 'SC ideal lattice', 'IBS ideal lattice', 'SC + IBS ideal lattice',
                 'BB, no SC', 'SC with BB', 'SC + IBS with BB', 'IBS with BB']    
-'''
-script_names = ['sps_ideal_lattice.py', 'sps_ideal_lattice_sc.py']
-folder_names = ['sps_ideal_lattice_2M_turns', 'sps_ideal_lattice_sc_2M_turns']
-string_array = ['Ideal lattice, no SC', 'SC ideal lattice']    
 
 # Instantiate the submitter class and launch the two jobs
 sub = fma_ions.Submitter() 
