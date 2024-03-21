@@ -671,12 +671,12 @@ class SPS_Flat_Bottom_Tracker:
         ############# GROWTH RATES #############
         f, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize = (13,5))
 
-        ax1.plot(turns, analytical_tbt.Tx, alpha=0.7, lw=1.5, label='Analytical Nagaitsev')
         ax1.plot(turns, kicked_tbt.Tx, label='Kinetic')
-        ax2.plot(turns, analytical_tbt.Ty, alpha=0.7, lw=1.5, label='Analytical Nagaitsev')
+        ax1.plot(turns, analytical_tbt.Tx, alpha=0.7, lw=1.5, label='Analytical Nagaitsev')
         ax2.plot(turns, kicked_tbt.Ty, label='Kinetic')
-        ax3.plot(turns, analytical_tbt.Tz, alpha=0.7, lw=1.5, label='Analytical Nagaitsev')
+        ax2.plot(turns, analytical_tbt.Ty, alpha=0.7, lw=1.5, label='Analytical Nagaitsev')
         ax3.plot(turns, kicked_tbt.Tz, label='Kinetic')
+        ax3.plot(turns, analytical_tbt.Tz, alpha=0.7, lw=1.5, label='Analytical Nagaitsev')
 
         ax1.set_ylabel(r'$T_{x}$')
         ax1.set_xlabel('Turns')
