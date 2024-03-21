@@ -683,7 +683,7 @@ class SPS_Flat_Bottom_Tracker:
         ax2.set_xlabel('Turns')
         ax3.set_ylabel(r'$T_{z}$')
         ax3.set_xlabel('Turns')
-        ax1.legend(fontsize=12)
+        ax1.legend(fontsize=10)
         plt.tight_layout()
         f.savefig('output_data_and_plots_{}/analytical_vs_kinetic_growth_rates{}.png'.format(which_context, extra_plot_string), dpi=250)
 
