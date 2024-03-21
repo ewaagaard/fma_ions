@@ -27,7 +27,6 @@ import os
 import json
 import matplotlib.pyplot as plt
 import time
-import cupy as cp
 
 # Load default emittance measurement data from 2023_10_16
 emittance_data_path = Path(__file__).resolve().parent.joinpath('../data/emittance_data/full_WS_data_SPS_2023_10_16.json').absolute()
