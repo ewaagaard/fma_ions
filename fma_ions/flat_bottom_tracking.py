@@ -416,7 +416,7 @@ class SPS_Flat_Bottom_Tracker:
         ax1.set_ylabel(r'$\varepsilon_{x}^{n}$ [$\mu$m]')
         ax2.set_ylabel(r'$\varepsilon_{y}^{n}$ [$\mu$m]')
         ax3.set_ylabel(r'$N_{b}$')
-        ax1.legend(fontsize=12)
+        ax1.legend(fontsize=10)
         f.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
         f.savefig('main_plots/result_multiple_trackings.png', dpi=250)
         plt.show()
