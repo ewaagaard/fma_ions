@@ -627,7 +627,9 @@ class SPS_Flat_Bottom_Tracker:
         os.makedirs('output_data_and_plots_{}'.format(which_context), exist_ok=True)
         df_kick = kicked_tbt.to_pandas()
         df_analytical = analytical_tbt.to_pandas()
-        
+        df_kick.to_parquet('output_data_and_plots_{}'.format(which_context))
+        df_analytical.to_parquet('output_data_and_plots_{}'.format(which_context))
+
         # Plot the results
         turns = np.arange(self.num_turns, dtype=int)  # array of turns
         fig, axs = plt.subplot_mosaic([["epsx", "epsy"], ["sigd", "bl"]], sharex=True, figsize=(15, 7))
