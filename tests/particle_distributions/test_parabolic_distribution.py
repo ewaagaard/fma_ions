@@ -37,7 +37,7 @@ bin_heights, bin_borders = np.histogram(particles.zeta, bins=300)
 bin_widths = np.diff(bin_borders)
 bin_centers = bin_borders[:-1] + bin_widths / 2
 
-
+'''
 plot = xplt.PhaseSpacePlot(
     particles,
 )
@@ -68,5 +68,3 @@ ax2.bar(bin_centers, bin_heights, width=bin_widths)
 ax2.set_ylabel('Counts')
 ax2.set_xlabel(r'z [-]')
 plt.tight_layout()
-
-'''
