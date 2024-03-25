@@ -8,3 +8,4 @@ from .dynamic_aperture import Dynamic_Aperture
 from .tune_ripple import Tune_Ripple_SPS
 from .flat_bottom_tracking import SPS_Flat_Bottom_Tracker
 from .submitter import Submitter
+from .parabolic_longitudinal import generate_parabolic_distribution

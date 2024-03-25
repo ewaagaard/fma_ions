@@ -43,7 +43,7 @@ class SPS_Flat_Bottom_Tracker:
     qx0: float = 26.30
     qy0: float = 26.19
 
-    def generate_particles(self, line: xt.Line, context : xo.context, use_Gaussian_distribution=True, beamParams=None
+    def generate_particles(self, line: xt.Line, context : xo.context, distribution_type='gaussian', beamParams=None
                            ) -> xp.Particles:
         """
         Generate xp.Particles object: matched Gaussian or other types (to be implemented)
@@ -51,7 +51,7 @@ class SPS_Flat_Bottom_Tracker:
         if beamParams is None:
             beamParams = BeamParameters_SPS
 
-        if use_Gaussian_distribution:
+        if distribution_type=='gaussian':
             particles = xp.generate_matched_gaussian_bunch(_context=context,
                 num_particles=self.num_part, 
                 total_intensity_particles=beamParams.Nb,
@@ -60,6 +60,10 @@ class SPS_Flat_Bottom_Tracker:
                 sigma_z= beamParams.sigma_z,
                 particle_ref=line.particle_ref, 
                 line=line)
+        elif distribution_type=='parabolic':
+            pass
+        else:   
+            raise ValueError('Only Gaussian and parabolic distributions are implemented!')
             
         return particles
 
@@ -73,7 +77,7 @@ class SPS_Flat_Bottom_Tracker:
                   beamParams=None,
                   install_SC_on_line=True, 
                   SC_mode='frozen',
-                  use_Gaussian_distribution=True,
+                  distribution_type='gaussian',
                   apply_kinetic_IBS_kicks=False,
                   harmonic_nb = 4653,
                   ibs_step = 5000,
@@ -108,8 +112,8 @@ class SPS_Flat_Bottom_Tracker:
             whether to install space charge
         SC_mode : str
             type of space charge - 'frozen' (recommended), 'quasi-frozen' or 'PIC'
-        use_Gaussian_distribution : bool
-            whether to use Gaussian particle distribution for tracking
+        distribution_type : str
+            'gaussian' or 'parabolic': particle distribution for tracking
         add_kinetic_IBS_kicks : bool
             whether to apply kinetic kicks from xibs 
         harmonic_nb : int
@@ -169,7 +173,7 @@ class SPS_Flat_Bottom_Tracker:
         line.build_tracker(_context=context)
 
         # Generate particles object to track    
-        particles = self.generate_particles(line=line, context=context, use_Gaussian_distribution=use_Gaussian_distribution,
+        particles = self.generate_particles(line=line, context=context, distribution_type=distribution_type,
                                             beamParams=beamParams)
         particles.reorganize()
 
