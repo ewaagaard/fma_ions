@@ -44,7 +44,7 @@ def generate_parabolic_distribution(num_particles, nemitt_x, nemitt_y,
     zeta=zeta, delta=delta,
     x_norm=x_norm, px_norm=px_norm,
     y_norm=y_norm, py_norm=py_norm,
-    scale_with_transverse_norm_emitt=(nemitt_x, nemitt_y),
+    nemitt_x=nemitt_x, nemitt_y=nemitt_y,
     weight=total_intensity_particles/num_particles, line=line)
     
     return particles
