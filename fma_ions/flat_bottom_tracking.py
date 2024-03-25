@@ -76,7 +76,7 @@ class SPS_Flat_Bottom_Tracker:
                   use_Gaussian_distribution=True,
                   apply_kinetic_IBS_kicks=False,
                   harmonic_nb = 4653,
-                  ibs_step = 100,
+                  ibs_step = 5000,
                   Qy_frac: int = 25,
                   print_lost_particle_state=True,
                   minimum_aperture_to_remove=0.025,
@@ -469,7 +469,8 @@ class SPS_Flat_Bottom_Tracker:
                                                       install_longitudinal_rect=False,
                                                       plot_longitudinal_phase_space=True,
                                                       harmonic_nb = 4653,
-                                                      extra_plot_string=''
+                                                      extra_plot_string='',
+                                                      return_data=False
                                                       ):
         """
         Propagate emittances of Nagaitsev analytical and kinetic formalism.
@@ -497,8 +498,10 @@ class SPS_Flat_Bottom_Tracker:
             whether to print the state of lost particles
         install_longitudinal_rect : bool
             whether to install the longitudinal LimitRect or not, to kill particles outside of bucket
-        plot_longitudinal_phase_space
-            whether to plot the final longitudinal particle distribution 
+        plot_longitudinal_phase_space : bool
+            whether to plot the final longitudinal particle distribution
+        return_data : bool
+            whether to return dataframes of analytical data or not
         """
         # Update vertical tune if changed
         self.qy0 = int(self.qy0) + Qy_frac / 100
@@ -624,11 +627,8 @@ class SPS_Flat_Bottom_Tracker:
         print('\nTracking time: {:.1f} s = {:.1f} h'.format(dt0, dt0/3600))
         
         # Save the data
-        os.makedirs('output_data_and_plots_{}'.format(which_context), exist_ok=True)
         df_kick = kicked_tbt.to_pandas()
         df_analytical = analytical_tbt.to_pandas()
-        df_kick.to_parquet('output_data_and_plots_{}'.format(which_context))
-        df_analytical.to_parquet('output_data_and_plots_{}'.format(which_context))
 
         # Plot the results
         turns = np.arange(self.num_turns, dtype=int)  # array of turns
@@ -707,3 +707,6 @@ class SPS_Flat_Bottom_Tracker:
         if show_plot:
             plt.show()
         plt.close()
+
+        if return_data:
+            return df_kick, df_analytical
