@@ -2,7 +2,8 @@ from xpart.longitudinal import generate_longitudinal_coordinates
 from xpart import build_particles
 import numpy as np
 
-def generate_parabolic_distribution(num_particles, nemitt_x, nemitt_y, sigma_z, Nb, line, _context=None):
+def generate_parabolic_distribution(num_particles, nemitt_x, nemitt_y, 
+                                    total_intensity_particles, sigma_z, line, _context=None):
     """
     Function to generate a transversely Gaussian and longitudinally parabolic particle distribution.
     
@@ -14,10 +15,10 @@ def generate_parabolic_distribution(num_particles, nemitt_x, nemitt_y, sigma_z, 
         normalized X emittance
     nemitt_y : float
         normalized Y emittance
+    total_intensity_particles : float
+            total bunch intensity
     sigma_z : float
         RMS bunch length
-    Nb : float
-        total bunch intensity
     line : xtrack.Line
         line object used for tracking
     _context : xojects.context
@@ -44,6 +45,6 @@ def generate_parabolic_distribution(num_particles, nemitt_x, nemitt_y, sigma_z, 
     x_norm=x_norm, px_norm=px_norm,
     y_norm=y_norm, py_norm=py_norm,
     scale_with_transverse_norm_emitt=(nemitt_x, nemitt_y),
-    weight=Nb/num_particles, line=line)
+    weight=total_intensity_particles/num_particles, line=line)
     
     return particles

@@ -15,6 +15,7 @@ from .sequence_classes_sps import SPS_sequence_maker, BeamParameters_SPS
 from .fma_ions import FMA
 from .helpers import Records, Records_Growth_Rates, _bunch_length, _geom_epsx, _geom_epsy, _sigma_delta
 from .tune_ripple import Tune_Ripple_SPS
+from .parabolic_longitudinal import generate_parabolic_distribution
 
 from xibs.inputs import BeamParameters, OpticsParameters
 from xibs.kicks import KineticKickIBS
@@ -46,7 +47,7 @@ class SPS_Flat_Bottom_Tracker:
     def generate_particles(self, line: xt.Line, context : xo.context, distribution_type='gaussian', beamParams=None
                            ) -> xp.Particles:
         """
-        Generate xp.Particles object: matched Gaussian or other types (to be implemented)
+        Generate xp.Particles object: matched Gaussian or longitudinally parabolic
         """
         if beamParams is None:
             beamParams = BeamParameters_SPS
@@ -61,7 +62,13 @@ class SPS_Flat_Bottom_Tracker:
                 particle_ref=line.particle_ref, 
                 line=line)
         elif distribution_type=='parabolic':
-            pass
+            particles = generate_parabolic_distribution(
+                num_particles=self.num_part, 
+                total_intensity_particles=beamParams.Nb,
+                nemitt_x=beamParams.exn, 
+                nemitt_y=beamParams.eyn, 
+                sigma_z= beamParams.sigma_z,
+                line=line, _context=context)
         else:   
             raise ValueError('Only Gaussian and parabolic distributions are implemented!')
             
