@@ -94,7 +94,8 @@ class FMA:
                                 beamParams, 
                                 mode='frozen', 
                                 optimize_for_tracking=True,
-                                context=None):
+                                context=None,
+                                pic_solver = 'FFTSolver2p5DAveraged'):
         """
         Install frozen Space Charge (SC) and generate particles with provided Xsuite line and beam parameters
         
@@ -110,6 +111,8 @@ class FMA:
             remove multiple drift spaces and line variables. Should be 'False' if knobs are used
         context : xo.context
             xojebts context for tracking
+        pic_solver : str
+            Choose solver between `FFTSolver2p5DAveraged` and `FFTSolver2p5D`
         
         Returns:
         -------
@@ -151,6 +154,15 @@ class FMA:
                                             line,
                                             update_mean_x_on_track=True,
                                             update_mean_y_on_track=True)
+        elif mode == 'PIC':
+            _, _ = xf.replace_spacecharge_with_PIC(
+                    line=line,
+                    n_sigmas_range_pic_x=8,
+                    n_sigmas_range_pic_y=8,
+                    nx_grid=256, ny_grid=256, nz_grid=100,
+                    n_lims_x=7, n_lims_y=3,
+                    z_range=(-3*sigma_z, 3*sigma_z),
+                    solver=pic_solver)
         else:
             raise ValueError(f'Invalid mode: {mode}')
 

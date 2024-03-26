@@ -29,8 +29,9 @@ particles = xp.generate_matched_gaussian_bunch(_context=context,
         particle_ref=line.particle_ref, line=line)
 
 
-
-# Particles are allocated on the context chosen for the line.
+# Make a copy for the GPU context
+line2 = line.copy()
+particles2 = particles.copy()
 
 #### CPU tracking ####
 time00 = time.time()

@@ -12,6 +12,8 @@ import xplt
 
 # Initial parameters - 
 num_particles = 5000
+sigma_z_RMS = 0.284
+sigma_z0 = 0.225
 
 # Import SPS line
 sps = fma_ions.SPS_sequence_maker()
@@ -22,28 +24,27 @@ particles = fma_ions.generate_parabolic_distribution(num_particles,
                                                       fma_ions.BeamParameters_SPS.exn, 
                                                       fma_ions.BeamParameters_SPS.eyn, 
                                                       fma_ions.BeamParameters_SPS.Nb, 
-                                                      fma_ions.BeamParameters_SPS.sigma_z, 
+                                                      sigma_z_RMS, 
                                                       line)
 
 ######## Gaussian distribution ########
 particles2 = xp.generate_matched_gaussian_bunch(
         num_particles=num_particles, total_intensity_particles=fma_ions.BeamParameters_SPS.Nb,
         nemitt_x=fma_ions.BeamParameters_SPS.exn, nemitt_y=fma_ions.BeamParameters_SPS.eyn, 
-        sigma_z= fma_ions.BeamParameters_SPS.sigma_z,
+        sigma_z = sigma_z0,
         particle_ref=line.particle_ref, line=line)
 
-# Make a histogram
+# Make a histogram - parabolic
 bin_heights, bin_borders = np.histogram(particles.zeta, bins=300)
 bin_widths = np.diff(bin_borders)
 bin_centers = bin_borders[:-1] + bin_widths / 2
 
-'''
-plot = xplt.PhaseSpacePlot(
-    particles,
-)
-plot.fig.suptitle("Particle distribution for a single turn");
-plt.show()
-'''
+# Make a histogram - Gaussian
+bin_heights2, bin_borders2 = np.histogram(particles2.zeta, bins=300)
+bin_widths2 = np.diff(bin_borders2)
+bin_centers2 = bin_borders2[:-1] + bin_widths2 / 2
+
+
 # Generate the plots
 plt.close('all')
 
@@ -64,7 +65,10 @@ fig1.subplots_adjust(bottom=.08, top=.93, hspace=.33, left=.18,
                      right=.96, wspace=.33)
                      
 fig2, ax2 = plt.subplots(1, 1, figsize = (6,5))
-ax2.bar(bin_centers, bin_heights, width=bin_widths)
+ax2.bar(bin_centers, bin_heights, width=bin_widths, label='Parabolic')
+ax2.bar(bin_centers2, bin_heights2, width=bin_widths2, label='Gaussian', alpha=0.7)
 ax2.set_ylabel('Counts')
 ax2.set_xlabel(r'z [-]')
+ax2.legend(fontsize=10)
 plt.tight_layout()
+plt.show()
