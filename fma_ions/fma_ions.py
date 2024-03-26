@@ -161,7 +161,7 @@ class FMA:
                     n_sigmas_range_pic_y=8,
                     nx_grid=256, ny_grid=256, nz_grid=100,
                     n_lims_x=7, n_lims_y=3,
-                    z_range=(-3*sigma_z, 3*sigma_z),
+                    z_range=(-3*beamParams.sigma_z, 3*beamParams.sigma_z),
                     solver=pic_solver)
         else:
             raise ValueError(f'Invalid mode: {mode}')
