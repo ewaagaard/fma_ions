@@ -9,5 +9,5 @@ n_turns = 2_000_000
 
 # Test default tracking with space charge on CPU context - then test plotting
 sps = fma_ions.SPS_Flat_Bottom_Tracker(num_turns=n_turns)
-tbt = sps.track_SPS(which_context='gpu', beta_beat=0.1, add_non_linear_magnet_errors=True, apply_kinetic_IBS_kicks=True, ibs_step = 300)
+tbt = sps.track_SPS(which_context='gpu', beta_beat=0.1, add_non_linear_magnet_errors=True, apply_kinetic_IBS_kicks=True, ibs_step = 5000)
 tbt.to_parquet(f'{output_dir}/tbt.parquet')
