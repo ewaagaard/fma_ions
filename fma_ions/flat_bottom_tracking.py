@@ -44,8 +44,8 @@ class SPS_Flat_Bottom_Tracker:
     qx0: float = 26.30
     qy0: float = 26.19
 
-    def generate_particles(self, line: xt.Line, context : xo.context, distribution_type='gaussian', beamParams=None
-                           ) -> xp.Particles:
+    def generate_particles(self, line: xt.Line, context : xo.context, distribution_type='gaussian', beamParams=None,
+                           engine=None) -> xp.Particles:
         """
         Generate xp.Particles object: matched Gaussian or longitudinally parabolic
         """
@@ -60,7 +60,8 @@ class SPS_Flat_Bottom_Tracker:
                 nemitt_y=beamParams.eyn, 
                 sigma_z= beamParams.sigma_z,
                 particle_ref=line.particle_ref, 
-                line=line)
+                line=line,
+                engine=engine)
         elif distribution_type=='parabolic':
             particles = generate_parabolic_distribution(
                 num_particles=self.num_part, 
@@ -94,7 +95,8 @@ class SPS_Flat_Bottom_Tracker:
                   add_tune_ripple=False,
                   ripple_plane='both',
                   dq=0.01,
-                  ripple_freq=50
+                  ripple_freq=50,
+                  engine=None
                   ):
         """
         Run full tracking at SPS flat bottom
@@ -140,6 +142,8 @@ class SPS_Flat_Bottom_Tracker:
             amplitude for tune ripple, if applied
         ripple_freq : float
             ripple frequency in Hz
+        engine : str
+            if Gaussian distribution, which single RF harmonic matcher engine to use. None, 'pyheadtail' or 'single-rf-harmonic'.
             
         Returns:
         --------
@@ -181,7 +185,7 @@ class SPS_Flat_Bottom_Tracker:
 
         # Generate particles object to track    
         particles = self.generate_particles(line=line, context=context, distribution_type=distribution_type,
-                                            beamParams=beamParams)
+                                            beamParams=beamParams, engine=engine)
         particles.reorganize()
 
         # Initialize the dataclasses and store the initial values
