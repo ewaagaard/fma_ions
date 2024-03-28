@@ -9,11 +9,13 @@ from pathlib import Path
 sps_fname = Path(__file__).resolve().parent.joinpath('../sequences/sps/SPS_2021_Pb_ions_matched_with_RF.json').absolute()
 ps_fname = Path(__file__).resolve().parent.joinpath('../sequences/ps/PS_2022_Pb_ions_matched_with_RF.json').absolute()
 
+'''  TO BE DEPRECATED - PARAMETERS ARE ALREADY IN SEQUENCE CLASSES
 @dataclass
 class BeamParameters_SPS :
     """Data Container for SPS Pb default beam parameters"""
     Nb:  float = 2.2e8 #3.5e8
     sigma_z: float = 0.225
+    sigma_z_binomial: float = 0.225
     exn: float = 1.3e-6
     eyn: float = 0.9e-6
     Qx_int: float = 26.
@@ -31,7 +33,7 @@ class BeamParameters_PS :
     eyn: float = 0.5e-6    
     Qx_int: float = 6.
     Qy_int: float = 6.
-
+'''
   
 class Sequences: 
     """Container of Xsuite default Pb sequences"""
