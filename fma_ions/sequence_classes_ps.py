@@ -56,17 +56,21 @@ class PS_sequence_maker:
     seq_name: str = 'nominal'
     seq_folder: str = 'ps'
     LEIR_Brho  = 4.8 # [Tm] -> Brho at PS injection - same as at LEIR extraction
+    PS_Brho = 70.079 * 1.2368 # PS rho times PS_max_B_field for ions
     Q_LEIR: float = 54.
     Q_PS: float = 54.
     m_ion: float = 207.98
 
-    def load_xsuite_line_and_twiss(self, beta_beat=None):
+    def load_xsuite_line_and_twiss(self, beta_beat=None, at_injection_energy=True):
         """
         Method to load pre-generated PS lattice files for Xsuite
         
         Parameters:
         -----------
-        beta_beat - relative beta beat, i.e. relative difference between max beta function and max original beta function
+        beta_beat : float
+            relative beta beat, i.e. relative difference between max beta function and max original beta function
+        at_injection_energy : bool
+            whether beam is at flat bottom (injection energy), or at extraction
         
         Returns:
         -------
@@ -75,10 +79,11 @@ class PS_sequence_maker:
         """
         # Update fractional vertical tune 
         print('\nTrying to load sequence with Qx, Qy = ({}, {}) and beta-beat = {}!\n'.format(self.qx0, self.qy0, beta_beat))
-        
+        extraction_str = '' if at_injection_energy else '_extraction'
+
         # Check if pre-generated sequence exists 
         if beta_beat is None or beta_beat == 0.0:
-            ps_fname = '{}/qx_dot{}/PS_2022_{}_nominal.json'.format(sequence_path,  int((self.qx0 % 1) * 100) , self.ion_type)
+            ps_fname = '{}/qx_dot{}/PS_2022_{}_nominal{}.json'.format(sequence_path,  int((self.qx0 % 1) * 100) , self.ion_type, extraction_str)
         else:                                                  
             ps_fname = '{}/qx_dot{}/PS_2022_{}_{}_percent_beta_beat.json'.format(sequence_path,  int((self.qx0 % 1) * 100), self.ion_type, int(beta_beat*100))
             
@@ -88,7 +93,7 @@ class PS_sequence_maker:
             print('\nPre-made PS sequence does not exists, generating new sequence with Qx, Qy = ({}, {}) and beta-beat = {}!\n'.format(self.qx0, 
                                                                                                                                          self.qy0, 
                                                                                                                                          beta_beat))
-            ps_line = self.generate_xsuite_seq() if beta_beat is None else self.generate_xsuite_seq_with_beta_beat(beta_beat)
+            ps_line = self.generate_xsuite_seq(at_injection_energy=at_injection_energy) if beta_beat is None else self.generate_xsuite_seq_with_beta_beat(beta_beat)
             
         # Build tracker and Twiss
         ps_line.build_tracker()
@@ -125,9 +130,14 @@ class PS_sequence_maker:
                                                                                                                 n_part))
         return particles    
 
-    def generate_PS_beam(self):
+    def generate_PS_beam(self, at_injection_energy=True):
         """
         Generate correct injection parameters for PS beam
+
+        Parameters:
+        -----------
+        at_injection_energy : bool
+            whether beam is at flat bottom (injection energy), or at extraction
 
         Returns:
         -------
@@ -135,18 +145,23 @@ class PS_sequence_maker:
         """
         #print('\nCreating MADX-beam of {}\n'.format(self.ion_type))
         m_in_eV = self.m_ion * constants.physical_constants['atomic mass unit-electron volt relationship'][0]   # 1 Dalton in eV/c^2 -- atomic mass unit
-        p_inj_PS = 1e9 * (self.LEIR_Brho * self.Q_LEIR) / 3.3356 # in  [eV/c], if q is number of elementary charges
+        if at_injection_energy:
+            p_beam = self.LEIR_Brho * self.Q_PS * constants.c # in  [eV/c], if q is number of elementary charges
+        else: 
+            p_beam = self.PS_Brho * self.Q_PS * constants.c # in  [eV/c], if q is number of elementary charges
 
-        return m_in_eV, p_inj_PS
+        return m_in_eV, p_beam
 
 
-    def generate_xsuite_seq(self, save_madx_seq=False, save_xsuite_seq=True, return_xsuite_line=True):
+    def generate_xsuite_seq(self, save_madx_seq=False, save_xsuite_seq=True, return_xsuite_line=True, at_injection_energy=True):
         """
         Load MADX line, match tunes and chroma, add RF and generate Xsuite line
         
         Parameters:
         -----------
-        - flags to save / return xsuite or madx lines
+        flags to save / return xsuite or madx lines
+        at_injection_energy : bool
+            whether beam is at injection energy (flat bottom) or extraction energy
         """
         os.makedirs(self.seq_folder, exist_ok=True)
         print('\nGenerating sequence for {} with qx = {}, qy = {}\n'.format(self.ion_type, self.qx0, self.qy0))
@@ -155,23 +170,25 @@ class PS_sequence_maker:
         madx = Madx()
         madx.call("{}/_scripts/macros.madx".format(optics))
         madx.call("{}/ps.seq".format(optics))
-        madx.call("{}/scenarios/lhc_ion/1_flat_bottom/ps_fb_ion.str".format(optics))
-        
+        if at_injection_energy:
+            madx.call("{}/scenarios/lhc_ion/1_flat_bottom/ps_fb_ion.str".format(optics))
+        else: 
+            madx.call("{}/scenarios/lhc_ion/3_extraction/ps_ext_ion.str".format(optics))
         
         
         # Generate PS beam - use default Pb or make custom beam
-        m_in_eV, p_inj_PS = self.generate_PS_beam()
+        m_in_eV, p_PS = self.generate_PS_beam(at_injection_energy=at_injection_energy) # at injection or extraction
         
         madx.input(" \
                    Beam, particle=ion, mass={}, charge={}, pc = {}, sequence='ps'; \
                    DPP:=BEAM->SIGE*(BEAM->ENERGY/BEAM->PC)^2;  \
-                   ".format(m_in_eV/1e9, self.Q_PS, p_inj_PS/1e9))   # convert mass to GeV/c^2
+                   ".format(m_in_eV/1e9, self.Q_PS, p_PS/1e9))   # convert mass to GeV/c^2
            
         
         # When we perform matching, recall the MADX convention that all chromatic functions are multiplied by relativistic beta factor
         # Thus, when we match for a given chromaticity, need to account for this factor to get correct value in Xsuite and PTC
         self.particle_sample = xp.Particles(
-                p0c = p_inj_PS,
+                p0c = p_PS,
                 q0 = self.Q_PS,
                 mass0 = m_in_eV)
         beta0 = self.particle_sample.beta0[0]
@@ -216,30 +233,36 @@ class PS_sequence_maker:
         line.particle_ref = self.particle_sample
         
         #### SET CAVITY VOLTAGE - with info from Alexandre Lasheen
-        # Ions: 10 MHz cavities: 1.7 MV, h=16
+        # Ions: 10 MHz cavities: 1.7 MV, h=16 at injection
+        # at extraction: 300 kV, h=269 for ions
         # In the ps_ss.seq, the 10 MHz cavities are PR_ACC10 - there seems to be 12 of them in the straight sections
-        harmonic_nb = 16
+        harmonic_nb = 16 if at_injection_energy else 169
         nn = 'pa.c10.11'  # for now test the first of the RF cavities 
-        V_RF = 38.0958  # kV
+        # RF voltage: checked for IonLifeTime cycles at LSA for injection, Alexandre provided extraction value
+        V_RF = 38.0958 if at_injection_energy else 300.0 # kV
+        lag = 0 if at_injection_energy else 180
+        extraction_str = '' if at_injection_energy else '_extraction'
 
         # MADX sequence 
-        madx.sequence.ps.elements[nn].lag = 0
+        madx.sequence.ps.elements[nn].lag = lag
         madx.sequence.ps.elements[nn].volt = V_RF*1e-3*self.particle_sample.q0 # different convention between madx and xsuite
         madx.sequence.ps.elements[nn].freq = madx.sequence['ps'].beam.freq0*harmonic_nb
 
         # Xsuite sequence 
-        line[nn].lag = 0  # 0 if below transition
+        line[nn].lag = lag  # 0 if below transition
         line[nn].voltage =  V_RF*1e3 # In Xsuite for ions, do not multiply by charge as in MADX
         line[nn].frequency = madx.sequence['ps'].beam.freq0*1e6*harmonic_nb
         
         # Save MADX sequence
         if save_madx_seq:
-            madx.command.save(sequence='ps', file='{}/PS_2022_{}_{}.seq'.format(self.seq_folder, 
+            madx.command.save(sequence='ps', file='{}/PS_2022_{}_{}{}.seq'.format(self.seq_folder, 
                                                                                   self.ion_type, 
-                                                                                  self.seq_name), beam=True)  
+                                                                                  self.seq_name,
+                                                                                  extraction_str), beam=True)  
         # Save Xsuite sequence
         if save_xsuite_seq:
-            with open('{}/PS_2022_{}_{}.json'.format(self.seq_folder, self.ion_type, self.seq_name), 'w') as fid:
+            with open('{}/PS_2022_{}_{}{}.json'.format(self.seq_folder, self.ion_type, 
+                                                       self.seq_name, extraction_str), 'w') as fid:
                 json.dump(line.to_dict(), fid, cls=xo.JEncoder)
                 
         if return_xsuite_line:
