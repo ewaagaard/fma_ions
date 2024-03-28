@@ -1,5 +1,6 @@
 from xpart.longitudinal import generate_longitudinal_coordinates
 from xpart import build_particles
+from fma_ions.sequence_classes_ps import PS_sequence_maker
 import numpy as np
 
 def generate_binomial_distribution_from_PS_extr(_context=None, 
@@ -7,9 +8,7 @@ def generate_binomial_distribution_from_PS_extr(_context=None,
                 			nemitt_x=None, 
                 			nemitt_y=None, 
                 			sigma_z=None,
-                			particle_ref=None, 
                 			total_intensity_particles=None,
-                			tracker=None,
                 			line=None,
                 			return_matcher=False,
                             m=None
@@ -24,13 +23,14 @@ def generate_binomial_distribution_from_PS_extr(_context=None,
 		m = 4.7 # typical value for ions at PS extraction
 
 	# Import PS line
-	
+	ps = PS_sequence_maker()
+	ps_line, _ = ps.load_xsuite_line_and_twiss(at_injection_energy=False)
 
 	# Generate longitudinal coordinates from PS extraction
-	zeta, delta, matcher = generate_longitudinal_coordinates(line=line, distribution='binomial', 
+	zeta, delta, matcher = generate_longitudinal_coordinates(line=ps_line, distribution='binomial', 
 							num_particles=num_particles, 
 							engine='single-rf-harmonic', sigma_z=sigma_z,
-							particle_ref=particle_ref, return_matcher=True, m=m)
+							particle_ref=ps_line.particle_ref, return_matcher=True, m=m)
 	
 	# Initiate normalized coordinates 
 	x_norm = np.random.normal(size=num_particles)
@@ -42,12 +42,14 @@ def generate_binomial_distribution_from_PS_extr(_context=None,
 	if total_intensity_particles is None:   
 		total_intensity_particles = num_particles
 
-	particles = build_particles(_context=None, particle_ref=particle_ref,
+	particles = build_particles(_context=_context, particle_ref=line.particle_ref,
 				zeta=zeta, delta=delta, 
 				x_norm=x_norm, px_norm=px_norm,
 				y_norm=y_norm, py_norm=py_norm,
 				nemitt_x=nemitt_x, nemitt_y=nemitt_y,
 				weight=total_intensity_particles/num_particles, line=line)
+
+	print(f'Generated binomially longitudinal particles with m = {m}')
 
 	if return_matcher:
 		return particles, matcher

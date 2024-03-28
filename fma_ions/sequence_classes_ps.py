@@ -83,9 +83,9 @@ class PS_sequence_maker:
 
         # Check if pre-generated sequence exists 
         if beta_beat is None or beta_beat == 0.0:
-            ps_fname = '{}/qx_dot{}/PS_2022_{}_nominal{}.json'.format(sequence_path,  int((self.qx0 % 1) * 100) , self.ion_type, extraction_str)
+            ps_fname = '{}/PS_2022_{}_nominal{}.json'.format(sequence_path , self.ion_type, extraction_str)
         else:                                                  
-            ps_fname = '{}/qx_dot{}/PS_2022_{}_{}_percent_beta_beat.json'.format(sequence_path,  int((self.qx0 % 1) * 100), self.ion_type, int(beta_beat*100))
+            ps_fname = '{}/PS_2022_{}_{}_percent_beta_beat.json'.format(sequence_path, self.ion_type, int(beta_beat*100))
             
         try:
             ps_line = xt.Line.from_json(ps_fname)
@@ -153,7 +153,7 @@ class PS_sequence_maker:
         return m_in_eV, p_beam
 
 
-    def generate_xsuite_seq(self, save_madx_seq=False, save_xsuite_seq=True, return_xsuite_line=True, at_injection_energy=True):
+    def generate_xsuite_seq(self, save_madx_seq=True, save_xsuite_seq=True, return_xsuite_line=True, at_injection_energy=True):
         """
         Load MADX line, match tunes and chroma, add RF and generate Xsuite line
         
@@ -163,7 +163,7 @@ class PS_sequence_maker:
         at_injection_energy : bool
             whether beam is at injection energy (flat bottom) or extraction energy
         """
-        os.makedirs(self.seq_folder, exist_ok=True)
+        os.makedirs(sequence_path, exist_ok=True)
         print('\nGenerating sequence for {} with qx = {}, qy = {}\n'.format(self.ion_type, self.qx0, self.qy0))
         
         #### Initiate MADX sequence and call the sequence and optics file ####
@@ -255,13 +255,13 @@ class PS_sequence_maker:
         
         # Save MADX sequence
         if save_madx_seq:
-            madx.command.save(sequence='ps', file='{}/PS_2022_{}_{}{}.seq'.format(self.seq_folder, 
+            madx.command.save(sequence='ps', file='{}/PS_2022_{}_{}{}.seq'.format(sequence_path, 
                                                                                   self.ion_type, 
                                                                                   self.seq_name,
                                                                                   extraction_str), beam=True)  
         # Save Xsuite sequence
         if save_xsuite_seq:
-            with open('{}/PS_2022_{}_{}{}.json'.format(self.seq_folder, self.ion_type, 
+            with open('{}/PS_2022_{}_{}{}.json'.format(sequence_path, self.ion_type, 
                                                        self.seq_name, extraction_str), 'w') as fid:
                 json.dump(line.to_dict(), fid, cls=xo.JEncoder)
                 
