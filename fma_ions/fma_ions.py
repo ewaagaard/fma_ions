@@ -95,6 +95,7 @@ class FMA:
                                 mode='frozen', 
                                 optimize_for_tracking=True,
                                 context=None,
+                                distribution_type='gaussian',
                                 pic_solver = 'FFTSolver2p5DAveraged'):
         """
         Install frozen Space Charge (SC) and generate particles with provided Xsuite line and beam parameters
@@ -111,6 +112,8 @@ class FMA:
             remove multiple drift spaces and line variables. Should be 'False' if knobs are used
         context : xo.context
             xojebts context for tracking
+        distribution_type : str
+            'gaussian' or 'parabolic' or 'binomial': particle distribution for tracking
         pic_solver : str
             Choose solver between `FFTSolver2p5DAveraged` and `FFTSolver2p5D`
         
@@ -132,18 +135,29 @@ class FMA:
 
         print('\nInstalling space charge on line...\n')
         # Initialize longitudinal profile for beams 
+        if distribution_type=='gaussian':
+            sigma_z_RMS = beamParams.sigma_z
+            q_val = 1.0
+            print('Gaussian longitudinal SC profile')
+        elif distribution_type=='binomial':
+            sigma_z_RMS = beamParams.sigma_z_binomial
+            q_val = 0.8
+            print('Binomial longitudinal SC profile')
+        elif distribution_type=='parabolic':
+            raise ValueError('Parabolic not yet implemented for frozen!')
+        
         lprofile = xf.LongitudinalProfileQGaussian(
                 number_of_particles = beamParams.Nb,
-                sigma_z = beamParams.sigma_z,
+                sigma_z = sigma_z_RMS,
                 z0=0.,
-                q_parameter=1.)
+                q_parameter=q_val)
 
         # Install frozen space charge as base 
         xf.install_spacecharge_frozen(line = line,
                            particle_ref = line.particle_ref,
                            longitudinal_profile = lprofile,
                            nemitt_x = beamParams.exn, nemitt_y = beamParams.eyn,
-                           sigma_z = beamParams.sigma_z,
+                           sigma_z = sigma_z_RMS,
                            num_spacecharge_interactions = self.num_spacecharge_interactions)
         
         # Select mode - frozen is default

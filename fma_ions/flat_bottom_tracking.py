@@ -16,6 +16,7 @@ from .fma_ions import FMA
 from .helpers import Records, Records_Growth_Rates, _bunch_length, _geom_epsx, _geom_epsy, _sigma_delta
 from .tune_ripple import Tune_Ripple_SPS
 from .longitudinal import generate_parabolic_distribution
+from .longitudinal import generate_binomial_distribution_from_PS_extr
 
 from xibs.inputs import BeamParameters, OpticsParameters
 from xibs.kicks import KineticKickIBS
@@ -45,9 +46,14 @@ class SPS_Flat_Bottom_Tracker:
     qy0: float = 26.19
 
     def generate_particles(self, line: xt.Line, context : xo.context, distribution_type='gaussian', beamParams=None,
-                           engine=None) -> xp.Particles:
+                           engine=None, m=5.3) -> xp.Particles:
         """
         Generate xp.Particles object: matched Gaussian or longitudinally parabolic
+
+        Parameters:
+        -----------
+        m : float
+            binomial parameter to determine tail of parabolic distribution
         """
         if beamParams is None:
             beamParams = BeamParameters_SPS
@@ -70,8 +76,13 @@ class SPS_Flat_Bottom_Tracker:
                 nemitt_y=beamParams.eyn, 
                 sigma_z= beamParams.sigma_z,
                 line=line, _context=context)
+        elif distribution_type=='binomial':
+            particles = generate_binomial_distribution_from_PS_extr(num_particles=self.num_part,
+                                                                 nemitt_x=beamParams.exn, nemitt_y=beamParams.eyn,
+                                                                 sigma_z=beamParams.sigma_z_binomial, total_intensity_particles=beamParams.Nb,
+                                                                 line=line, m=m)
         else:   
-            raise ValueError('Only Gaussian and parabolic distributions are implemented!')
+            raise ValueError('Only Gaussian, parabolic and binomial distributions are implemented!')
             
         return particles
 
@@ -122,7 +133,7 @@ class SPS_Flat_Bottom_Tracker:
         SC_mode : str
             type of space charge - 'frozen' (recommended), 'quasi-frozen' or 'PIC'
         distribution_type : str
-            'gaussian' or 'parabolic': particle distribution for tracking
+            'gaussian' or 'parabolic' or 'binomial': particle distribution for tracking
         add_kinetic_IBS_kicks : bool
             whether to apply kinetic kicks from xibs 
         harmonic_nb : int
@@ -203,7 +214,8 @@ class SPS_Flat_Bottom_Tracker:
         # Install SC and build tracker - optimize line if line variables for tune ripple not needed
         if install_SC_on_line:
             fma_sps = FMA()
-            line = fma_sps.install_SC_and_get_line(line, beamParams, mode=SC_mode, optimize_for_tracking=(not add_tune_ripple), context=context)
+            line = fma_sps.install_SC_and_get_line(line, beamParams, mode=SC_mode, optimize_for_tracking=(not add_tune_ripple), 
+                                                   distribution_type=distribution_type, context=context)
             print('Installed space charge on line\n')
 
         # Add tune ripple
