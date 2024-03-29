@@ -17,6 +17,6 @@ sub = fma_ions.Submitter()
 for i, script in enumerate(script_names):
     file_name = os.path.join(dir_path, script)
     print(f"Submitting {file_name}")
-    sub.submit_GPU(file_name, extra_output_name_str=folder_names[i], job_flavour='longlunch', 
+    sub.submit_GPU(file_name, extra_output_name_str=folder_names[i], job_flavour='nextweek', 
                    number_of_turn_string='50k_turns')
 
