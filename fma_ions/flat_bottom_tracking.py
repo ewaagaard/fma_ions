@@ -99,6 +99,8 @@ class SPS_Flat_Bottom_Tracker:
                   distribution_type='gaussian',
                   apply_kinetic_IBS_kicks=False,
                   harmonic_nb = 4653,
+                  auto_recompute_ibs_coefficients=True,
+                  auto_recompute_coefficients_percent=5,
                   ibs_step = 5000,
                   Qy_frac: int = 25,
                   print_lost_particle_state=True,
@@ -138,8 +140,12 @@ class SPS_Flat_Bottom_Tracker:
             whether to apply kinetic kicks from xibs 
         harmonic_nb : int
             harmonic used for SPS RF system
+        auto_recompute_ibs_coefficients : bool
+            whether to automatically recalculate IBS coefficients for a given emittance change
+        auto_recompute_coefficients_percent : float
+            relative emittance change after which to recompute 
         ibs_step : int
-            turn interval at which to recalculate IBS growth rates
+            if auto_recompute_ibs_coefficients=False, the turn interval at which to recalculate IBS growth rates
         Qy_frac : int
             fractional part of vertical tune, e.g. "19" for 26.19
         minimum_aperture_to_remove : float 
@@ -207,7 +213,10 @@ class SPS_Flat_Bottom_Tracker:
         if apply_kinetic_IBS_kicks:
             beamparams = BeamParameters.from_line(line, n_part=beamParams.Nb)
             opticsparams = OpticsParameters.from_line(line) # read from line without space  charge
-            IBS = KineticKickIBS(beamparams, opticsparams)
+            if auto_recompute_ibs_coefficients:
+                IBS = KineticKickIBS(beamparams, opticsparams)
+            else: 
+                IBS = KineticKickIBS(beamparams, opticsparams, auto_recompute_coefficients_percent=auto_recompute_coefficients_percent)
             kinetic_kick_coefficients = IBS.compute_kick_coefficients(particles)
             print(kinetic_kick_coefficients)
 
@@ -233,7 +242,7 @@ class SPS_Flat_Bottom_Tracker:
                 print('\nTracking turn {}'.format(turn))            
 
             ########## IBS -> Potentially re-compute the ellitest_parts integrals and IBS growth rates #########
-            if apply_kinetic_IBS_kicks and ((turn % ibs_step == 0) or (turn == 1)):
+            if apply_kinetic_IBS_kicks and ((turn % ibs_step == 0) or (turn == 1)) and not auto_recompute_ibs_coefficients:
                 
                 # We compute from values at the previous turn
                 kinetic_kick_coefficients = IBS.compute_kick_coefficients(particles)
@@ -262,9 +271,13 @@ class SPS_Flat_Bottom_Tracker:
                     print('Lost particle state: most common code: "-{}" for {} particles out of {} lost in total'.format(np.bincount(np.abs(particles.state[particles.state <= 0])).argmax(),
                                                                                                           np.max(np.bincount(np.abs(particles.state[particles.state <= 0]))),
                                                                                                           len(particles.state[particles.state <= 0])))
+        
         time01 = time.time()
         dt0 = time01-time00
         print('\nTracking time: {:.1f} s = {:.1f} h'.format(dt0, dt0/3600))
+
+        if auto_recompute_ibs_coefficients:
+            print('\nNumber of times auto-recomputed growth rates: {}\n'.format(IBS._number_of_coefficients_computations))
                 
         # Make parquet file from dictionary
         if save_tbt_data:
