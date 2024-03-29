@@ -138,11 +138,11 @@ class FMA:
         if distribution_type=='gaussian':
             sigma_z_RMS = beamParams.sigma_z
             q_val = 1.0
-            print('Gaussian longitudinal SC profile')
+            print('\nGaussian longitudinal SC profile')
         elif distribution_type=='binomial':
             sigma_z_RMS = beamParams.sigma_z_binomial
             q_val = 0.8
-            print('Binomial longitudinal SC profile')
+            print('\nBinomial longitudinal SC profile')
         elif distribution_type=='parabolic':
             raise ValueError('Parabolic not yet implemented for frozen!')
         
