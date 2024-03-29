@@ -214,9 +214,11 @@ class SPS_Flat_Bottom_Tracker:
             beamparams = BeamParameters.from_line(line, n_part=beamParams.Nb)
             opticsparams = OpticsParameters.from_line(line) # read from line without space  charge
             if auto_recompute_ibs_coefficients:
-                IBS = KineticKickIBS(beamparams, opticsparams)
-            else: 
                 IBS = KineticKickIBS(beamparams, opticsparams, auto_recompute_coefficients_percent=auto_recompute_coefficients_percent)
+                print('\nAutomatic IBS coefficient recomputation when change exceeds {} percent\n'.format(auto_recompute_coefficients_percent))
+            else: 
+                IBS = KineticKickIBS(beamparams, opticsparams)
+                print('\nFixed IBS coefficient recomputation at interval = {} steps\n'.format(ibs_step))
             kinetic_kick_coefficients = IBS.compute_kick_coefficients(particles)
             print(kinetic_kick_coefficients)
 
