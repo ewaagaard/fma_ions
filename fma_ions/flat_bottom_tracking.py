@@ -278,7 +278,7 @@ class SPS_Flat_Bottom_Tracker:
         dt0 = time01-time00
         print('\nTracking time: {:.1f} s = {:.1f} h'.format(dt0, dt0/3600))
 
-        if auto_recompute_ibs_coefficients:
+        if apply_kinetic_IBS_kicks and auto_recompute_ibs_coefficients:
             print('\nNumber of times auto-recomputed growth rates: {}\n'.format(IBS._number_of_coefficients_computations))
                 
         # Make parquet file from dictionary
