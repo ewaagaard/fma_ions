@@ -99,7 +99,7 @@ class SPS_Flat_Bottom_Tracker:
                   distribution_type='gaussian',
                   apply_kinetic_IBS_kicks=False,
                   harmonic_nb = 4653,
-                  auto_recompute_ibs_coefficients=True,
+                  auto_recompute_ibs_coefficients=False,
                   auto_recompute_coefficients_percent=5,
                   ibs_step = 5000,
                   Qy_frac: int = 25,
