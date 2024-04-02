@@ -140,14 +140,19 @@ class Full_Records:
     """
     x: np.ndarray
     y: np.ndarray
+    px: np.ndarray
+    py: np.ndarray
+    delta: np.ndarray
+    zeta: np.ndarray
     nepsilon_x: np.ndarray
     nepsilon_y: np.ndarray
     sigma_delta: np.ndarray
     bunch_length: np.ndarray
     Nb: np.ndarray
     state: np.ndarray
+    which_context : str
 
-    def update_at_turn(self, turn: int, parts: xp.Particles, twiss: xt.TwissTable, which_context='cpu'):
+    def update_at_turn(self, turn: int, parts: xp.Particles, twiss: xt.TwissTable):
         """Automatically update the records at given turn from the xpart.Particles."""
 
         # Store the particle ensemble quantities
@@ -158,25 +163,54 @@ class Full_Records:
         self.bunch_length[turn] = _bunch_length(parts)
 
         # Depending on context, save individual particle values
-        if which_context=='cpu':
-            self.x[:, turn] = parts.x[parts.state > 0]
-            self.y[:, turn] = parts.y[parts.state > 0]
+        if self.which_context=='cpu':
+            self.x[:, turn] = parts.x
+            self.y[:, turn] = parts.y
+            self.px[:, turn] = parts.px
+            self.py[:, turn] = parts.py
+            self.delta[:, turn] = parts.delta
+            self.zeta[:, turn] = parts.zeta
             self.state[:, turn] = parts.state
-        elif which_context=='gpu':
-            self.x[:, turn] = parts.x[parts.state > 0].get()
-            self.y[:, turn] = parts.y[parts.state > 0].get()
+        elif self.which_context=='gpu':
+            self.x[:, turn] = parts.x.get()
+            self.y[:, turn] = parts.y.get()
+            self.px[:, turn] = parts.px.get()
+            self.py[:, turn] = parts.py.get()
+            self.delta[:, turn] = parts.delta.get()
+            self.zeta[:, turn] = parts.zeta.get()
             self.state[:, turn] = parts.state.get()
 
     @classmethod
-    def init_zeroes(cls, num_part : int, n_turns: int) -> Self:  # noqa: F821
+    def init_zeroes(cls, num_part : int, n_turns: int, which_context : str) -> Self:  # noqa: F821
         """Initialize the dataclass with arrays of zeroes."""
         return cls(
             x=np.zeros([num_part, n_turns], dtype=float),
             y=np.zeros([num_part, n_turns], dtype=float),
+            px=np.zeros([num_part, n_turns], dtype=float),
+            py=np.zeros([num_part, n_turns], dtype=float),
+            delta=np.zeros([num_part, n_turns], dtype=float),
+            zeta=np.zeros([num_part, n_turns], dtype=float),
             state=np.zeros([num_part, n_turns], dtype=float),
             nepsilon_x=np.zeros(n_turns, dtype=float),
             nepsilon_y=np.zeros(n_turns, dtype=float),
             Nb=np.zeros(n_turns, dtype=float),
             sigma_delta=np.zeros(n_turns, dtype=float),
-            bunch_length=np.zeros(n_turns, dtype=float)
+            bunch_length=np.zeros(n_turns, dtype=float),
+            which_context=which_context
         )
+    
+    def to_dict(self):
+        return {
+            'exn': self.nepsilon_x,
+            'eyn': self.nepsilon_y,
+            'sigma_delta': self.sigma_delta,
+            'bunch_length': self.bunch_length,
+            'Nb' : self.Nb,
+            'x' : np.array(self.x),
+            'px' : np.array(self.px),
+            'y' : np.array(self.y),
+            'py' : np.array(self.py),
+            'delta' : np.array(self.delta),
+            'zeta' : np.array(self.zeta),
+            'state' : np.array(self.state)
+        }

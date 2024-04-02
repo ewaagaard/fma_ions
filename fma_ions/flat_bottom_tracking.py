@@ -13,7 +13,7 @@ import xobjects as xo
 from .sequence_classes_ps import PS_sequence_maker, BeamParameters_PS
 from .sequence_classes_sps import SPS_sequence_maker, BeamParameters_SPS
 from .fma_ions import FMA
-from .helpers import Records, Records_Growth_Rates, _bunch_length, _geom_epsx, _geom_epsy, _sigma_delta
+from .helpers import Records, Records_Growth_Rates, Full_Records, _bunch_length, _geom_epsx, _geom_epsy, _sigma_delta
 from .tune_ripple import Tune_Ripple_SPS
 from .longitudinal import generate_parabolic_distribution
 from .longitudinal import generate_binomial_distribution_from_PS_extr
@@ -109,7 +109,8 @@ class SPS_Flat_Bottom_Tracker:
                   ripple_plane='both',
                   dq=0.01,
                   ripple_freq=50,
-                  engine=None
+                  engine=None,
+                  save_full_particle_data=False
                   ):
         """
         Run full tracking at SPS flat bottom
@@ -161,7 +162,9 @@ class SPS_Flat_Bottom_Tracker:
             ripple frequency in Hz
         engine : str
             if Gaussian distribution, which single RF harmonic matcher engine to use. None, 'pyheadtail' or 'single-rf-harmonic'.
-            
+        save_full_particle_data : bool
+            whether to save all particle phase space data (default False), else only ensemble properties
+
         Returns:
         --------
         None
@@ -206,7 +209,10 @@ class SPS_Flat_Bottom_Tracker:
         particles.reorganize()
 
         # Initialize the dataclasses and store the initial values
-        tbt = Records.init_zeroes(self.num_turns)
+        if not save_full_particle_data:
+            tbt = Records.init_zeroes(self.num_turns)  # only emittances and bunch intensity
+        else:
+            tbt = Full_Records.init_zeroes(self.num_part, self.num_turns, which_context=which_context) # full particle data
         tbt.update_at_turn(0, particles, twiss)
 
         ######### IBS kinetic kicks #########
@@ -289,9 +295,13 @@ class SPS_Flat_Bottom_Tracker:
             turns_per_sec = 1 / twiss.T_rev0
             seconds = self.num_turns / turns_per_sec # number of seconds we are running for
             tbt_dict['Seconds'] = np.linspace(0.0, seconds, num=int(self.num_turns))
-            df = pd.DataFrame(tbt_dict)
-        
-            return df
+
+            # If not full particle data is saved, return TBT dictionary with particle data
+            if not save_full_particle_data:
+                df = pd.DataFrame(tbt_dict)    
+                return df
+            else:
+                return tbt_dict
 
 
     def load_tbt_data(self, output_folder=None) -> Records:
