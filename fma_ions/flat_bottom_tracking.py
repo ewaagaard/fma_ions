@@ -118,7 +118,7 @@ class SPS_Flat_Bottom_Tracker:
         Parameters:
         ----------
         save_tbt: bool
-            whether to save turn-by-turn data from tracking
+            whether to return turn-by-turn data from tracking
         which_context : str
             'gpu' or 'cpu'
         Qy_frac : int
