@@ -102,7 +102,7 @@ class SPS_Flat_Bottom_Tracker:
                   auto_recompute_ibs_coefficients=False,
                   auto_recompute_coefficients_percent=5,
                   ibs_step = 5000,
-                  Qy_frac: int = 25,
+                  Qy_frac: int = 19,
                   print_lost_particle_state=True,
                   minimum_aperture_to_remove=0.025,
                   add_tune_ripple=False,
