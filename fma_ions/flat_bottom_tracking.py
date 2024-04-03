@@ -505,8 +505,6 @@ class SPS_Flat_Bottom_Tracker:
         # Normal, or compact mode
         if compact_mode:
             # Emittances and bunch intensity 
-            #f, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize = (5,9))
-            
             f = plt.figure(figsize = (6, 7))
             gs = f.add_gridspec(3, hspace=0, height_ratios= [1, 2, 2])
             (ax3, ax2, ax1) = gs.subplots(sharex=True, sharey=False)
