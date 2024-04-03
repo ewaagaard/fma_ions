@@ -32,6 +32,7 @@ import time
 
 # Load default emittance measurement data from 2023_10_16
 emittance_data_path = Path(__file__).resolve().parent.joinpath('../data/emittance_data/full_WS_data_SPS_2023_10_16.json').absolute()
+Nb_data_path = Path(__file__).resolve().parent.joinpath('../data/emittance_data/Nb_processed_SPS_2023_10_16.json').absolute()
 
 @dataclass
 class SPS_Flat_Bottom_Tracker:
@@ -431,7 +432,8 @@ class SPS_Flat_Bottom_Tracker:
             raise FileNotFoundError('Tracking data does not exist - set correct path or generate the data!')
         
 
-    def plot_multiple_sets_of_tracking_data(self, output_str_array, string_array):
+    def plot_multiple_sets_of_tracking_data(self, output_str_array, string_array, compact_mode=False,
+                                            include_emittance_measurements=False, x_unit_in_turns=True):
         """
         If multiple runs with turn-by-turn (tbt) data has been made, provide list with Records class objects and list
         of explaining string to generate comparative plots of emittances, bunch intensities, etc
@@ -442,8 +444,26 @@ class SPS_Flat_Bottom_Tracker:
             List containing string for outfolder tbt data
         string:_array : [str1, str2, ...]
             List containing strings to explain the respective tbt data objects (which parameters were used)
+        compact_mode : bool
+            whether to slim plot in more compact format 
+        include_emittance_measurements : bool
+            whether to include measured emittance or not
+        x_units_in_turns : bool
+            if True, x axis units will be turn, otherwise in seconds
         """
         os.makedirs('main_plots', exist_ok=True)
+        plt.rcParams.update(
+            {
+                "font.family": "serif",
+                "font.size": 18,
+                "axes.titlesize": 18,
+                "axes.labelsize": 20,
+                "xtick.labelsize": 18,
+                "ytick.labelsize": 18,
+                "legend.fontsize": 15,
+                "figure.titlesize": 20,
+            }
+        )
 
         # Load TBT data 
         tbt_array = []
@@ -453,25 +473,103 @@ class SPS_Flat_Bottom_Tracker:
             tbt['turns'] = np.arange(len(tbt.Nb), dtype=int)
             tbt_array.append(tbt)
 
-        # Emittances and bunch intensity 
-        f, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize = (14,5))
+        # Convert measured emittances to turns if this unit is used, otherwise keep seconds
+        if x_unit_in_turns:         
+            time_units = tbt['turns']
+            print('Set time units to turns')
+        else:
+            if 'Seconds' in tbt.columns:
+                time_units = tbt['Seconds']
+            else:
+                sps = SPS_sequence_maker()
+                _, twiss = sps.load_xsuite_line_and_twiss()
+                turns_per_sec = 1 / twiss.T_rev0
+                seconds = len(tbt.exn) / turns_per_sec # number of seconds we are running for
+                time_units = np.linspace(0.0, seconds, num=int(len(tbt.exn))) 
+                print('Set time units to seconds')
 
-        # Loop over the tbt records classes 
-        for i, tbt in enumerate(tbt_array):
-            ax1.plot(tbt.turns, tbt.exn * 1e6, alpha=0.7, lw=1.5, label=string_array[i])
-            ax2.plot(tbt.turns, tbt.eyn * 1e6, alpha=0.7, lw=1.5, label=string_array[i])
-            ax3.plot(tbt.turns, tbt.Nb, alpha=0.7, lw=1.5, label=string_array[i])
+        # Load emittance measurements
+        if include_emittance_measurements:
+            if x_unit_in_turns:
+                sps = SPS_sequence_maker()
+                _, twiss = sps.load_xsuite_line_and_twiss()
+                turns_per_sec = 1 / twiss.T_rev0
+            
+            full_data = self.load_emittance_data()
+            time_units_x = (turns_per_sec * full_data['Ctime_X']) if x_unit_in_turns else full_data['Ctime_X']
+            time_units_y = (turns_per_sec * full_data['Ctime_Y']) if x_unit_in_turns else full_data['Ctime_Y']
 
-        ax1.set_xlabel('Turns')
-        ax2.set_xlabel('Turns')
-        ax3.set_xlabel('Turns')
-        ax1.set_ylabel(r'$\varepsilon_{x}^{n}$ [$\mu$m]')
-        ax2.set_ylabel(r'$\varepsilon_{y}^{n}$ [$\mu$m]')
-        ax3.set_ylabel(r'$N_{b}$')
-        ax1.legend(fontsize=10)
-        f.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
-        f.savefig('main_plots/result_multiple_trackings.png', dpi=250)
-        plt.show()
+            df_Nb = self.load_Nb_data()
+            time_Nb = (turns_per_sec * df_Nb['ctime']) if x_unit_in_turns else df_Nb['ctime']
+
+        # Normal, or compact mode
+        if compact_mode:
+            # Emittances and bunch intensity 
+            #f, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize = (5,9))
+            
+            f = plt.figure(figsize = (6, 7))
+            gs = f.add_gridspec(3, hspace=0, height_ratios= [1, 2, 2])
+            (ax3, ax2, ax1) = gs.subplots(sharex=True, sharey=False)
+
+            # Plot measurements, if desired                
+            if include_emittance_measurements:
+                ax3.plot(time_Nb, df_Nb['Nb'], color='blue', marker="o", ms=2.5, alpha=0.7, label="Measured")
+            
+            # Loop over the tbt records classes 
+            for i, tbt in enumerate(tbt_array):
+                ax1.plot(time_units, tbt.exn * 1e6, alpha=0.7, lw=1.5, label=string_array[i])
+                ax2.plot(time_units, tbt.eyn * 1e6, alpha=0.7, lw=1.5, label=string_array[i])
+                ax3.plot(time_units, tbt.Nb, alpha=0.7, lw=2.5, label=string_array[i])
+                
+            if include_emittance_measurements:
+                ax1.errorbar(time_units_x, 1e6 * np.array(full_data['N_avg_emitX']), yerr=1e6 * full_data['N_emitX_error'], 
+                           color='blue', fmt="o", label="Measured")
+                ax2.errorbar(time_units_y, 1e6 * np.array(full_data['N_avg_emitY']), yerr=1e6 * full_data['N_emitY_error'], 
+                           color='blue', fmt="o", label="Measured")
+                
+            ax1.set_ylabel(r'$\varepsilon_{x}^{n}$ [$\mu$m rad]')
+            ax2.set_ylabel(r'$\varepsilon_{y}^{n}$ [$\mu$m rad]')
+            ax3.set_ylabel(r'$N_{b}$')
+            #ax1.text(0.94, 0.94, 'X', color='darkgreen', fontsize=20, transform=ax1.transAxes)
+            #ax2.text(0.02, 0.94, 'Y', color='darkgreen', fontsize=20, transform=ax2.transAxes)
+            ax1.set_xlabel('Turns' if x_unit_in_turns else 'Time [s]')
+            ax2.set_xlabel('Turns' if x_unit_in_turns else 'Time [s]')
+            ax2.legend(fontsize=10.5, loc='upper left', bbox_to_anchor=(0.0, 1.3))
+            
+            for ax in f.get_axes():
+                ax.label_outer()
+            
+            f.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+            f.savefig('main_plots/result_multiple_trackings_compact.png', dpi=250)
+            plt.show()
+                #ax3.plot(tbt.turns, tbt.Nb, alpha=0.7, lw=1.5, label=string_array[i])
+            
+        else:
+            # Emittances and bunch intensity 
+            f, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize = (14,5))
+    
+            # Loop over the tbt records classes 
+            for i, tbt in enumerate(tbt_array):
+                ax1.plot(tbt.turns, tbt.exn * 1e6, alpha=0.7, lw=1.5, label=string_array[i])
+                ax2.plot(tbt.turns, tbt.eyn * 1e6, alpha=0.7, lw=1.5, label=string_array[i])
+                ax3.plot(tbt.turns, tbt.Nb, alpha=0.7, lw=1.5, label=string_array[i])
+    
+            if include_emittance_measurements:
+                ax1.errorbar(time_units_x, 1e6 * np.array(full_data['N_avg_emitX']), yerr=1e6 * full_data['N_emitX_error'], 
+                           color='blue', fmt="o", label="Measured")
+                ax2.errorbar(time_units_y, 1e6 * np.array(full_data['N_avg_emitY']), yerr=1e6 * full_data['N_emitY_error'], 
+                           color='darkorange', fmt="o", label="Measured")
+    
+            ax1.set_xlabel('Turns')
+            ax2.set_xlabel('Turns')
+            ax3.set_xlabel('Turns')
+            ax1.set_ylabel(r'$\varepsilon_{x}^{n}$ [$\mu$m]')
+            ax2.set_ylabel(r'$\varepsilon_{y}^{n}$ [$\mu$m]')
+            ax3.set_ylabel(r'$N_{b}$')
+            ax1.legend(fontsize=10)
+            f.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+            f.savefig('main_plots/result_multiple_trackings.png', dpi=250)
+            plt.show()
 
 
     def load_emittance_data(self, path : str = emittance_data_path) -> pd.DataFrame:
@@ -508,6 +606,32 @@ class SPS_Flat_Bottom_Tracker:
         return df
 
 
+    def load_Nb_data(self, path : str = Nb_data_path, index=0) -> pd.DataFrame:
+        """
+        Loads measured FBCT bunch intensity data from SPS MDs, processed with CCC miner
+        https://github.com/ewaagaard/ccc_miner, returns pd.DataFrame
+        
+        Default date - 2023-10-16 with (Qx, Qy) = (26.3, 26.19) in SPS
+        """
+        # Load dictionary with emittance data
+        try:
+            with open(path, 'r') as fp:
+                Nb_dict = json.load(fp)
+        except FileNotFoundError:
+            print('\nFILE NOT FOUND - check input path!\n')
+            return
+        
+        # Create new dictionary wiht numpy arrays - divide by charge
+        new_dict = {'ctime' : Nb_dict['ctime'],
+                    'Nb' : np.array(Nb_dict['Nb1'])[:, index] / 82}
+        
+        # Create dataframe with four bunches
+        df_Nb = pd.DataFrame(new_dict)
+        df_Nb = df_Nb[(df_Nb['ctime'] < 46.55) & (df_Nb['ctime'] > 0.0)]
+        
+        return df_Nb
+        
+        
     def run_analytical_vs_kinetic_emittance_evolution(self,
                                                       Qy_frac : int = 25,
                                                       which_context='cpu',
