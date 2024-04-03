@@ -53,9 +53,10 @@ class SPS_sequence_maker:
     seq_name: str = 'nominal'
     seq_folder: str = 'sps'
     B_PS_extr: float = 1.2368 # [T] - magnetic field in PS for Pb ions, from Heiko Damerau
+    rho_PS: float = 70.1206 # [m] - PS bending radius 
     Q_PS: float = 54.
     Q_SPS: float = 82.
-    m_ion: float = 207.98
+    m_ion: float = 207.98 # atomic units
     
     
     def load_xsuite_line_and_twiss(self, Qy_frac=25, beta_beat=None, use_symmetric_lattice=False,
@@ -545,8 +546,7 @@ class SPS_sequence_maker:
         ion rest mass in eV, beam momentum in eV/c at SPS injection 
         """
         # Calculate Brho at SPS injection
-        rho_PS = 70.1206 # [m] - PS bending radius 
-        self._Brho_PS_extr = self.B_PS_extr * rho_PS
+        self._Brho_PS_extr = self.B_PS_extr * self.rho_PS
         
         #print('\nCreating MADX-beam of {}\n'.format(self.ion_type))
         m_in_eV = self.m_ion * constants.physical_constants['atomic mass unit-electron volt relationship'][0]   # 1 Dalton in eV/c^2 -- atomic mass unit
