@@ -29,6 +29,7 @@ class BeamParameters_SPS:
     eyn: float = 0.9e-6
     Qx_int: float = 26.
     Qy_int: float = 26.
+    Nb_O: float = 50e8 # from (John, Bartosik 2021) for oxygen
 
 @dataclass
 class SPS_sequence_maker:
@@ -211,7 +212,7 @@ class SPS_sequence_maker:
                 p0c = self.p_inj_SPS,
                 q0 = self.Q_SPS,
                 mass0 = self.m_in_eV)
-        print('\nGenerated SPS {} beam with gamma = {:.3f}, Qx = {:.3f}, Qy = {:.3f}\n'.format(self.ion_type, 
+        print('\nGenerated SPS {} beam with gamma = {:.3f}, Qx = {:.3f}, Qy = {:.3f}'.format(self.ion_type, 
                                                                                               self.particle_sample.gamma0[0],
                                                                                               self.qx0,
                                                                                               self.qy0))
@@ -238,7 +239,7 @@ class SPS_sequence_maker:
         line[nn].voltage = voltage # In Xsuite for ions, do not multiply by charge as in MADX
         line[nn].frequency = madx.sequence['sps'].beam.freq0*1e6*harmonic_nb
         
-        print('\nSet RF voltage to {:.3e} V\n'.format(voltage))
+        print('Set RF voltage to {:.3e} V\n'.format(voltage))
         
         # Save MADX sequence
         if save_madx_seq:

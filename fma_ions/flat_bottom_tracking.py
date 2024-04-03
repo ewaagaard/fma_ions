@@ -90,6 +90,7 @@ class SPS_Flat_Bottom_Tracker:
 
     def track_SPS(self, 
                   save_tbt_data=True, 
+                  ion_type='Pb',
                   which_context='cpu',
                   add_non_linear_magnet_errors=False, 
                   add_aperture=True,
@@ -120,6 +121,8 @@ class SPS_Flat_Bottom_Tracker:
         ----------
         save_tbt: bool
             whether to return turn-by-turn data from tracking
+        ion_type : str
+            which ion to use: currently available are 'Pb' and 'O'
         which_context : str
             'gpu' or 'cpu'
         Qy_frac : int
@@ -176,6 +179,8 @@ class SPS_Flat_Bottom_Tracker:
         # If specific beam parameters are not provided, load default SPS beam parameters
         if beamParams is None:
             beamParams = BeamParameters_SPS()
+            if ion_type=='O':
+                beamParams.Nb = beamParams.Nb_O  # update to new oxygen intensity
         print('Beam parameters:', beamParams)
 
         # Select relevant context
@@ -189,8 +194,15 @@ class SPS_Flat_Bottom_Tracker:
         # Deferred expressions only needed for tune ripple
         load_line_with_deferred_expressions = True if add_tune_ripple else False
 
-        # Get SPS Pb line - with aperture and non-linear magnet errors if desired
-        sps = SPS_sequence_maker()
+        # Get SPS Pb line - select ion
+        if ion_type=='Pb':
+            sps = SPS_sequence_maker()
+        elif ion_type=='O':
+            sps = SPS_sequence_maker(26.30, 26.19, ion_type='O', Q_PS=4., Q_SPS=8., m_ion=15.9949) 
+        else:
+            raise ValueError('Only Pb and O ions implemented so far!')
+            
+        # Extract line with aperture, beta-beat and non-linear magnet errors if desired
         line, twiss = sps.load_xsuite_line_and_twiss(Qy_frac=Qy_frac, add_aperture=add_aperture, beta_beat=beta_beat,
                                                    add_non_linear_magnet_errors=add_non_linear_magnet_errors, 
                                                    deferred_expressions=load_line_with_deferred_expressions)
