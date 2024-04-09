@@ -450,7 +450,8 @@ class SPS_Flat_Bottom_Tracker:
                                             include_emittance_measurements=False, x_unit_in_turns=True,
                                             bbox_to_anchor_position=(0.0, 1.3),
                                             labelsize = 20,
-                                            ylim=None, ax_for_legend=2):
+                                            ylim=None, ax_for_legend=2,
+                                            distribution_type='gaussian'):
         """
         If multiple runs with turn-by-turn (tbt) data has been made, provide list with Records class objects and list
         of explaining string to generate comparative plots of emittances, bunch intensities, etc
@@ -475,6 +476,8 @@ class SPS_Flat_Bottom_Tracker:
             lower and upper bounds for emittance plots, if None (default), automatic limits are set
         ax_for_legend : int
             which axis to use to place legend, either 1 or 2 (default is 2)
+        distribution_type : str
+            'gaussian' or 'parabolic' or 'binomial': particle distribution for tracking
         """
         os.makedirs('main_plots', exist_ok=True)
         plt.rcParams.update(
@@ -497,6 +500,14 @@ class SPS_Flat_Bottom_Tracker:
             tbt = self.load_tbt_data(output_folder)
             tbt['turns'] = np.arange(len(tbt.Nb), dtype=int)
             tbt_array.append(tbt)
+
+        # If binomial distribution, find index corresponding to after 30 turns (when distribution has stabilized)
+        if distribution_type=='binomial':
+            ii = tbt['turns'] > 30
+            print('\nSetting binomial turn index\n')
+        else:
+            ii = tbt['turns'] > -1 # select all turns
+            print('\nGaussian beam - select all turns\n')
 
         # Convert measured emittances to turns if this unit is used, otherwise keep seconds
         if x_unit_in_turns:         
@@ -542,7 +553,7 @@ class SPS_Flat_Bottom_Tracker:
             for i, tbt in enumerate(tbt_array):
                 ax1.plot(time_units, tbt.exn * 1e6, alpha=0.7, lw=1.5, label=string_array[i])
                 ax2.plot(time_units, tbt.eyn * 1e6, alpha=0.7, lw=1.5, label=string_array[i])
-                ax3.plot(time_units, tbt.Nb, alpha=0.7, lw=2.5, label=string_array[i])
+                ax3.plot(time_units[ii], tbt.Nb[ii], alpha=0.7, lw=2.5, label=string_array[i])
                 
             if include_emittance_measurements:
                 ax1.errorbar(time_units_x, 1e6 * np.array(full_data['N_avg_emitX']), yerr=1e6 * full_data['N_emitX_error'], 
