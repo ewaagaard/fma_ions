@@ -45,6 +45,7 @@ class SPS_Flat_Bottom_Tracker:
     turn_print_interval : int = 500
     qx0: float = 26.30
     qy0: float = 26.19
+    ion_inj_ctime : float = 0.725 # ion injection happens at this time in cycle, important for WS
 
     def generate_particles(self, line: xt.Line, context : xo.context, distribution_type='gaussian', beamParams=None,
                            engine=None, m=5.3) -> xp.Particles:
@@ -112,7 +113,8 @@ class SPS_Flat_Bottom_Tracker:
                   dq=0.01,
                   ripple_freq=50,
                   engine=None,
-                  save_full_particle_data=False
+                  save_full_particle_data=False,
+                  save_final_particles=False
                   ):
         """
         Run full tracking at SPS flat bottom
@@ -168,6 +170,8 @@ class SPS_Flat_Bottom_Tracker:
             if Gaussian distribution, which single RF harmonic matcher engine to use. None, 'pyheadtail' or 'single-rf-harmonic'.
         save_full_particle_data : bool
             whether to save all particle phase space data (default False), else only ensemble properties
+        save_final_particles : bool
+            whether to save final particle object
 
         Returns:
         --------
@@ -555,10 +559,11 @@ class SPS_Flat_Bottom_Tracker:
                 ax2.plot(time_units, tbt.eyn * 1e6, alpha=0.7, lw=1.5, label=string_array[i])
                 ax3.plot(time_units[ii], tbt.Nb[ii], alpha=0.7, lw=2.5, label=string_array[i])
                 
+            # Include wire scanner data - subtract ion injection cycle time
             if include_emittance_measurements:
-                ax1.errorbar(time_units_x, 1e6 * np.array(full_data['N_avg_emitX']), yerr=1e6 * full_data['N_emitX_error'], 
+                ax1.errorbar(time_units_x - self.ion_inj_ctime, 1e6 * np.array(full_data['N_avg_emitX']), yerr=1e6 * full_data['N_emitX_error'], 
                            color='blue', fmt="o", label="Measured")
-                ax2.errorbar(time_units_y, 1e6 * np.array(full_data['N_avg_emitY']), yerr=1e6 * full_data['N_emitY_error'], 
+                ax2.errorbar(time_units_y - self.ion_inj_ctime, 1e6 * np.array(full_data['N_avg_emitY']), yerr=1e6 * full_data['N_emitY_error'], 
                            color='blue', fmt="o", label="Measured")
                 
             ax1.set_ylabel(r'$\varepsilon_{x}^{n}$ [$\mu$m rad]')
