@@ -445,7 +445,10 @@ class SPS_Flat_Bottom_Tracker:
         
 
     def plot_multiple_sets_of_tracking_data(self, output_str_array, string_array, compact_mode=False,
-                                            include_emittance_measurements=False, x_unit_in_turns=True):
+                                            include_emittance_measurements=False, x_unit_in_turns=True,
+                                            bbox_to_anchor_position=(0.0, 1.3),
+                                            labelsize = 20,
+                                            ylim=None, ax_for_legend=2):
         """
         If multiple runs with turn-by-turn (tbt) data has been made, provide list with Records class objects and list
         of explaining string to generate comparative plots of emittances, bunch intensities, etc
@@ -462,6 +465,14 @@ class SPS_Flat_Bottom_Tracker:
             whether to include measured emittance or not
         x_units_in_turns : bool
             if True, x axis units will be turn, otherwise in seconds
+        bbox_to_anchor_position : tuple
+            x-y coordinates of relative plot position for legend
+        labelsize : int
+            labelsize for axes
+        ylim : list
+            lower and upper bounds for emittance plots, if None (default), automatic limits are set
+        ax_for_legend : int
+            which axis to use to place legend, either 1 or 2 (default is 2)
         """
         os.makedirs('main_plots', exist_ok=True)
         plt.rcParams.update(
@@ -469,7 +480,7 @@ class SPS_Flat_Bottom_Tracker:
                 "font.family": "serif",
                 "font.size": 18,
                 "axes.titlesize": 18,
-                "axes.labelsize": 20,
+                "axes.labelsize": labelsize,
                 "xtick.labelsize": 18,
                 "ytick.labelsize": 18,
                 "legend.fontsize": 15,
@@ -517,7 +528,7 @@ class SPS_Flat_Bottom_Tracker:
         # Normal, or compact mode
         if compact_mode:
             # Emittances and bunch intensity 
-            f = plt.figure(figsize = (6, 7))
+            f = plt.figure(figsize = (6, 5))
             gs = f.add_gridspec(3, hspace=0, height_ratios= [1, 2, 2])
             (ax3, ax2, ax1) = gs.subplots(sharex=True, sharey=False)
 
@@ -544,7 +555,13 @@ class SPS_Flat_Bottom_Tracker:
             #ax2.text(0.02, 0.94, 'Y', color='darkgreen', fontsize=20, transform=ax2.transAxes)
             ax1.set_xlabel('Turns' if x_unit_in_turns else 'Time [s]')
             ax2.set_xlabel('Turns' if x_unit_in_turns else 'Time [s]')
-            ax2.legend(fontsize=10.5, loc='upper left', bbox_to_anchor=(0.0, 1.3))
+            if ylim is not None:
+                ax1.set_ylim(ylim[0], ylim[1])
+                ax2.set_ylim(ylim[0], ylim[1])
+            if ax_for_legend == 2:
+                ax2.legend(fontsize=10.5, loc='upper left', bbox_to_anchor=bbox_to_anchor_position)
+            elif ax_for_legend == 1:
+                ax1.legend(fontsize=10.5, loc='upper left', bbox_to_anchor=bbox_to_anchor_position)
             
             for ax in f.get_axes():
                 ax.label_outer()
