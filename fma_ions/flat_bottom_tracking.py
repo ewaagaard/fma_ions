@@ -181,6 +181,8 @@ class SPS_Flat_Bottom_Tracker:
             beamParams = BeamParameters_SPS()
             if ion_type=='O':
                 beamParams.Nb = beamParams.Nb_O  # update to new oxygen intensity
+            if distribution_type == 'binomial':
+                beamParams.Nb = beamParams.Nb / 0.9108 # assume 8% of particles are lost outside of PS bucket, have to compensate for comparison
         print('Beam parameters:', beamParams)
 
         # Select relevant context
