@@ -133,7 +133,7 @@ class FMA:
             line.optimize_for_tracking()
         twiss_xtrack = line.twiss()
 
-        print('\nInstalling space charge on line...\n')
+        print('\nInstalling space charge on line...')
         # Initialize longitudinal profile for beams 
         if distribution_type=='gaussian':
             sigma_z_RMS = beamParams.sigma_z

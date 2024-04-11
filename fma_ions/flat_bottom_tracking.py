@@ -115,7 +115,7 @@ class SPS_Flat_Bottom_Tracker:
                   engine=None,
                   save_full_particle_data=False,
                   save_final_particles=False,
-                  update_particles_and_sc_for_binomial=False
+                  update_particles_and_sc_for_binomial=True
                   ):
         """
         Run full tracking at SPS flat bottom
@@ -231,12 +231,6 @@ class SPS_Flat_Bottom_Tracker:
                                             beamParams=beamParams, engine=engine)
         particles.reorganize()
 
-        # Initialize the dataclasses and store the initial values
-        if not save_full_particle_data:
-            tbt = Records.init_zeroes(self.num_turns)  # only emittances and bunch intensity
-        else:
-            tbt = Full_Records.init_zeroes(self.num_part, self.num_turns, which_context=which_context) # full particle data
-        tbt.update_at_turn(0, particles, twiss)
 
         ######### IBS kinetic kicks #########
         if apply_kinetic_IBS_kicks:
@@ -265,24 +259,24 @@ class SPS_Flat_Bottom_Tracker:
             print('\nStart pre-tracking of binomial...')
             for turn in range(1, 50):
                 line.track(particles, num_turns=1)
-            print('Finished pre-tracking: {} particles lost of {}'.format(len(particles.state[particles.state <= 0]), self.num_part))
+            print('Finished pre-tracking: most common lost code: "-{}" for {} particles out of {} lost in total'.format(np.bincount(np.abs(particles.state[particles.state <= 0])).argmax(),
+                                                                                                  np.max(np.bincount(np.abs(particles.state[particles.state <= 0]))),
+                                                                                                  len(particles.state[particles.state <= 0])))
             particles.hide_lost_particles() # remove lost particles
             
             # Re-install space charge
             if install_SC_on_line:
                 # Build a line without spacecharge (recycling the track kernel)
-                line0 = line.copy()
                 line = line.filter_elements(exclude_types_starting_with='SpaceCh')
-                line.build_tracker(track_kernel=line0.tracker.track_kernel)
                 
                 # Re-install space charge, but with new parameters
                 beamParams_updated = beamParams # copy old beam parameters
-                nplike = particles._context.nplike_lib # make sure we can transfer from all contexts
-                beamParams_updated.sigma_z_binomial = nplike.std(particles.zeta[particles.state > 0])  # update Binomial RMS bunch length
+                beamParams_updated.sigma_z_binomial = np.std(particles.zeta[particles.state > 0])  # update Binomial RMS bunch length
                 beamParams_updated.Nb = particles.weight[particles.state > 0][0]*len(particles.x[particles.state > 0])
                 beamParams_updated.exn = _geom_epsx(particles, twiss) * particles.beta0[0] * particles.gamma0[0]
                 beamParams_updated.eyn = _geom_epsx(particles, twiss) * particles.beta0[0] * particles.gamma0[0]
                 
+                # Install space charge and build tracker
                 line = fma_sps.install_SC_and_get_line(line, beamParams_updated, mode=SC_mode, optimize_for_tracking=(not add_tune_ripple), 
                                                        distribution_type=distribution_type, context=context)
                 print('Re-built space charge with updated binomial beam parameters: {}'.format(beamParams_updated))
@@ -293,6 +287,13 @@ class SPS_Flat_Bottom_Tracker:
             ripple_period = int(turns_per_sec/ripple_freq)  # number of turns particle makes during one ripple oscillation
             ripple = Tune_Ripple_SPS(Qy_frac=Qy_frac, beta_beat=beta_beat, num_turns=self.num_turns, ripple_period=ripple_period)
             kqf_vals, kqd_vals, _ = ripple.load_k_from_xtrack_matching(dq=dq, plane=ripple_plane)
+
+        # Initialize the dataclasses and store the initial values
+        if not save_full_particle_data:
+            tbt = Records.init_zeroes(self.num_turns)  # only emittances and bunch intensity
+        else:
+            tbt = Full_Records.init_zeroes(len(particles.x[particles.state > 0]), self.num_turns, which_context=which_context) # full particle data
+        tbt.update_at_turn(0, particles, twiss)
 
         # Start tracking 
         time00 = time.time()
