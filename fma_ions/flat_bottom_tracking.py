@@ -114,7 +114,8 @@ class SPS_Flat_Bottom_Tracker:
                   ripple_freq=50,
                   engine=None,
                   save_full_particle_data=False,
-                  save_final_particles=False
+                  save_final_particles=False,
+                  update_particles_and_sc_for_binomial=False
                   ):
         """
         Run full tracking at SPS flat bottom
@@ -172,6 +173,9 @@ class SPS_Flat_Bottom_Tracker:
             whether to save all particle phase space data (default False), else only ensemble properties
         save_final_particles : bool
             whether to save final particle object
+        update_particles_and_sc_for_binomial : bool
+            whether to "pre-track" particles for 50 turns if binomial distribution with particles outside RF bucket is generated, 
+            then updating space charge to new distribution
 
         Returns:
         --------
@@ -253,6 +257,35 @@ class SPS_Flat_Bottom_Tracker:
             line = fma_sps.install_SC_and_get_line(line, beamParams, mode=SC_mode, optimize_for_tracking=(not add_tune_ripple), 
                                                    distribution_type=distribution_type, context=context)
             print('Installed space charge on line\n')
+            
+        # If distribution is binimial, pre-track particles and removed killed ones, and update SC parameters
+        if distribution_type=='binomial' and update_particles_and_sc_for_binomial:
+            
+            # First tracking particles for 50 turns, remove all outside RF bucket
+            print('\nStart pre-tracking of binomial...')
+            for turn in range(1, 50):
+                line.track(particles, num_turns=1)
+            print('Finished pre-tracking: {} particles lost of {}'.format(len(particles.state[particles.state <= 0]), self.num_part))
+            particles.hide_lost_particles() # remove lost particles
+            
+            # Re-install space charge
+            if install_SC_on_line:
+                # Build a line without spacecharge (recycling the track kernel)
+                line0 = line.copy()
+                line = line.filter_elements(exclude_types_starting_with='SpaceCh')
+                line.build_tracker(track_kernel=line0.tracker.track_kernel)
+                
+                # Re-install space charge, but with new parameters
+                beamParams_updated = beamParams # copy old beam parameters
+                nplike = particles._context.nplike_lib # make sure we can transfer from all contexts
+                beamParams_updated.sigma_z_binomial = nplike.std(particles.zeta[particles.state > 0])  # update Binomial RMS bunch length
+                beamParams_updated.Nb = particles.weight[particles.state > 0][0]*len(particles.x[particles.state > 0])
+                beamParams_updated.exn = _geom_epsx(particles, twiss) * particles.beta0[0] * particles.gamma0[0]
+                beamParams_updated.eyn = _geom_epsx(particles, twiss) * particles.beta0[0] * particles.gamma0[0]
+                
+                line = fma_sps.install_SC_and_get_line(line, beamParams_updated, mode=SC_mode, optimize_for_tracking=(not add_tune_ripple), 
+                                                       distribution_type=distribution_type, context=context)
+                print('Re-built space charge with updated binomial beam parameters: {}'.format(beamParams_updated))
 
         # Add tune ripple
         if add_tune_ripple:
@@ -455,7 +488,8 @@ class SPS_Flat_Bottom_Tracker:
                                             bbox_to_anchor_position=(0.0, 1.3),
                                             labelsize = 20,
                                             ylim=None, ax_for_legend=2,
-                                            distribution_type='gaussian'):
+                                            distribution_type='gaussian',
+                                            legend_font_size=11.5):
         """
         If multiple runs with turn-by-turn (tbt) data has been made, provide list with Records class objects and list
         of explaining string to generate comparative plots of emittances, bunch intensities, etc
@@ -482,6 +516,8 @@ class SPS_Flat_Bottom_Tracker:
             which axis to use to place legend, either 1 or 2 (default is 2)
         distribution_type : str
             'gaussian' or 'parabolic' or 'binomial': particle distribution for tracking
+        legend_font_size : int
+            labelsize for legend
         """
         os.makedirs('main_plots', exist_ok=True)
         plt.rcParams.update(
@@ -490,8 +526,8 @@ class SPS_Flat_Bottom_Tracker:
                 "font.size": 18,
                 "axes.titlesize": 18,
                 "axes.labelsize": labelsize,
-                "xtick.labelsize": 18,
-                "ytick.labelsize": 18,
+                "xtick.labelsize": 15,
+                "ytick.labelsize": 15,
                 "legend.fontsize": 15,
                 "figure.titlesize": 20,
             }
@@ -545,7 +581,7 @@ class SPS_Flat_Bottom_Tracker:
         # Normal, or compact mode
         if compact_mode:
             # Emittances and bunch intensity 
-            f = plt.figure(figsize = (6, 5))
+            f = plt.figure(figsize = (6, 6))
             gs = f.add_gridspec(3, hspace=0, height_ratios= [1, 2, 2])
             (ax3, ax2, ax1) = gs.subplots(sharex=True, sharey=False)
 
@@ -577,9 +613,9 @@ class SPS_Flat_Bottom_Tracker:
                 ax1.set_ylim(ylim[0], ylim[1])
                 ax2.set_ylim(ylim[0], ylim[1])
             if ax_for_legend == 2:
-                ax2.legend(fontsize=10.5, loc='upper left', bbox_to_anchor=bbox_to_anchor_position)
+                ax2.legend(fontsize=legend_font_size, loc='upper left', bbox_to_anchor=bbox_to_anchor_position)
             elif ax_for_legend == 1:
-                ax1.legend(fontsize=10.5, loc='upper left', bbox_to_anchor=bbox_to_anchor_position)
+                ax1.legend(fontsize=legend_font_size, loc='upper left', bbox_to_anchor=bbox_to_anchor_position)
             
             for ax in f.get_axes():
                 ax.label_outer()
