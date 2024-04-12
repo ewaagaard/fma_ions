@@ -12,8 +12,8 @@ distribution_type = 'binomial'
 
 # Track with 10% BB and space charge 
 sps = fma_ions.SPS_Flat_Bottom_Tracker(num_part=100, num_turns=100, turn_print_interval=10)
-tbt_dict = sps.track_SPS(which_context='cpu', beta_beat=0.1, add_non_linear_magnet_errors=True,  distribution_type=distribution_type,
-                         save_full_particle_data=True, update_particles_and_sc_for_binomial=True)
+tbt_dict = sps.track_SPS(which_context='gpu', beta_beat=0.1, add_non_linear_magnet_errors=True,  distribution_type=distribution_type,
+                         save_full_particle_data=True, update_particles_and_sc_for_binomial=True, full_particle_data_interval=10)
 
 # Output directory
 os.makedirs('output_plots', exist_ok=True)

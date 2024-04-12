@@ -340,7 +340,8 @@ class SPS_Flat_Bottom_Tracker:
             else:
                 if turn in full_data_ind:
                     print(f'Updating full particle dictionary at turn {turn + 1}')
-                    tbt.update_at_turn(turn, particles, twiss)
+                    update_ind = np.where(turn==full_data_ind)[0][0]
+                    tbt.update_at_turn(update_ind, particles, twiss)
 
             if particles.state[particles.state <= 0].size > 0:
                 if print_lost_particle_state and turn % self.turn_print_interval == 0:
@@ -359,13 +360,12 @@ class SPS_Flat_Bottom_Tracker:
         if save_tbt_data:
             tbt_dict = tbt.to_dict()
             
-            # Convert turns to seconds
-            turns_per_sec = 1 / twiss.T_rev0
-            seconds = self.num_turns / turns_per_sec # number of seconds we are running for
-            tbt_dict['Seconds'] = np.linspace(0.0, seconds, num=int(self.num_turns))
-
             # If not full particle data is saved, return pandas version of  TBT dictionary with particle data
             if not save_full_particle_data:
+                # Convert turns to seconds
+                turns_per_sec = 1 / twiss.T_rev0
+                seconds = self.num_turns / turns_per_sec # number of seconds we are running for
+                tbt_dict['Seconds'] = np.linspace(0.0, seconds, num=int(self.num_turns))
                 tbt_dict = pd.DataFrame(tbt_dict)
             
             return tbt_dict
@@ -403,7 +403,6 @@ class SPS_Flat_Bottom_Tracker:
         """
 
         # Convert measured emittances to turns if this unit is used, otherwise keep seconds
-        
         if x_unit_in_turns:
             turns = np.arange(len(tbt.exn), dtype=int)             
             time_units = turns
