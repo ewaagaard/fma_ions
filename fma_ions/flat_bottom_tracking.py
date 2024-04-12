@@ -115,7 +115,7 @@ class SPS_Flat_Bottom_Tracker:
                   ripple_freq=50,
                   engine=None,
                   save_full_particle_data=False,
-                  save_final_particles=False,
+                  full_particle_data_interval=None,
                   update_particles_and_sc_for_binomial=False
                   ):
         """
@@ -172,8 +172,8 @@ class SPS_Flat_Bottom_Tracker:
             if Gaussian distribution, which single RF harmonic matcher engine to use. None, 'pyheadtail' or 'single-rf-harmonic'.
         save_full_particle_data : bool
             whether to save all particle phase space data (default False), else only ensemble properties
-        save_final_particles : bool
-            whether to return a final particle object, together with the initial particles
+        full_particle_data_interval : int
+            starting from turn 1, interval between which to save full particle data. Default 'None' will save only first or last turn
         update_particles_and_sc_for_binomial : bool
             whether to "pre-track" particles for 50 turns if binomial distribution with particles outside RF bucket is generated, 
             then updating space charge to new distribution
@@ -293,12 +293,15 @@ class SPS_Flat_Bottom_Tracker:
         if not save_full_particle_data:
             tbt = Records.init_zeroes(self.num_turns)  # only emittances and bunch intensity
         else:
-            tbt = Full_Records.init_zeroes(len(particles.x[particles.state > 0]), self.num_turns, which_context=which_context) # full particle data
+            # First find the interval at which to save data
+            if full_particle_data_interval is None:
+                full_data_ind = np.array([0, self.num_turns-1])
+            else:
+                full_data_ind = np.arange(0, self.num_turns, full_particle_data_interval)
+                if not (self.num_turns-1 in full_data_ind):  # at last turn if in index array
+                    full_data_ind  = np.append(full_data_ind, self.num_turns-1)
+            tbt = Full_Records.init_zeroes(len(particles.x[particles.state > 0]), len(full_data_ind), which_context=which_context) # full particle data
         tbt.update_at_turn(0, particles, twiss)
-
-        # Generate initial particle object to save, if desired
-        if save_final_particles:
-            particles0 = particles.copy()
 
         # Start tracking 
         time00 = time.time()
@@ -330,7 +333,14 @@ class SPS_Flat_Bottom_Tracker:
 
             # ----- Track and update records for tracked particles ----- #
             line.track(particles, num_turns=1)
-            tbt.update_at_turn(turn, particles, twiss)
+
+            # Update ensemble records or full records
+            if not save_full_particle_data:
+                tbt.update_at_turn(turn, particles, twiss)
+            else:
+                if turn in full_data_ind:
+                    print(f'Updating full particle dictionary at turn {turn + 1}')
+                    tbt.update_at_turn(turn, particles, twiss)
 
             if particles.state[particles.state <= 0].size > 0:
                 if print_lost_particle_state and turn % self.turn_print_interval == 0:
@@ -354,14 +364,11 @@ class SPS_Flat_Bottom_Tracker:
             seconds = self.num_turns / turns_per_sec # number of seconds we are running for
             tbt_dict['Seconds'] = np.linspace(0.0, seconds, num=int(self.num_turns))
 
-            # If not full particle data is saved, return TBT dictionary with particle data
+            # If not full particle data is saved, return pandas version of  TBT dictionary with particle data
             if not save_full_particle_data:
-                tbt_dict = pd.DataFrame(tbt_dict)    
+                tbt_dict = pd.DataFrame(tbt_dict)
             
-            if save_final_particles:
-                return tbt_dict, particles, particles0
-            else:
-                return tbt_dict
+            return tbt_dict
 
 
     def load_tbt_data(self, output_folder=None) -> Records:
