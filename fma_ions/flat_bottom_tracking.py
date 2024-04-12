@@ -300,7 +300,8 @@ class SPS_Flat_Bottom_Tracker:
                 full_data_ind = np.arange(0, self.num_turns, full_particle_data_interval)
                 if not (self.num_turns-1 in full_data_ind):  # at last turn if in index array
                     full_data_ind  = np.append(full_data_ind, self.num_turns-1)
-            tbt = Full_Records.init_zeroes(len(particles.x[particles.state > 0]), len(full_data_ind), which_context=which_context) # full particle data
+            tbt = Full_Records.init_zeroes(len(particles.x[particles.state > 0]), len(full_data_ind), 
+                                           which_context=which_context, full_data_turn_ind=full_data_ind) # full particle data
         tbt.update_at_turn(0, particles, twiss)
 
         # Start tracking 
@@ -339,7 +340,7 @@ class SPS_Flat_Bottom_Tracker:
                 tbt.update_at_turn(turn, particles, twiss)
             else:
                 if turn in full_data_ind:
-                    print(f'Updating full particle dictionary at turn {turn + 1}')
+                    print(f'Updating full particle dictionary at turn {turn}')
                     update_ind = np.where(turn==full_data_ind)[0][0]
                     tbt.update_at_turn(update_ind, particles, twiss)
 
@@ -358,17 +359,17 @@ class SPS_Flat_Bottom_Tracker:
                 
         # Make parquet file from dictionary
         if save_tbt_data:
-            tbt_dict = tbt.to_dict()
             
             # If not full particle data is saved, return pandas version of  TBT dictionary with particle data
             if not save_full_particle_data:
+                tbt_dict = tbt.to_dict()
                 # Convert turns to seconds
                 turns_per_sec = 1 / twiss.T_rev0
                 seconds = self.num_turns / turns_per_sec # number of seconds we are running for
                 tbt_dict['Seconds'] = np.linspace(0.0, seconds, num=int(self.num_turns))
-                tbt_dict = pd.DataFrame(tbt_dict)
+                tbt = pd.DataFrame(tbt_dict)
             
-            return tbt_dict
+            return tbt
 
 
     def load_tbt_data(self, output_folder=None) -> Records:
