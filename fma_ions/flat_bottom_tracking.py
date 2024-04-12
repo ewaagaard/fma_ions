@@ -79,10 +79,11 @@ class SPS_Flat_Bottom_Tracker:
                 sigma_z= beamParams.sigma_z,
                 line=line, _context=context)
         elif distribution_type=='binomial':
-            particles = generate_binomial_distribution_from_PS_extr(num_particles=self.num_part,
-                                                                 nemitt_x=beamParams.exn, nemitt_y=beamParams.eyn,
-                                                                 sigma_z=beamParams.sigma_z_binomial, total_intensity_particles=beamParams.Nb,
-                                                                 line=line, m=m)
+            # Also calculate SPS separatrix for plotting
+            particles, self._zeta_separatrix, self._delta_separatrix = generate_binomial_distribution_from_PS_extr(num_particles=self.num_part,
+                                                                    nemitt_x=beamParams.exn, nemitt_y=beamParams.eyn,
+                                                                    sigma_z=beamParams.sigma_z_binomial, total_intensity_particles=beamParams.Nb,
+                                                                    line=line, m=m, return_separatrix_coord=True)
         else:   
             raise ValueError('Only Gaussian, parabolic and binomial distributions are implemented!')
             
@@ -172,7 +173,7 @@ class SPS_Flat_Bottom_Tracker:
         save_full_particle_data : bool
             whether to save all particle phase space data (default False), else only ensemble properties
         save_final_particles : bool
-            whether to save final particle object
+            whether to return a final particle object, together with the initial particles
         update_particles_and_sc_for_binomial : bool
             whether to "pre-track" particles for 50 turns if binomial distribution with particles outside RF bucket is generated, 
             then updating space charge to new distribution
@@ -295,6 +296,10 @@ class SPS_Flat_Bottom_Tracker:
             tbt = Full_Records.init_zeroes(len(particles.x[particles.state > 0]), self.num_turns, which_context=which_context) # full particle data
         tbt.update_at_turn(0, particles, twiss)
 
+        # Generate initial particle object to save, if desired
+        if save_final_particles:
+            particles0 = particles.copy()
+
         # Start tracking 
         time00 = time.time()
         for turn in range(1, self.num_turns):
@@ -351,8 +356,10 @@ class SPS_Flat_Bottom_Tracker:
 
             # If not full particle data is saved, return TBT dictionary with particle data
             if not save_full_particle_data:
-                df = pd.DataFrame(tbt_dict)    
-                return df
+                tbt_dict = pd.DataFrame(tbt_dict)    
+            
+            if save_final_particles:
+                return tbt_dict, particles, particles0
             else:
                 return tbt_dict
 
