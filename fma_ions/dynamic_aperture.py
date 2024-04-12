@@ -11,8 +11,8 @@ import xpart as xp
 import xobjects as xo
 
 from .fma_ions import FMA
-from .sequence_classes_ps import PS_sequence_maker, BeamParameters_PS
-from .sequence_classes_sps import SPS_sequence_maker, BeamParameters_SPS
+from .sequences import PS_sequence_maker, BeamParameters_PS
+from .sequences import SPS_sequence_maker, BeamParameters_SPS
 
 @dataclass
 class Dynamic_Aperture: 

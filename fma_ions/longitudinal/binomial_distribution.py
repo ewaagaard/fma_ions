@@ -1,7 +1,7 @@
 from xpart.longitudinal import generate_longitudinal_coordinates
 from xpart import build_particles
 import xpart as xp
-from fma_ions.sequence_classes_ps import PS_sequence_maker
+from fma_ions.sequences import PS_sequence_maker
 import numpy as np
 
 

@@ -10,8 +10,8 @@ import xpart as xp
 import xfields as xf
 import xobjects as xo
 
-from .sequence_classes_ps import PS_sequence_maker, BeamParameters_PS
-from .sequence_classes_sps import SPS_sequence_maker, BeamParameters_SPS
+from .sequences import PS_sequence_maker, BeamParameters_PS
+from .sequences import SPS_sequence_maker, BeamParameters_SPS
 from .fma_ions import FMA
 from .helpers import Records, Records_Growth_Rates, Full_Records, _bunch_length, _geom_epsx, _geom_epsy, _sigma_delta
 from .tune_ripple import Tune_Ripple_SPS

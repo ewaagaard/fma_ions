@@ -16,8 +16,8 @@ from scipy import constants
 from cpymad.madx import Madx
 import json
 
-sequence_path = Path(__file__).resolve().parent.joinpath('../data/ps_sequences').absolute()
-optics =  Path(__file__).resolve().parent.joinpath('../data/acc-models-ps').absolute()
+sequence_path = Path(__file__).resolve().parent.joinpath('../../data/ps_sequences').absolute()
+optics =  Path(__file__).resolve().parent.joinpath('.././data/acc-models-ps').absolute()
 
 @dataclass
 class BeamParameters_PS :

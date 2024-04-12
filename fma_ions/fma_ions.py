@@ -29,8 +29,8 @@ plt.rcParams.update(
 
 
 import NAFFlib
-from .sequence_classes_ps import PS_sequence_maker, BeamParameters_PS
-from .sequence_classes_sps import SPS_sequence_maker, BeamParameters_SPS
+from .sequences import PS_sequence_maker, BeamParameters_PS
+from .sequences import SPS_sequence_maker, BeamParameters_SPS
 from .resonance_lines import resonance_lines
 
 @dataclass
