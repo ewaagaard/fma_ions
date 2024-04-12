@@ -7,6 +7,7 @@ import xtrack as xt
 from dataclasses import dataclass
 from typing import Self
 import pandas as pd
+import json
 
 ####### Helper functions for bunch length, momentum spread and geometric emittances #######
 def _bunch_length(parts: xp.Particles) -> float:
@@ -151,6 +152,7 @@ class Full_Records:
     Nb: np.ndarray
     state: np.ndarray
     which_context : str
+    full_data_turn_ind: np.ndarray
 
     def update_at_turn(self, turn: int, parts: xp.Particles, twiss: xt.TwissTable):
         """Automatically update the records at given turn from the xpart.Particles."""
@@ -181,8 +183,9 @@ class Full_Records:
             self.state[:, turn] = parts.state.get()
 
     @classmethod
-    def init_zeroes(cls, num_part : int, n_turns: int, which_context : str) -> Self:  # noqa: F821
-        """Initialize the dataclass with arrays of zeroes."""
+    def init_zeroes(cls, num_part : int, n_turns: int, which_context : str,
+                    full_data_turn_ind : np.ndarray) -> Self:  # noqa: F821
+        """Initialize the dataclass with arrays of zeroes, also with full_data_ind at which turns data is saved"""
         return cls(
             x=np.zeros([num_part, n_turns], dtype=float),
             y=np.zeros([num_part, n_turns], dtype=float),
@@ -196,7 +199,8 @@ class Full_Records:
             Nb=np.zeros(n_turns, dtype=float),
             sigma_delta=np.zeros(n_turns, dtype=float),
             bunch_length=np.zeros(n_turns, dtype=float),
-            which_context=which_context
+            which_context=which_context,
+            full_data_turn_ind = full_data_turn_ind
         )
     
     def to_dict(self):
@@ -233,4 +237,53 @@ class Full_Records:
             Nb=np.hstack((self.Nb[:1], self.Nb[-1:])),
             state=np.hstack((self.state[:, :1], self.state[:, -1:])),
             which_context=self.which_context
+        )
+
+    def to_json(self, file_path):
+        """
+        Save the data to a JSON file.
+        """
+        data = {
+            'x': self.x.tolist(),
+            'y': self.y.tolist(),
+            'px': self.px.tolist(),
+            'py': self.py.tolist(),
+            'delta': self.delta.tolist(),
+            'zeta': self.zeta.tolist(),
+            'nepsilon_x': self.nepsilon_x.tolist(),
+            'nepsilon_y': self.nepsilon_y.tolist(),
+            'sigma_delta': self.sigma_delta.tolist(),
+            'bunch_length': self.bunch_length.tolist(),
+            'Nb': self.Nb.tolist(),
+            'state': self.state.tolist(),
+            'which_context': self.which_context,
+            'full_data_turn_ind': self.full_data_turn_ind.tolist()
+        }
+        with open(file_path, 'w') as f:
+            json.dump(data, f)
+
+
+    @classmethod
+    def from_json(cls, file_path):
+        """
+        Load the data from a JSON file and construct a Full_Records instance.
+        """
+        with open(file_path, 'r') as f:
+            data = json.load(f)
+
+        return cls(
+            x=np.array(data['x']),
+            y=np.array(data['y']),
+            px=np.array(data['px']),
+            py=np.array(data['py']),
+            delta=np.array(data['delta']),
+            zeta=np.array(data['zeta']),
+            nepsilon_x=np.array(data['nepsilon_x']),
+            nepsilon_y=np.array(data['nepsilon_y']),
+            sigma_delta=np.array(data['sigma_delta']),
+            bunch_length=np.array(data['bunch_length']),
+            Nb=np.array(data['Nb']),
+            state=np.array(data['state']),
+            which_context=data['which_context'],
+            full_data_turn_ind=np.array(data['full_data_turn_ind'])
         )

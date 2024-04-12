@@ -14,7 +14,8 @@ class Submitter:
                    nr_of_CPUs_to_request : int = 8,
                    change_to_best_node : bool = True,
                    number_of_turn_string : str = '',
-                   copy_plot_scripts_to_output : bool = True
+                   copy_plot_scripts_to_output : bool = True,
+                   output_format : str = 'parquet'
                    ):
         """Method to submit .py script to HTCondor using CPUs"""
 
@@ -37,8 +38,9 @@ class Submitter:
         print('\nSaving EOS data to {}'.format(settings['output_directory_eos']))
         print('\nSaving AFS data to {}'.format(settings['output_directory_afs']))
 
-        turnbyturn_file_name = 'tbt.parquet'
+        turnbyturn_file_name = f'tbt.{output_format}'
         turnbyturn_path_eos = os.path.join(settings['output_directory_eos'], turnbyturn_file_name)
+        print('File: {}'.format(turnbyturn_path_eos))
 
         # Create bash script and make executable
         job_file_name = os.path.join(settings['output_directory_afs'], 'SPS_flat_bottom.job')
@@ -93,7 +95,8 @@ queue'''
                    extra_output_name_str : str = None,
                    change_to_best_node : bool = True,
                    number_of_turn_string : str = '',
-                   copy_plot_scripts_to_output : bool = True
+                   copy_plot_scripts_to_output : bool = True,
+                   output_format : str = 'parquet'
                    ):
         """Method to submit .py script to HTCondor with GPUs"""        
 
@@ -116,8 +119,9 @@ queue'''
         print('\nSaving EOS data to {}'.format(settings['output_directory_eos']))
         print('\nSaving AFS data to {}'.format(settings['output_directory_afs']))
 
-        turnbyturn_file_name = 'tbt.parquet'
+        turnbyturn_file_name = f'tbt.{output_format}'
         turnbyturn_path_eos = os.path.join(settings['output_directory_eos'], turnbyturn_file_name)
+        print('File: {}'.format(turnbyturn_path_eos))
         
         # Create bash script and make executable
         job_file_name = os.path.join(settings['output_directory_afs'], 'SPS_flat_bottom.job')
