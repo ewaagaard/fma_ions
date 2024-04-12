@@ -115,7 +115,7 @@ class SPS_Flat_Bottom_Tracker:
                   engine=None,
                   save_full_particle_data=False,
                   save_final_particles=False,
-                  update_particles_and_sc_for_binomial=True
+                  update_particles_and_sc_for_binomial=False
                   ):
         """
         Run full tracking at SPS flat bottom
@@ -273,8 +273,8 @@ class SPS_Flat_Bottom_Tracker:
                 beamParams_updated = beamParams # copy old beam parameters
                 beamParams_updated.sigma_z_binomial = np.std(particles.zeta[particles.state > 0])  # update Binomial RMS bunch length
                 beamParams_updated.Nb = particles.weight[particles.state > 0][0]*len(particles.x[particles.state > 0])
-                beamParams_updated.exn = _geom_epsx(particles, twiss) * particles.beta0[0] * particles.gamma0[0]
-                beamParams_updated.eyn = _geom_epsx(particles, twiss) * particles.beta0[0] * particles.gamma0[0]
+                beamParams_updated.exn = np.float64(_geom_epsx(particles, twiss) * particles.beta0[0] * particles.gamma0[0])
+                beamParams_updated.eyn = np.float64(_geom_epsy(particles, twiss) * particles.beta0[0] * particles.gamma0[0])
                 
                 # Install space charge and build tracker
                 line = fma_sps.install_SC_and_get_line(line, beamParams_updated, mode=SC_mode, optimize_for_tracking=(not add_tune_ripple), 
