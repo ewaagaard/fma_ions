@@ -4,13 +4,25 @@ Script to track Pb particles in SPS, study full phase space of all particles
 import fma_ions
 import matplotlib.pyplot as plt
 import os
+import pandas as pd
+import xpart as xp
 
 distribution_type = 'binomial'
 
 # Track with 10% BB and space charge 
 sps = fma_ions.SPS_Flat_Bottom_Tracker(num_part=10_000, num_turns=100, turn_print_interval=10)
 tbt_dict, particles, particles0 = sps.track_SPS(which_context='gpu', beta_beat=0.1, add_non_linear_magnet_errors=True,  distribution_type=distribution_type,
-                         save_final_particles=True)
+                         save_final_particles=True, update_particles_and_sc_for_binomial=True)
+
+# Save particles
+df1 = particles0.to_pandas()
+df2 = particles.to_pandas()
+df1.to_hdf('particles0.hdf', key='df', mode='w')
+df2.to_hdf('particles.hdf', key='df', mode='w')
+
+# Test reading particles from hdf file via pandas
+particles0 = xp.Particles.from_pandas(pd.read_hdf('particles0.hdf'))
+particles = xp.Particles.from_pandas(pd.read_hdf('particles.hdf'))
 
 # Output directory
 os.makedirs('output_plots', exist_ok=True)
@@ -27,16 +39,16 @@ ax[0].plot(particles0.zeta[alive_ind_final], particles0.delta[alive_ind_final]*1
         color='blue', markersize=3.6, label='Alive')
 ax[0].plot(particles0.zeta[dead_ind_final], particles0.delta[dead_ind_final]*1000, '.', 
         color='darkred', markersize=3.6, label='Dead')
-ax[0].plot(sps._zeta_separatrix, sps._delta_separatrix * 1e3, '-', color='red', label='SPS RF separatrix')
-ax[0].plot(sps._zeta_separatrix, -sps._delta_separatrix * 1e3, '-', color='red', label=None)
+ax[0].plot(sps._zeta_separatrix, sps._delta_separatrix * 1e3, '-', color='red', alpha=0.7, label='SPS RF separatrix')
+ax[0].plot(sps._zeta_separatrix, -sps._delta_separatrix * 1e3, '-', color='red', alpha=0.7, label=None)
 
 # Plot final particles
 ax[1].plot(particles.zeta[alive_ind_final], particles.delta[alive_ind_final]*1000, '.', 
         color='blue', markersize=3.6, label='Alive')
 ax[1].plot(particles.zeta[dead_ind_final], particles.delta[dead_ind_final]*1000, '.', 
         color='darkred', markersize=3.6, label='Dead')
-ax[1].plot(sps._zeta_separatrix, sps._delta_separatrix * 1e3, '-', color='red', label='SPS RF separatrix')
-ax[1].plot(sps._zeta_separatrix, -sps._delta_separatrix * 1e3, '-', color='red', label=None)
+ax[1].plot(sps._zeta_separatrix, sps._delta_separatrix * 1e3, '-', color='red', alpha=0.7, label='SPS RF separatrix')
+ax[1].plot(sps._zeta_separatrix, -sps._delta_separatrix * 1e3, '-', color='red', alpha=0.7, label=None)
 
 #ax.set_ylim(-1.4, 1.4)
 #ax.set_xlim(-1.0, 1.0)
