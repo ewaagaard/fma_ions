@@ -214,3 +214,23 @@ class Full_Records:
             'zeta' : np.array(self.zeta),
             'state' : np.array(self.state)
         }
+    
+    def copy_first_and_last_turns(self):
+        """
+        Create a copy of the dataclass with only the data for the very first and very last turn.
+        """
+        return Full_Records(
+            x=np.hstack((self.x[:, :1], self.x[:, -1:])),
+            y=np.hstack((self.y[:, :1], self.y[:, -1:])),
+            px=np.hstack((self.px[:, :1], self.px[:, -1:])),
+            py=np.hstack((self.py[:, :1], self.py[:, -1:])),
+            delta=np.hstack((self.delta[:, :1], self.delta[:, -1:])),
+            zeta=np.hstack((self.zeta[:, :1], self.zeta[:, -1:])),
+            nepsilon_x=np.hstack((self.nepsilon_x[:1], self.nepsilon_x[-1:])),
+            nepsilon_y=np.hstack((self.nepsilon_y[:1], self.nepsilon_y[-1:])),
+            sigma_delta=np.hstack((self.sigma_delta[:1], self.sigma_delta[-1:])),
+            bunch_length=np.hstack((self.bunch_length[:1], self.bunch_length[-1:])),
+            Nb=np.hstack((self.Nb[:1], self.Nb[-1:])),
+            state=np.hstack((self.state[:, :1], self.state[:, -1:])),
+            which_context=self.which_context
+        )

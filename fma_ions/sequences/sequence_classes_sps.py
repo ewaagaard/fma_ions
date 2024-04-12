@@ -15,9 +15,9 @@ from scipy import constants
 from cpymad.madx import Madx
 import json
 
-optics =  Path(__file__).resolve().parent.joinpath('../data/acc-models-sps').absolute()
-sequence_path = Path(__file__).resolve().parent.joinpath('../data/sps_sequences').absolute()
-error_file_path = Path(__file__).resolve().parent.joinpath('../data/sps_sequences/magnet_errors').absolute()
+optics =  Path(__file__).resolve().parent.joinpath('../../data/acc-models-sps').absolute()
+sequence_path = Path(__file__).resolve().parent.joinpath('../../data/sps_sequences').absolute()
+error_file_path = Path(__file__).resolve().parent.joinpath('../../data/sps_sequences/magnet_errors').absolute()
 
 @dataclass
 class BeamParameters_SPS:
