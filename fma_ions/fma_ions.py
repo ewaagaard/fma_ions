@@ -152,6 +152,11 @@ class FMA:
                 z0=0.,
                 q_parameter=q_val)
 
+        print('\nInstalled SC.')
+        print(lprofile)
+        print(line.particle_ref.show())
+        print(beamParams)
+
         # Install frozen space charge as base 
         xf.install_spacecharge_frozen(line = line,
                            particle_ref = line.particle_ref,
@@ -193,7 +198,7 @@ class FMA:
 
     def generate_particles(self, line, beamParams, 
                            make_single_Jy_trace=False,
-                           y_norm0=0.05):
+                           y_norm0=0.05, context=None):
         """
         Generate xpart particle object from beam parameters 
     
@@ -208,12 +213,17 @@ class FMA:
             with varying action Jx. "Trace" instead of "grid", if uniform beam is used
         y_norm0 : float
             starting normalized Y coordinate for the single Jy trace 
+        context : xo.context
+            xojebts context for tracking
         
         Returns
         -------
         particles : xpart particles object after tracking
         """
-        
+        # Choose default context if not given, and remove tracker if already exists 
+        if context is None:
+            context = xo.ContextCpu()    
+
         ##### Generate particles #####
         print('\nGenerating particles with delta = {:.2e} and z = {:.2e}'.format(self.delta0, self.z0))
         if self.use_uniform_beam:     
@@ -243,14 +253,14 @@ class FMA:
         # Build the particle object
         particles = xp.build_particles(line = line, particle_ref = line.particle_ref,
                                        x_norm=x_norm, y_norm=y_norm, delta=self.delta0, zeta=self.z0,
-                                       nemitt_x = beamParams.exn, nemitt_y = beamParams.eyn)
+                                       nemitt_x = beamParams.exn, nemitt_y = beamParams.eyn, _context=context)
         
         print('\nBuilt particle object of size {}...'.format(len(particles.x)))
         
         return particles
         
     
-    def track_particles(self, particles, line, save_tbt_data=True):
+    def track_particles(self, particles, line, save_tbt_data=True, which_context='cpu'):
         """
         Track particles through lattice with space charge elments installed
         
@@ -262,6 +272,8 @@ class FMA:
             xsuite line to track through
         save_tbt: bool
             whether to save turn-by-turn data from tracking
+        which_context : str
+            'cpu' or 'gpu'
         
         Returns:
         -------
@@ -281,10 +293,16 @@ class FMA:
             if i % 20 == 0:
                 print('Tracking turn {}'.format(i))
         
-            x[:, i] = particles.x
-            y[:, i] = particles.y
-            px[:, i] = particles.px
-            py[:, i] = particles.py
+            if which_context=='cpu':
+                x[:, i] = particles.x
+                y[:, i] = particles.y
+                px[:, i] = particles.px
+                py[:, i] = particles.py
+            elif which_context=='gpu':
+                x[:, i] = particles.x.get()
+                y[:, i] = particles.y.get()
+                px[:, i] = particles.px.get()
+                py[:, i] = particles.py.get()
         
             # Track the particles
             line.track(particles)
@@ -588,7 +606,7 @@ class FMA:
         plt.close()
     
     
-    def run_FMA(self, x_tbt_data, y_tbt_data, Qmin=0.0, remove_dead_particles=True):
+    def run_FMA(self, x_tbt_data, y_tbt_data, Qmin=0.0, remove_dead_particles=True, which_context = 'cpu'):
         """
         Run FMA analysis for given turn-by-turn coordinates
         
@@ -603,6 +621,8 @@ class FMA:
         --------
         Qx, Qy, d : np.ndarrays
             numpy arrays with turn-by-turn action, tune and diffusion data
+        which_context : str
+            'cpu' or 'gpu'
         """
         
         # Initialize empty arrays for tunes of particles, during first and second half of run - at split_ind
@@ -639,6 +659,10 @@ class FMA:
         Qx_2[Qx_2 == 0.0] = np.nan
         Qy_2[Qy_2 == 0.0] = np.nan
         
+        # Convert to numpy array if running on GPU
+        if which_context == 'gpu':
+           self._kill_ind = self._kill_ind.get()
+
         # Remove dead particles from particle index - if exists
         if remove_dead_particles and self._kill_ind_exists:
             Qx_1[self._kill_ind] = np.nan
@@ -795,10 +819,12 @@ class FMA:
         
     def run_SPS(self, load_tbt_data=False, 
                 save_tune_data=True, 
+                ion_type='Pb',
                 Qy_frac=25,
                 make_single_Jy_trace=False,
                 use_symmetric_lattice=False,
-                add_non_linear_magnet_errors=False
+                add_non_linear_magnet_errors=False,
+                which_context = 'cpu'
                 ):
         """
         Default FMA analysis for SPS Pb ions, plot final results and tune diffusion in initial distribution
@@ -809,6 +835,8 @@ class FMA:
             whether to load turn-by-turn (TBT) data from tracking is already saved
         save_tune_data : bool 
             flag to store results Qx, Qy, d from FMA
+        ion_type : str
+            which ion to use: currently available are 'Pb' and 'O'
         Qy_frac : int
             fractional vertical tune 
         make_single_Jy_trace : bool 
@@ -818,13 +846,33 @@ class FMA:
             flag to use symmetric lattice without QFA and QDA
         add_non_linear_magnet_errors : bool
             whether to add non-linear chromatic errors for SPS
-        
+        which_context : str
+            context for particle tracking - 'gpu' or 'cpu'
+            
         Returns:
         --------
         None
         """
-        beamParams = BeamParameters_SPS
-        sps_seq = SPS_sequence_maker()
+        # Select relevant context
+        if which_context=='gpu':
+            context = xo.ContextCupy()
+        elif which_context=='cpu':
+            context = xo.ContextCpu(omp_num_threads='auto')
+        else:
+            raise ValueError('Context is either "gpu" or "cpu"')
+
+        beamParams = BeamParameters_SPS()
+
+        # Get SPS Pb line - select ion
+        if ion_type=='Pb':
+            sps_seq = SPS_sequence_maker()
+        elif ion_type=='O':
+            sps_seq = SPS_sequence_maker(ion_type='O', Q_PS=4., Q_SPS=8., m_ion=15.9949)
+            beamParams.Nb = beamParams.Nb_O  # update to new oxygen intensity
+        else:
+            raise ValueError('Only Pb and O ions implemented so far!')
+        
+        # Load line
         line0, twiss_sps =  sps_seq.load_xsuite_line_and_twiss(Qy_frac=Qy_frac, use_symmetric_lattice=use_symmetric_lattice,
                                                                add_non_linear_magnet_errors=add_non_linear_magnet_errors)
         
@@ -833,19 +881,24 @@ class FMA:
             try:
                 x, y, _, _ = self.load_tracking_data()
             except FileExistsError:
-                line = self.install_SC_and_get_line(line0, beamParams)
-                particles = self.generate_particles(line, beamParams, make_single_Jy_trace)
-                x, y = self.track_particles(particles, line)
+                line = self.install_SC_and_get_line(line0, beamParams, context=context)
+                line.build_tracker(_context=context)
+                particles = self.generate_particles(line, beamParams, make_single_Jy_trace, context=context)
+                x, y = self.track_particles(particles, line, which_context=which_context)
         else:
-            line = self.install_SC_and_get_line(line0, beamParams)
-            particles = self.generate_particles(line, beamParams, make_single_Jy_trace)
-            x, y = self.track_particles(particles, line)
+            line = self.install_SC_and_get_line(line0, beamParams, context=context)
+            line.build_tracker(_context=context)    
+            particles = self.generate_particles(line, beamParams, make_single_Jy_trace, context=context)
+            x, y = self.track_particles(particles, line, which_context=which_context)
   
         # Extract diffusion coefficient from FMA of turn-by-turn data
         if load_tbt_data:
-            Qx, Qy, d = self.load_tune_data()
+            try: 
+                Qx, Qy, d = self.load_tune_data()
+            except FileNotFoundError:
+                Qx, Qy, d = self.run_FMA(x, y, Qmin=self.Q_min_SPS, which_context=which_context)
         else:
-            Qx, Qy, d = self.run_FMA(x, y, Qmin=self.Q_min_SPS)
+            Qx, Qy, d = self.run_FMA(x, y, Qmin=self.Q_min_SPS, which_context=which_context)
             
         if save_tune_data and not load_tbt_data:
             os.makedirs(self.output_folder, exist_ok=True)

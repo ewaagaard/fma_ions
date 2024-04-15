@@ -22,27 +22,27 @@ tbt_dict.to_json('tbt.json')
 os.makedirs('output_plots', exist_ok=True)
 
 # Final dead and alive indices
-alive_ind_final = tbt_dict['state'][:, -1] > 0
-dead_ind_final = tbt_dict['state'][:, -1] < 1
+alive_ind_final = tbt_dict.state[:, -1] > 0
+dead_ind_final = tbt_dict.state[:, -1] < 1
 
 # Plot longitudinal phase space, initial and final state
 fig, ax = plt.subplots(2, 1, figsize = (10, 8), sharey=True)
 
 # Plot initial particles
-ax[0].plot(tbt_dict['zeta'][alive_ind_final, 0], tbt_dict['delta'][alive_ind_final, 0]*1000, '.', 
+ax[0].plot(tbt_dict.zeta[alive_ind_final, 0], tbt_dict.delta[alive_ind_final, 0]*1000, '.', 
         color='blue', markersize=3.6, label='Alive')
-ax[0].plot(tbt_dict['zeta'][dead_ind_final, 0], tbt_dict['delta'][dead_ind_final, 0]*1000, '.', 
+ax[0].plot(tbt_dict.zeta[dead_ind_final, 0], tbt_dict.delta[dead_ind_final, 0]*1000, '.', 
         color='darkred', markersize=3.6, label='Dead')
-ax[0].plot(sps._zeta_separatrix, sps._delta_separatrix * 1e3, '-', color='red', alpha=0.7, label='SPS RF separatrix')
-ax[0].plot(sps._zeta_separatrix, -sps._delta_separatrix * 1e3, '-', color='red', alpha=0.7, label=None)
+#ax[0].plot(sps._zeta_separatrix, sps._delta_separatrix * 1e3, '-', color='red', alpha=0.7, label='SPS RF separatrix')
+#ax[0].plot(sps._zeta_separatrix, -sps._delta_separatrix * 1e3, '-', color='red', alpha=0.7, label=None)
 
 # Plot final particles
-ax[1].plot(tbt_dict['zeta'][alive_ind_final, -1], tbt_dict['delta'][alive_ind_final, -1]*1000, '.', 
+ax[1].plot(tbt_dict.zeta[alive_ind_final, -1], tbt_dict.delta[alive_ind_final, -1]*1000, '.', 
         color='blue', markersize=3.6, label='Alive')
-ax[1].plot(tbt_dict['zeta'][dead_ind_final, -1], tbt_dict['delta'][dead_ind_final, -1]*1000, '.', 
+ax[1].plot(tbt_dict.zeta[dead_ind_final, -1], tbt_dict.delta[dead_ind_final, -1]*1000, '.', 
         color='darkred', markersize=3.6, label='Dead')
-ax[1].plot(sps._zeta_separatrix, sps._delta_separatrix * 1e3, '-', color='red', alpha=0.7, label='SPS RF separatrix')
-ax[1].plot(sps._zeta_separatrix, -sps._delta_separatrix * 1e3, '-', color='red', alpha=0.7, label=None)
+#ax[1].plot(sps._zeta_separatrix, sps._delta_separatrix * 1e3, '-', color='red', alpha=0.7, label='SPS RF separatrix')
+#ax[1].plot(sps._zeta_separatrix, -sps._delta_separatrix * 1e3, '-', color='red', alpha=0.7, label=None)
 ax[1].legend(loc='upper right', fontsize=13)
 
 #ax.set_ylim(-1.4, 1.4)
