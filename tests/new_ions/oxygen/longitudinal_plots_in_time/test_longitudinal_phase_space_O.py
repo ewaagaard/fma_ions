@@ -18,6 +18,7 @@ tbt_dict = sps.track_SPS(which_context='gpu', ion_type='O', beta_beat=0.1, add_n
 
 # Output directory
 os.makedirs('output_plots', exist_ok=True)
+os.makedirs('output_plots/phase_space_plots_Y', exist_ok=True)
 
 # Final dead and alive indices
 alive_ind_final = tbt_dict.state[:, -1] > 0
@@ -86,3 +87,19 @@ ax[0].set_ylabel(r'$\delta$ [1e-3]')
 ax[1].set_ylabel(r'$\delta$ [1e-3]')
 plt.tight_layout()
 fig.savefig('output_plots/SPS_O_phase_space_Z.png', dpi=250)
+
+
+# Also check phase space evolution
+
+for i in range(sps.num_turns):
+        plt.close()
+        print(f'Plot turn {i+1}')
+        fig, ax = plt.subplots(1, 1, figsize = (10,5))
+        plt.suptitle(f'Turn {i+1}')
+        ax.plot(tbt_dict.y[:, i], tbt_dict.py[:, i], '.', color='blue', markersize=3.6, label='Y')
+        ax.set_ylabel(r'$p_{{y}}$ [1e-3]')
+        ax.set_ylabel(r'$p_{{y}}$ [1e-3]')
+        plt.tight_layout()
+        ax.set_ylim(-4e-4, 4e-4)
+        ax.set_xlim(-6e-3, 6e-3)
+        fig.savefig('output_plots/phase_space_plots_Y/SPS_Pb_longitudinal_check_turn_{}.png'.format(i+1), dpi=250)
