@@ -824,7 +824,8 @@ class FMA:
                 make_single_Jy_trace=False,
                 use_symmetric_lattice=False,
                 add_non_linear_magnet_errors=False,
-                which_context = 'cpu'
+                which_context = 'cpu',
+                beamParams = None
                 ):
         """
         Default FMA analysis for SPS Pb ions, plot final results and tune diffusion in initial distribution
@@ -848,7 +849,9 @@ class FMA:
             whether to add non-linear chromatic errors for SPS
         which_context : str
             context for particle tracking - 'gpu' or 'cpu'
-            
+        beamParams : fma_ions.BeamParameters_SPS
+            class with all beam parameters. If not given, default is loaded
+
         Returns:
         --------
         None
@@ -861,16 +864,19 @@ class FMA:
         else:
             raise ValueError('Context is either "gpu" or "cpu"')
 
-        beamParams = BeamParameters_SPS()
+        if beamParams is None:
+            beamParams = BeamParameters_SPS()
+            if ion_type=='O':
+                beamParams.Nb = beamParams.Nb_O  # update to new oxygen intensity
 
         # Get SPS Pb line - select ion
         if ion_type=='Pb':
             sps_seq = SPS_sequence_maker()
         elif ion_type=='O':
             sps_seq = SPS_sequence_maker(ion_type='O', Q_PS=4., Q_SPS=8., m_ion=15.9949)
-            beamParams.Nb = beamParams.Nb_O  # update to new oxygen intensity
         else:
             raise ValueError('Only Pb and O ions implemented so far!')
+        print(beamParams)
         
         # Load line
         line0, twiss_sps =  sps_seq.load_xsuite_line_and_twiss(Qy_frac=Qy_frac, use_symmetric_lattice=use_symmetric_lattice,
