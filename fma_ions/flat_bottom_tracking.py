@@ -210,7 +210,7 @@ class SPS_Flat_Bottom_Tracker:
         if ion_type=='Pb':
             sps = SPS_sequence_maker()
         elif ion_type=='O':
-            sps = SPS_sequence_maker(26.30, 26.19, ion_type='O', Q_PS=4., Q_SPS=8., m_ion=15.9949) 
+            sps = SPS_sequence_maker(ion_type='O', Q_PS=4., Q_SPS=8., m_ion=15.9949) 
         else:
             raise ValueError('Only Pb and O ions implemented so far!')
             
