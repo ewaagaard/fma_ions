@@ -15,6 +15,9 @@ print(line.particle_ref.show())
 # Update beam parameters
 beamParams = fma_ions.BeamParameters_SPS()
 beamParams.Nb = 2.5e9 # beamParams.Nb_O  # update to new oxygen intensity
+beamParams.exn = 1.3e-6
+beamParams.eyn = 0.9e-6
+beamParams.sigma_z = 0.23
 beamParams.delta = 1e-3
 print(beamParams)
 
