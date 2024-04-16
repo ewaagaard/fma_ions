@@ -96,7 +96,7 @@ class FMA:
                                 optimize_for_tracking=True,
                                 context=None,
                                 distribution_type='gaussian',
-                                pic_solver = 'FFTSolver2p5DAveraged'):
+                                pic_solver = 'FFTSolver2p5D'):
         """
         Install frozen Space Charge (SC) and generate particles with provided Xsuite line and beam parameters
         
