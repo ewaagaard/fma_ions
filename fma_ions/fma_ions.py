@@ -107,7 +107,7 @@ class FMA:
         beamParams : dataclass 
             beam parameters (data class containing Nb, sigma_z, exn, eyn)
         mode : str
-            type of space charge ('frozen' is recommended)
+            type of space charge - 'frozen', 'quasi-frozen' and 'PIC'
         optimize_for_tracking : flag
             remove multiple drift spaces and line variables. Should be 'False' if knobs are used
         context : xo.context
