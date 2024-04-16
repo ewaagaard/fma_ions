@@ -32,6 +32,17 @@ class BeamParameters_SPS:
     Nb_O: float = 50e8/2 # half of (John, Bartosik 2021) for oxygen, assuming bunch splitting
 
 @dataclass
+class BeamParameters_SPS_Oxygen:
+    """Data Container for SPS Pb default beam parameters"""
+    Nb:  float = 25e8 # half of (John, Bartosik 2021) for oxygen, assuming bunch splitting
+    sigma_z: float = 0.225 # in m, is the old value (close to Isabelle's and  Hannes'), but then bucket is too full if Gaussian longitudinal. 0.19 also used
+    sigma_z_binomial: float = 0.285 # RMS bunch length of binomial, default value to match data
+    exn: float = 1.3e-6
+    eyn: float = 0.9e-6
+    Qx_int: float = 26.
+    Qy_int: float = 26.
+
+@dataclass
 class SPS_sequence_maker:
     """ 
     Data class to generate Xsuite line from SPS optics repo, selecting

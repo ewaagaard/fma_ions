@@ -11,7 +11,7 @@ import xfields as xf
 import xobjects as xo
 
 from .sequences import PS_sequence_maker, BeamParameters_PS
-from .sequences import SPS_sequence_maker, BeamParameters_SPS
+from .sequences import SPS_sequence_maker, BeamParameters_SPS, BeamParameters_SPS_Oxygen
 from .fma_ions import FMA
 from .helpers import Records, Records_Growth_Rates, Full_Records, _bunch_length, _geom_epsx, _geom_epsy, _sigma_delta
 from .tune_ripple import Tune_Ripple_SPS
@@ -185,11 +185,12 @@ class SPS_Flat_Bottom_Tracker:
         # Update vertical tune if changed
         self.qy0 = int(self.qy0) + Qy_frac / 100
 
-        # If specific beam parameters are not provided, load default SPS beam parameters
+        # If specific beam parameters are not provided, load default SPS beam parameters - for Pb or O
         if beamParams is None:
-            beamParams = BeamParameters_SPS()
+            if ion_type=='Pb':
+                beamParams = BeamParameters_SPS()
             if ion_type=='O':
-                beamParams.Nb = beamParams.Nb_O  # update to new oxygen intensity
+                beamParams = BeamParameters_SPS_Oxygen()
             if distribution_type == 'binomial':
                 beamParams.Nb = beamParams.Nb / 0.9108 # assume 8% of particles are lost outside of PS bucket, have to compensate for comparison
         print('Beam parameters:', beamParams)
