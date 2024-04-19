@@ -296,6 +296,9 @@ class SPS_sequence_maker:
         err_str = '_with_non_linear_chrom_error' if add_non_linear_magnet_errors else ''
         aperture_str = '_with_aperture' if add_aperture else ''
         
+        # Create directory if not exists already
+        os.makedirs('{}/qy_dot{}'.format(sequence_path, Qy_frac), exist_ok=True)
+        
         # Try loading existing json file, otherwise create new from MADX
         if use_symmetric_lattice:
             fname = '{}/qy_dot{}/SPS_2021_Pb_symmetric_deferred_exp{}{}.json'.format(sequence_path, Qy_frac, err_str, aperture_str)
@@ -386,7 +389,7 @@ class SPS_sequence_maker:
         symmetric_string = '_symmetric' if use_symmetric_lattice else '_nominal'
         err_str = '_with_non_linear_chrom_error' if add_non_linear_magnet_errors else ''
 
-        Qy_frac = int(100*(self.qy0 % 1))
+        Qy_frac = int(100*(np.round(self.qy0 % 1, 2)))
         self._line, twiss0 = self.load_SPS_line_with_deferred_madx_expressions(use_symmetric_lattice=use_symmetric_lattice, Qy_frac=Qy_frac,
                                                          add_non_linear_magnet_errors=add_non_linear_magnet_errors, add_aperture=add_aperture)
         
