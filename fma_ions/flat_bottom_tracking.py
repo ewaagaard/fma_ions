@@ -28,6 +28,7 @@ import pandas as pd
 import os
 import json
 import matplotlib.pyplot as plt
+from scipy.stats import gaussian_kde
 import time
 
 # Load default emittance measurement data from 2023_10_16
@@ -668,6 +669,131 @@ class SPS_Flat_Bottom_Tracker:
             f.savefig('main_plots/result_multiple_trackings.png', dpi=250)
             plt.show()
 
+    def load_full_records_json(self, output_folder=None) -> Full_Records:
+        """
+        Loads json file with full particle data from tracking
+        """
+        folder_path = '{}/'.format(output_folder) if output_folder is not None else ''
+
+        # Read the json file
+        tbt = Full_Records.from_json("{}tbt.json".format(folder_path))
+
+        return tbt
+
+        
+    def plot_last_and_first_turn_longitudinal_phase_space_from_tbt(self, output_folder=None, include_sps_separatrix=False,
+                                               include_density_map=True):
+        """
+        Generate longitudinal phase space plots from full particle tracking data
+        
+        Parameters:
+        -----------
+        output_folder : str
+            path to data. default is 'None', assuming then that data is in the same directory
+        include_sps_separatrix : bool
+            whether to plot line of SPS RF seperatrix
+        include_density_map : bool
+            whether to add color gradient of how tightly packed particles are
+        """
+        
+        tbt_dict = self.load_full_records_json(output_folder=output_folder)
+
+        # Output directory
+        os.makedirs('output_plots', exist_ok=True)
+        
+        # Get SPS zeta separatrix
+        if include_sps_separatrix:
+            sps = SPS_sequence_maker()
+            sps_line, twiss = sps.load_xsuite_line_and_twiss()
+            _, zeta_separatrix, delta_separatrix = generate_binomial_distribution_from_PS_extr(num_particles=50,
+                                                                             nemitt_x= BeamParameters_SPS.exn, nemitt_y=BeamParameters_SPS.eyn,
+                                                                             sigma_z=BeamParameters_SPS.sigma_z, total_intensity_particles=BeamParameters_SPS.Nb,
+                                                                             line=sps_line, return_separatrix_coord=True)
+        
+        # Final dead and alive indices
+        alive_ind_final = tbt_dict.state[:, -1] > 0
+        dead_ind_final = tbt_dict.state[:, -1] < 1
+        
+        # Generate histograms in all planes to inspect distribution
+        bin_heights, bin_borders = np.histogram(tbt_dict.zeta[:, 0], bins=60)
+        bin_widths = np.diff(bin_borders)
+        bin_centers = bin_borders[:-1] + bin_widths / 2
+        #bin_heights = bin_heights/np.max(bin_heights) # normalize bin heights
+        
+        # Only plot final alive particles
+        bin_heights2, bin_borders2 = np.histogram(tbt_dict.zeta[alive_ind_final, -1], bins=60)
+        bin_widths2 = np.diff(bin_borders2)
+        bin_centers2 = bin_borders2[:-1] + bin_widths2 / 2
+        #bin_heights2 = bin_heights2/np.max(bin_heights2) # normalize bin heights
+        
+        # Plot alive particles sorted by density
+        if include_density_map:
+            # First turn
+            x, y = tbt_dict.zeta[alive_ind_final, 0], tbt_dict.delta[alive_ind_final, 0]*1000
+            xy = np.vstack([x,y]) # Calculate the point density
+            z = gaussian_kde(xy)(xy)
+            idx = z.argsort()  # Sort the points by density, so that the densest points are plotted last
+            x, y, z = x[idx], y[idx], z[idx]
+            
+            # Last turn
+            x2, y2 = tbt_dict.zeta[alive_ind_final, -1], tbt_dict.delta[alive_ind_final, -1]*1000
+            xy2 = np.vstack([x2, y2]) # Calculate the point density
+            z2 = gaussian_kde(xy2)(xy2)
+            idx2 = z2.argsort()  # Sort the points by density, so that the densest points are plotted last
+            x2, y2, z2 = x2[idx2], y2[idx2], z2[idx2]
+
+        # Plot longitudinal phase space, initial and final state
+        fig, ax = plt.subplots(3, 1, figsize = (10, 12), sharex=True)
+        
+        # Plot initial particles
+        if include_density_map:
+            ax[0].scatter(x, y, c=z, cmap='cool', s=2, label='Alive')
+        else:   
+            ax[0].plot(tbt_dict.zeta[alive_ind_final, 0], tbt_dict.delta[alive_ind_final, 0]*1000, '.', 
+                color='blue', markersize=3.6, label='Alive')
+        ax[0].plot(tbt_dict.zeta[dead_ind_final, 0], tbt_dict.delta[dead_ind_final, 0]*1000, '.', 
+                color='darkred', markersize=3.6, label='Finally dead')
+        if include_sps_separatrix:
+            ax[0].plot(zeta_separatrix, delta_separatrix * 1e3, '-', color='red', alpha=0.7, label='SPS RF separatrix')
+            ax[0].plot(zeta_separatrix, -delta_separatrix * 1e3, '-', color='red', alpha=0.7, label=None)
+        
+        # Plot final particles
+        if include_density_map:
+            ax[1].scatter(x2, y2, c=z2, cmap='cool', s=2, label='Alive')
+        else:   
+            ax[1].plot(tbt_dict.zeta[alive_ind_final, -1], tbt_dict.delta[alive_ind_final, -1]*1000, '.', 
+                color='blue', markersize=3.6, label='Alive')
+        ax[1].plot(tbt_dict.zeta[dead_ind_final, -1], tbt_dict.delta[dead_ind_final, -1]*1000, '.', 
+                color='darkred', markersize=3.6, label='Finally dead')
+        if include_sps_separatrix:
+            ax[1].plot(zeta_separatrix, delta_separatrix * 1e3, '-', color='red', alpha=0.7, label='SPS RF separatrix')
+            ax[1].plot(zeta_separatrix, -delta_separatrix * 1e3, '-', color='red', alpha=0.7, label=None)
+        ax[1].legend(loc='upper right', fontsize=13)
+        
+        # Plot initial and final particle distribution
+        ax[2].bar(bin_centers, bin_heights, width=bin_widths, alpha=1.0, color='darkturquoise', label='Initial')
+        ax[2].bar(bin_centers2, bin_heights2, width=bin_widths2, alpha=0.5, color='lime', label='Final (alive)')
+        ax[2].legend(loc='upper right', fontsize=13)
+        
+        # Adjust axis limits and plot turn
+        ax[0].set_ylim(-1.4, 1.4)
+        ax[0].set_xlim(-0.85, 0.85)
+        ax[1].set_ylim(-1.4, 1.4)
+        ax[1].set_xlim(-0.85, 0.85)
+        ax[2].set_xlim(-0.85, 0.85)
+        #ax[2].set_ylim(-0.05, 1.1)
+        
+        ax[0].text(0.02, 0.91, 'Turn {}'.format(tbt_dict.full_data_turn_ind[0]+1), fontsize=15, transform=ax[0].transAxes)
+        ax[1].text(0.02, 0.91, 'Turn {}'.format(tbt_dict.full_data_turn_ind[-1]+1), fontsize=15, transform=ax[1].transAxes)
+            
+        ax[2].set_xlabel(r'$\zeta$ [m]')
+        ax[2].set_ylabel('Counts')
+        ax[0].set_ylabel(r'$\delta$ [1e-3]')
+        ax[1].set_ylabel(r'$\delta$ [1e-3]')
+        plt.tight_layout()
+        fig.savefig('output_plots/SPS_Pb_longitudinal_turn.png', dpi=250)
+        plt.show()
+        
 
     def load_emittance_data(self, path : str = emittance_data_path) -> pd.DataFrame:
         """
