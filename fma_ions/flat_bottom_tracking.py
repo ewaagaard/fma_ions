@@ -680,6 +680,89 @@ class SPS_Flat_Bottom_Tracker:
 
         return tbt
 
+
+    def plot_longitudinal_phase_space_all_slices_from_tbt(self, 
+                                                          output_folder=None, 
+                                                          include_sps_separatrix=True,
+                                                          include_density_map=True, 
+                                                          use_only_particles_killed_last=False):
+        """
+        Generate longitudinal phase space plots for all turns where they have been recorded
+        
+        Parameters:
+        -----------
+        output_folder : str
+            path to data. default is 'None', assuming then that data is in the same directory
+        include_sps_separatrix : bool
+            whether to plot line of SPS RF seperatrix
+        include_density_map : bool
+            whether to add color gradient of how tightly packed particles are
+        use_only_particles_killed_last : bool
+            whether to use the 'kill' index only based on particles killed in the last tracking run
+        """
+        tbt_dict = self.load_full_records_json(output_folder=output_folder)
+
+        # Output directory
+        os.makedirs('output_plots', exist_ok=True)
+        
+        # Get SPS zeta separatrix
+        if include_sps_separatrix:
+            sps = SPS_sequence_maker()
+            sps_line, twiss = sps.load_xsuite_line_and_twiss()
+            _, zeta_separatrix, delta_separatrix = generate_binomial_distribution_from_PS_extr(num_particles=50,
+                                                                             nemitt_x= BeamParameters_SPS.exn, nemitt_y=BeamParameters_SPS.eyn,
+                                                                             sigma_z=BeamParameters_SPS.sigma_z, total_intensity_particles=BeamParameters_SPS.Nb,
+                                                                             line=sps_line, return_separatrix_coord=True)
+        # Final dead and alive indices
+        alive_ind_final = tbt_dict.state[:, -1] > 0
+        dead_ind_final = tbt_dict.state[:, -1] < 1
+        dead_ind_lost_in_last_round =  (tbt_dict.state[:, -2] > 0) & (tbt_dict.state[:, -1] < 1)  # particles alive in last tracking round but finally dead
+        
+        if use_only_particles_killed_last:
+            dead_ind_final = dead_ind_lost_in_last_round
+            alive_ind_final = np.invert(dead_ind_final)
+            extra_ind = '_killed_in_last_round'
+        else:
+            extra_ind = ''
+        
+        # Iterate over all turns that were recorded
+        for i in range(len(tbt_dict.full_data_turn_ind)):
+    
+            print('Plotting data from turn {}'.format(tbt_dict.full_data_turn_ind[i]))
+            # Plot longitudinal phase space, initial and final state
+            plt.close()
+            fig, ax = plt.subplots(1, 1, figsize = (8, 4.5))
+            
+            # Plot alive particles sorted by density
+            if include_density_map:
+                # First turn
+                x, y = tbt_dict.zeta[alive_ind_final, i], tbt_dict.delta[alive_ind_final, i]*1000
+                xy = np.vstack([x,y]) # Calculate the point density
+                z = gaussian_kde(xy)(xy)
+                idx = z.argsort()  # Sort the points by density, so that the densest points are plotted last
+                x, y, z = x[idx], y[idx], z[idx]
+                
+            # Plot initial particles
+            if include_density_map:
+                ax.scatter(x, y, c=z, cmap='cool', s=2, label='Alive')
+            else:   
+                ax.plot(tbt_dict.zeta[alive_ind_final, i], tbt_dict.delta[alive_ind_final, i]*1000, '.', 
+                    color='blue', markersize=3.6, label='Alive' if not use_only_particles_killed_last else 'Not killed in last turns')
+            ax.plot(tbt_dict.zeta[dead_ind_final, i], tbt_dict.delta[dead_ind_final, i]*1000, '.', 
+                    color='darkred', markersize=3.6, label='Finally dead' if not use_only_particles_killed_last else 'Killed in last turns')
+            if include_sps_separatrix:
+                ax.plot(zeta_separatrix, delta_separatrix * 1e3, '-', color='red', alpha=0.7, label='SPS RF separatrix')
+                ax.plot(zeta_separatrix, -delta_separatrix * 1e3, '-', color='red', alpha=0.7, label=None)
+            ax.set_ylim(-1.4, 1.4)
+            ax.set_xlim(-0.85, 0.85)
+            ax.text(0.02, 0.91, 'Turn {}'.format(tbt_dict.full_data_turn_ind[i]), fontsize=15, transform=ax.transAxes)
+            
+            ax.legend(loc='upper right', fontsize=11)
+            ax.set_xlabel(r'$\zeta$ [m]')
+            ax.set_ylabel(r'$\delta$ [1e-3]')
+            plt.tight_layout()
+            fig.savefig('output_plots/SPS_Pb_longitudinal{}_turn_{}.png'.format(extra_ind, int(tbt_dict.full_data_turn_ind[i])), dpi=250)
+            
         
     def plot_last_and_first_turn_longitudinal_phase_space_from_tbt(self, output_folder=None, include_sps_separatrix=False,
                                                include_density_map=True):
@@ -791,7 +874,7 @@ class SPS_Flat_Bottom_Tracker:
         ax[0].set_ylabel(r'$\delta$ [1e-3]')
         ax[1].set_ylabel(r'$\delta$ [1e-3]')
         plt.tight_layout()
-        fig.savefig('output_plots/SPS_Pb_longitudinal_turn.png', dpi=250)
+        fig.savefig('output_plots/SPS_Pb_longitudinal.png', dpi=250)
         plt.show()
         
 
