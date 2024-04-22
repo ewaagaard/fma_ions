@@ -744,7 +744,7 @@ class SPS_Flat_Bottom_Tracker:
                 
             # Plot initial particles
             if include_density_map:
-                ax.scatter(x, y, c=z, cmap='cool', s=2, label='Alive')
+                ax.scatter(x, y, c=z, cmap='cool', s=2, label='Alive' if not use_only_particles_killed_last else 'Not killed in last turns')
             else:   
                 ax.plot(tbt_dict.zeta[alive_ind_final, i], tbt_dict.delta[alive_ind_final, i]*1000, '.', 
                     color='blue', markersize=3.6, label='Alive' if not use_only_particles_killed_last else 'Not killed in last turns')
