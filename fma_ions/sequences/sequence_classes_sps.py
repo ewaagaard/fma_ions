@@ -377,7 +377,7 @@ class SPS_sequence_maker:
         add_non_linear_magnet_errors : bool
             whether to add line with non-linear chromatic errors
         plane : str
-            'X' or 'Y' - which plane to find beta-beat for
+            'X' or 'Y' or 'both' - which plane(s) to find beta-beat for
         add_aperture : bool
             whether to include aperture for SPS
         
@@ -405,12 +405,16 @@ class SPS_sequence_maker:
         # Vector with starting guess - qd error, kqf and kqd knobs
         #dqd0 = [dqd0_qd, self._line0.vars['kqf']._value, self._line0.vars['kqd']._value]
         
-        print('\nBeta-beat search for {} in {}-plane!\n'.format(beta_beat, plane))
+        print('\nBeta-beat search for {} in {} plane(s)!\n'.format(beta_beat, plane))
         
         result = minimize(self._loss_function_beta_beat, dqd0, args=(beta_beat, plane), 
                           method='nelder-mead', tol=1e-5, options={'maxiter':100})
         print(result)
+        
+        # Update QD value, and also additional QF value if both planes are used
         self._line['qd.63510..1'].knl[1] = result.x[0]
+        if plane=='both':
+            self._line['qf.63410..1'].knl[1] = result.x[0]
         twiss2 = self._line.twiss()
         
         # Compare difference in Twiss
@@ -465,7 +469,7 @@ class SPS_sequence_maker:
 
     def _loss_function_beta_beat(self, dqd, beta_beat, plane='Y'):
         """
-        Loss function to optimize to find correct beta-beat in 'X' or 'Y'
+        Loss function to optimize to find correct beta-beat in 'X' or 'Y' or 'both'
         
         Parameters:
         ----------
@@ -488,8 +492,12 @@ class SPS_sequence_maker:
             #self._line.vars['kqf'] = dqd[1]
             #self._line.vars['kqd'] = dqd[2]
             
-            # Copy the line, adjust QD strength of last sliced quadrupole by dqd 
-            self._line['qd.63510..1'].knl[1] = dqd[0]
+            # Copy the line, adjust QD strength of last sliced quadrupole by dqd - if both planes, vary first slice of last quadrupole
+            if plane=='Y' or plane=='X':
+                self._line['qd.63510..1'].knl[1] = dqd[0]
+            elif plane=='both':
+                self._line['qd.63510..1'].knl[1] = dqd[0]
+                self._line['qf.63410..1'].knl[1] = dqd[0]
             twiss2 = self._line.twiss()
         
             # Vertical plane beta-beat
@@ -499,8 +507,12 @@ class SPS_sequence_maker:
                                                                                                                 twiss2['qx'], twiss2['qy']))
             if plane=='Y':
                 loss = (beta_beat - Y_beat)**2
-            else:
+            elif plane=='X':
                 loss = (beta_beat - X_beat)**2
+            elif plane=='both':
+                loss = (beta_beat - Y_beat)**2 + (beta_beat - X_beat)**2
+            else:
+                raise ValueError('Invalid plane!')
         except ValueError:
             loss = dqd[0]**2 
             self._line = self._line0.copy()
