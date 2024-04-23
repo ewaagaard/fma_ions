@@ -73,7 +73,7 @@ class SPS_sequence_maker:
     
     def load_xsuite_line_and_twiss(self, Qy_frac=25, beta_beat=None, use_symmetric_lattice=False,
                                    add_non_linear_magnet_errors=False, save_new_xtrack_line=True,
-                                   deferred_expressions=False, add_aperture=False):
+                                   deferred_expressions=False, add_aperture=False, plane='Y'):
         """
         Method to load pre-generated SPS lattice files for Xsuite, or generate new if does not exist
         
@@ -91,7 +91,8 @@ class SPS_sequence_maker:
             whether to use deferred expressions while importing madx sequence into xsuite
         add_aperture : bool
             whether to include aperture for SPS
-        
+        plane : str
+            if loading line with beta-beat, specify in which plane beat is taking place: 'X', 'Y' or 'both'
         
         Returns:
         -------
@@ -125,9 +126,10 @@ class SPS_sequence_maker:
             sps_fname = '{}/SPS_2021_{}{}{}{}{}.json'.format(self.seq_folder, self.ion_type, symmetric_string,
                                                                           def_exp_str, err_str, aperture_str)
         else:                                                  
-            sps_fname = '{}/SPS_2021_{}{}{}_{}_percent_beta_beat{}{}.json'.format(self.seq_folder, self.ion_type, 
-                                                                                     symmetric_string, def_exp_str, int(beta_beat*100), 
-                                                                                     err_str, aperture_str)
+            sps_fname = '{}/SPS_2021_{}{}{}_{}plane_{}_percent_beta_beat{}{}.json'.format(self.seq_folder, self.ion_type, 
+                                                                                     symmetric_string, def_exp_str, plane, 
+                                                                                     int(beta_beat*100), err_str, aperture_str)
+            
         # Try to load pre-generated sequence if exists
         try:
             sps_line = xt.Line.from_json(sps_fname)
@@ -146,7 +148,8 @@ class SPS_sequence_maker:
                                                     add_non_linear_magnet_errors=add_non_linear_magnet_errors, add_aperture=add_aperture) 
             else:
                 sps_line = self.generate_xsuite_seq_with_beta_beat(beta_beat=beta_beat, use_symmetric_lattice=use_symmetric_lattice, 
-                                                                   add_non_linear_magnet_errors=add_non_linear_magnet_errors, add_aperture=add_aperture)
+                                                                   add_non_linear_magnet_errors=add_non_linear_magnet_errors, add_aperture=add_aperture,
+                                                                   plane=plane)
                 
             # Save new Xsuite sequence if desired
             if save_new_xtrack_line:
@@ -400,8 +403,12 @@ class SPS_sequence_maker:
         print('\nFinding optimal QD error for chosen beta-beat {}...\n'.format(beta_beat))
         
         # Initial guess: small perturbation to initial value, then minimize loss function
-        dqd0 = self._line0['qd.63510..1'].knl[1] + 1e-5
-        
+        if plane=='Y':
+            dqd0 = self._line0['qd.63510..1'].knl[1] + 1e-5
+        elif plane == 'X':
+            dqd0 = self._line0['qf.63410..1'].knl[1] + 1e-5
+        elif plane=='both':
+            dqd0 = [self._line0['qd.63510..1'].knl[1] + 1e-5, self._line0['qf.63410..1'].knl[1] + 1e-5]
         # Vector with starting guess - qd error, kqf and kqd knobs
         #dqd0 = [dqd0_qd, self._line0.vars['kqf']._value, self._line0.vars['kqd']._value]
         
@@ -412,9 +419,13 @@ class SPS_sequence_maker:
         print(result)
         
         # Update QD value, and also additional QF value if both planes are used
-        self._line['qd.63510..1'].knl[1] = result.x[0]
-        if plane=='both':
+        if plane=='Y':
+            self._line['qd.63510..1'].knl[1] = result.x[0]
+        elif plane == 'X':
             self._line['qf.63410..1'].knl[1] = result.x[0]
+        if plane=='both':
+            self._line['qd.63510..1'].knl[1] = result.x[0]
+            self._line['qf.63410..1'].knl[1] = result.x[1]
         twiss2 = self._line.twiss()
         
         # Compare difference in Twiss
@@ -432,10 +443,14 @@ class SPS_sequence_maker:
         # Find where this maximum beta function occurs
         betx_max_loc = twiss2.rows[np.argmax(twiss2.betx)].name[0]
         betx_max = twiss2.rows[np.argmax(twiss2.betx)].betx[0]
+        bety_max_loc = twiss2.rows[np.argmax(twiss2.bety)].name[0]
+        bety_max = twiss2.rows[np.argmax(twiss2.bety)].bety[0]
         
         # Add extra knob for the quadrupole
         self._line.vars['kk_QD'] = 0
+        self._line.vars['kk_QF'] = 0
         self._line.element_refs['qd.63510..1'].knl[1] = self._line.vars['kk_QD']
+        self._line.element_refs['qf.63410..1'].knl[1] = self._line.vars['kk_QF']
         
         # Rematch the tunes with the knobs
         self._line.match(
@@ -443,11 +458,13 @@ class SPS_sequence_maker:
                 xt.Vary('kqf', step=1e-8),
                 xt.Vary('kqd', step=1e-8),
                 xt.Vary('kk_QD', step=1e-8),  #vary knobs and quadrupole simulatenously 
+                xt.Vary('kk_QF', step=1e-8),  #vary knobs and quadrupole simulatenously 
             ],
             targets = [
                 xt.Target('qx', self.qx0, tol=1e-7),
                 xt.Target('qy', self.qy0, tol=1e-7),
-                xt.Target('betx', value=betx_max, at=betx_max_loc, tol=1e-7)
+                xt.Target('betx', value=betx_max, at=betx_max_loc, tol=1e-7),
+                xt.Target('bety', value=bety_max, at=bety_max_loc, tol=1e-7)
             ])
       
         twiss3 = self._line.twiss()
@@ -458,8 +475,8 @@ class SPS_sequence_maker:
         
         
         # Save Xsuite sequence
-        sps_fname = '{}/qy_dot{}/SPS_2021_{}{}_{}_percent_beta_beat{}.json'.format(sequence_path, Qy_frac, self.ion_type, 
-                                                                                 symmetric_string, int(beta_beat*100), err_str)
+        sps_fname = '{}/qy_dot{}/SPS_2021_{}{}_{}plane_{}_percent_beta_beat{}.json'.format(sequence_path, Qy_frac, self.ion_type, 
+                                                                                 symmetric_string, plane, int(beta_beat*100), err_str)
         if save_xsuite_seq:
             with open(sps_fname, 'w') as fid:
                 json.dump(self._line.to_dict(), fid, cls=xo.JEncoder)
@@ -493,11 +510,13 @@ class SPS_sequence_maker:
             #self._line.vars['kqd'] = dqd[2]
             
             # Copy the line, adjust QD strength of last sliced quadrupole by dqd - if both planes, vary first slice of last quadrupole
-            if plane=='Y' or plane=='X':
+            if plane=='Y':
                 self._line['qd.63510..1'].knl[1] = dqd[0]
+            elif plane=='X':
+                self._line['qf.63410..1'].knl[1] = dqd[0]
             elif plane=='both':
                 self._line['qd.63510..1'].knl[1] = dqd[0]
-                self._line['qf.63410..1'].knl[1] = dqd[0]
+                self._line['qf.63410..1'].knl[1] = dqd[1]
             twiss2 = self._line.twiss()
         
             # Vertical plane beta-beat

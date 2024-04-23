@@ -117,7 +117,8 @@ class SPS_Flat_Bottom_Tracker:
                   engine=None,
                   save_full_particle_data=False,
                   full_particle_data_interval=None,
-                  update_particles_and_sc_for_binomial=False
+                  update_particles_and_sc_for_binomial=False,
+                  plane_for_beta_beat='Y'
                   ):
         """
         Run full tracking at SPS flat bottom
@@ -178,6 +179,8 @@ class SPS_Flat_Bottom_Tracker:
         update_particles_and_sc_for_binomial : bool
             whether to "pre-track" particles for 50 turns if binomial distribution with particles outside RF bucket is generated, 
             then updating space charge to new distribution
+        plane_for_beta_beat : str
+            plane in which beta-beat exists: 'X', 'Y' (default) or 'both'
 
         Returns:
         --------
@@ -218,7 +221,8 @@ class SPS_Flat_Bottom_Tracker:
         # Extract line with aperture, beta-beat and non-linear magnet errors if desired
         line, twiss = sps.load_xsuite_line_and_twiss(Qy_frac=Qy_frac, add_aperture=add_aperture, beta_beat=beta_beat,
                                                    add_non_linear_magnet_errors=add_non_linear_magnet_errors, 
-                                                   deferred_expressions=load_line_with_deferred_expressions)
+                                                   deferred_expressions=load_line_with_deferred_expressions,
+                                                   plane=plane_for_beta_beat)
                 
         if minimum_aperture_to_remove is not None:
             line = sps.remove_aperture_below_threshold(line, minimum_aperture_to_remove)
