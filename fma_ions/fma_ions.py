@@ -113,7 +113,7 @@ class FMA:
         context : xo.context
             xojebts context for tracking
         distribution_type : str
-            'gaussian' or 'parabolic' or 'binomial': particle distribution for tracking
+            'gaussian' or 'parabolic' or 'binomial' or 'linear_in_zeta': particle distribution for tracking
         pic_solver : str
             Choose solver between `FFTSolver2p5DAveraged` and `FFTSolver2p5D`
         
@@ -135,7 +135,7 @@ class FMA:
 
         print('\nInstalling space charge on line...')
         # Initialize longitudinal profile for beams 
-        if distribution_type=='gaussian':
+        if distribution_type=='gaussian' or distribution_type=='linear_in_zeta':
             sigma_z_RMS = beamParams.sigma_z
             q_val = 1.0
             print('\nGaussian longitudinal SC profile')

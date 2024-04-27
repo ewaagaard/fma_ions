@@ -28,6 +28,7 @@ import pandas as pd
 import os
 import json
 import matplotlib.pyplot as plt
+from matplotlib import cm
 from scipy.stats import gaussian_kde
 import time
 
@@ -49,14 +50,21 @@ class SPS_Flat_Bottom_Tracker:
     ion_inj_ctime : float = 0.725 # ion injection happens at this time in cycle, important for WS
 
     def generate_particles(self, line: xt.Line, context : xo.context, distribution_type='gaussian', beamParams=None,
-                           engine=None, m=5.3) -> xp.Particles:
+                           engine=None, m=5.3, num_particles_linear_in_zeta=5, xy_norm_default=0.1) -> xp.Particles:
         """
         Generate xp.Particles object: matched Gaussian or longitudinally parabolic
 
         Parameters:
         -----------
+        distribution_type : str
+            'gaussian', 'parabolic', 'binomial' or 'linear_in_zeta'
         m : float
             binomial parameter to determine tail of parabolic distribution
+        num_particles_linear_in_zeta : int
+            number of equally spaced macroparticles linear in zeta
+        xy_norm_default : float
+            if building particles linear in zeta, what is the default normalized transverse coordinates (exact center not ideal for 
+            if we want to study space charge and resonances)
         """
         if beamParams is None:
             beamParams = BeamParameters_SPS
@@ -85,6 +93,15 @@ class SPS_Flat_Bottom_Tracker:
                                                                     nemitt_x=beamParams.exn, nemitt_y=beamParams.eyn,
                                                                     sigma_z=beamParams.sigma_z_binomial, total_intensity_particles=beamParams.Nb,
                                                                     line=line, m=m, return_separatrix_coord=True)
+        elif distribution_type=='linear_in_zeta':
+            
+            # Find suitable zeta range - make linear spacing between close to center of RF bucket and to separatrix
+            zetas = np.linspace(0.05, 0.7, num=num_particles_linear_in_zeta)
+
+            # Build the particle object
+            particles = xp.build_particles(line = line, particle_ref = line.particle_ref,
+                                        x_norm=xy_norm_default, y_norm=xy_norm_default, delta=0.0, zeta=zetas,
+                                        nemitt_x = beamParams.exn, nemitt_y = beamParams.eyn, _context=context)
         else:   
             raise ValueError('Only Gaussian, parabolic and binomial distributions are implemented!')
             
@@ -834,6 +851,55 @@ class SPS_Flat_Bottom_Tracker:
             plt.tight_layout()
             fig.savefig('output_plots/SPS_Pb_{}_phase_space.png'.format(planes[i]), dpi=250)
             plt.close()
+
+    def plot_longitudinal_phase_space_trajectories(self, 
+                                                   output_folder=None, 
+                                                   include_sps_separatrix=True):
+        """
+        Plot color-coded trajectories in longitudinal phase space based on turns
+        
+        Parameters:
+        -----------
+        output_folder : str
+            path to data. default is 'None', assuming then that data is in the same directory
+        include_sps_separatrix : bool
+            whether to plot line of SPS RF seperatrix
+        """
+        tbt_dict = self.load_full_records_json(output_folder=output_folder)
+
+        # Output directory
+        os.makedirs('output_plots', exist_ok=True)
+        
+        # Get SPS zeta separatrix
+        if include_sps_separatrix:
+            sps = SPS_sequence_maker()
+            sps_line, twiss = sps.load_xsuite_line_and_twiss()
+            _, zeta_separatrix, delta_separatrix = generate_binomial_distribution_from_PS_extr(num_particles=50,
+                                                                             nemitt_x= BeamParameters_SPS.exn, nemitt_y=BeamParameters_SPS.eyn,
+                                                                             sigma_z=BeamParameters_SPS.sigma_z, total_intensity_particles=BeamParameters_SPS.Nb,
+                                                                             line=sps_line, return_separatrix_coord=True)
+            
+        # Create a color map based on number of turns
+        num_turns = len(tbt_dict.x[0])
+        num_particles = len(tbt_dict.x)
+        colors = cm.viridis(np.linspace(0, 1, num_turns))    
+    
+        # plot longitudinal phase space trajectories of all particles
+        fig, ax = plt.subplots(1, 1, figsize = (8, 4.5))
+        for i in range(num_particles):
+            for j in range(num_turns - 1):
+                ax.plot(tbt_dict.zeta[i, j], tbt_dict.delta[i, j] * 1e3, '.', markersize=3.6, color=colors[j])
+        if include_sps_separatrix:
+            ax.plot(zeta_separatrix, delta_separatrix * 1e3, '-', color='red', alpha=0.7, label='SPS RF separatrix')
+            ax.plot(zeta_separatrix, -delta_separatrix * 1e3, '-', color='red', alpha=0.7, label=None)
+        ax.set_ylim(-1.4, 1.4)
+        ax.set_xlim(-0.85, 0.85)
+        ax.set_xlabel(r'$\zeta$ [m]')
+        ax.set_ylabel(r'$\delta$ [1e-3]')
+        plt.tight_layout()
+        fig.savefig('output_plots/SPS_Pb_longitudinal_trajectories.png', dpi=250)
+
+
 
 
     def plot_longitudinal_phase_space_all_slices_from_tbt(self, 

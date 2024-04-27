@@ -272,6 +272,17 @@ class SPS_sequence_maker:
             return line
 
 
+    # TO BE FIXED WITH PROPER SEQUENCE MAKER
+    #def load_proton_seq(self)->xt.Line:
+    #    """Load generated matched SPS sequence for Q26 proton optics, with RF"""
+    #    with open('{}/protons_Q26/SPS_2021_Protons_matched_with_RF.json'.format(sequence_path), 'r') as fid:
+    #        loaded_dct = json.load(fid)
+    #    line = xt.Line.from_dict(loaded_dct)
+    #
+    #    return line
+    
+
+
     def load_SPS_line_with_deferred_madx_expressions(self, use_symmetric_lattice=False, Qy_frac=25,
                                                      add_non_linear_magnet_errors=False, add_aperture=False,
                                                      voltage=3.0e6):
