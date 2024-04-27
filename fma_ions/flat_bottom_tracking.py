@@ -887,7 +887,7 @@ class SPS_Flat_Bottom_Tracker:
         # plot longitudinal phase space trajectories of all particles
         fig, ax = plt.subplots(1, 1, figsize = (8, 4.5))
         for i in range(num_particles):
-            for j in range(num_turns - 1):
+            for j in range(num_turns):
                 ax.plot(tbt_dict.zeta[i, j], tbt_dict.delta[i, j] * 1e3, '.', markersize=3.6, color=colors[j])
         if include_sps_separatrix:
             ax.plot(zeta_separatrix, delta_separatrix * 1e3, '-', color='red', alpha=0.7, label='SPS RF separatrix')
