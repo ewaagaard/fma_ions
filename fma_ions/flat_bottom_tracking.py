@@ -887,8 +887,8 @@ class SPS_Flat_Bottom_Tracker:
         # plot longitudinal phase space trajectories of all particles
         fig, ax = plt.subplots(1, 1, figsize = (8, 4.5))
         for i in range(num_particles):
-            for j in range(num_turns):
-                ax.plot(tbt_dict.zeta[i, j], tbt_dict.delta[i, j] * 1e3, '.', markersize=3.6, color=colors[j])
+            print(f'Plotting particle {i+1}')
+            ax.scatter(tbt_dict.zeta[i, :], tbt_dict.delta[i, :] * 1e3, c=range(num_turns), marker='.')
         if include_sps_separatrix:
             ax.plot(zeta_separatrix, delta_separatrix * 1e3, '-', color='red', alpha=0.7, label='SPS RF separatrix')
             ax.plot(zeta_separatrix, -delta_separatrix * 1e3, '-', color='red', alpha=0.7, label=None)
@@ -896,6 +896,11 @@ class SPS_Flat_Bottom_Tracker:
         ax.set_xlim(-0.85, 0.85)
         ax.set_xlabel(r'$\zeta$ [m]')
         ax.set_ylabel(r'$\delta$ [1e-3]')
+
+        # Adding color bar for the number of turns
+        cbar = plt.colorbar(ax.collections[0], ax=ax)
+        cbar.set_label('Number of Turns')
+
         plt.tight_layout()
         fig.savefig('output_plots/SPS_Pb_longitudinal_trajectories.png', dpi=250)
 

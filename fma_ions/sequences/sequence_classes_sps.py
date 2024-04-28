@@ -693,7 +693,7 @@ class SPS_sequence_maker:
         return madx
 
 
-    def load_madx_SPS_from_job(self, attach_beam=True):
+    def load_madx_SPS_from_job(self, use_Pb_ions=True):
         """
         Loads default SPS Pb sequence at flat bottom for ions as in 
         https://gitlab.cern.ch/acc-models/acc-models-sps/-/tree/2021/scenarios/lhc/lhc_ion?ref_type=heads 
@@ -701,8 +701,8 @@ class SPS_sequence_maker:
         
         Parameters:
         -----------
-        attach_beam : bool
-            flag to include beam
+        use_Pb_ions : bool
+            whether to use Pb ion scenario (True), or protons (False)
         
         Returns: 
         --------    
