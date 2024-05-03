@@ -164,7 +164,8 @@ class SPS_sequence_maker:
         return sps_line, twiss_sps
 
 
-    def generate_xsuite_seq(self, save_madx_seq=False, 
+    def generate_xsuite_seq(self, use_Pb_ions=True, 
+                            save_madx_seq=False, 
                             save_xsuite_seq=True, 
                             return_xsuite_line=True, voltage=3.0e6,
                             use_symmetric_lattice=False,
@@ -177,6 +178,8 @@ class SPS_sequence_maker:
         
         Parameters:
         -----------
+        use_Pb_ions : bool
+            whether to use Pb ion scenario (True), or protons (False)
         save_madx_seq : bool
             whether save madx sequence to directory 
         save_xsuite_seq : bool
@@ -210,7 +213,7 @@ class SPS_sequence_maker:
         aperture_str = '_with_aperture' if add_aperture else ''
         
         # Load madx instance with SPS sequence
-        madx = self.load_simple_madx_seq(use_symmetric_lattice=use_symmetric_lattice, 
+        madx = self.load_simple_madx_seq(use_Pb_ions=use_Pb_ions, use_symmetric_lattice=use_symmetric_lattice, 
                                          add_non_linear_magnet_errors=add_non_linear_magnet_errors, add_aperture=add_aperture,
                                          nr_slices=nr_slices)
                 
@@ -612,7 +615,7 @@ class SPS_sequence_maker:
         return m_in_eV, p_inj_SPS
 
 
-    def load_simple_madx_seq(self, use_symmetric_lattice=False, Qy_frac=25,
+    def load_simple_madx_seq(self, use_Pb_ions=True,
                              add_non_linear_magnet_errors=False, make_thin=True, add_aperture=False,
                              nr_slices=5):
         """
@@ -620,10 +623,8 @@ class SPS_sequence_maker:
         
         Parameters:
         -----------
-        use_symmetric_lattice : bool
-            flag to use symmetric lattice without QFA and QDA
-        Qy_fractional : int
-            fractional vertical tune. "19"" means fractional tune Qy = 0.19
+        use_Pb_ions : bool
+            whether to use Pb ion scenario (True), or protons (False)
         add_non_linear_magnet_errors : bool
             whether to add line with non-linear chromatic errors
         make_thin : bool
@@ -639,15 +640,8 @@ class SPS_sequence_maker:
         """
         err_str = '_with_non_linear_chrom_error' if add_non_linear_magnet_errors else ''
         
-        # Load sequence file if exists already, otherwise generate new one from job
-        #try:
-        #    madx = Madx()
-        #    if use_symmetric_lattice:
-        #        madx.call('{}/qy_dot{}/SPS_2021_Pb_symmetric.seq'.format(sequence_path, Qy_frac))
-        #    else:
-        #        madx.call('{}/qy_dot{}/SPS_2021_Pb_nominal.seq'.format(sequence_path, Qy_frac))
-        #except FileNotFoundError:
-        madx = self.load_madx_SPS_from_job()
+        # Load madx instance
+        madx = self.load_madx_SPS_from_job(use_Pb_ions=use_Pb_ions)
 
         # Flatten and slice line
         if make_thin:
@@ -712,8 +706,13 @@ class SPS_sequence_maker:
         #### Initiate MADX sequence and call the sequence and optics file ####
         madx = Madx()
         madx.call("{}/sps.seq".format(optics))
-        madx.call("{}/strengths/lhc_ion.str".format(optics))
         
+        # Call the right magnet strengths for Q26: if not Pb ions, then protons
+        if use_Pb_ions:
+            madx.call("{}/strengths/lhc_ion.str".format(optics))
+        else:
+            madx.call("{}/strengths/lhc_q26.str".format(optics))
+
         # Generate SPS beam - use default Pb or make custom beam
         self.m_in_eV, self.p_inj_SPS = self.generate_SPS_beam()
         
