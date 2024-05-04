@@ -33,12 +33,23 @@ class BeamParameters_SPS:
 
 @dataclass
 class BeamParameters_SPS_Oxygen:
-    """Data Container for SPS Pb default beam parameters"""
+    """Data Container for SPS oxygen beam parameters"""
     Nb:  float = 25e8 # half of (John, Bartosik 2021) for oxygen, assuming bunch splitting
     sigma_z: float = 0.225 # in m, is the old value (close to Isabelle's and  Hannes'), but then bucket is too full if Gaussian longitudinal. 0.19 also used
     sigma_z_binomial: float = 0.285 # RMS bunch length of binomial, default value to match data
     exn: float = 1.3e-6
     eyn: float = 0.9e-6
+    Qx_int: float = 26.
+    Qy_int: float = 26.
+
+@dataclass
+class BeamParameters_SPS_Proton:
+    """Data Container for SPS proton default beam parameters"""
+    Nb:  float = 1e11 # 
+    sigma_z: float = 0.22 #
+    sigma_z_binomial: float = 0.285 # RMS bunch length of binomial, default value to match data
+    exn: float = 2.5e-6 # test values for round proton beams
+    eyn: float = 2.5e-6
     Qx_int: float = 26.
     Qy_int: float = 26.
 
@@ -69,11 +80,22 @@ class SPS_sequence_maker:
     Q_PS: float = 54.
     Q_SPS: float = 82.
     m_ion: float = 207.98 # atomic units
+
+    def __post_init__(self):
+        # Check that proton charge is be correct
+        if self.ion_type == 'proton':
+            self.Q_PS, self.Q_SPS = 1., 1.
     
     
-    def load_xsuite_line_and_twiss(self, Qy_frac=25, beta_beat=None, use_symmetric_lattice=False,
-                                   add_non_linear_magnet_errors=False, save_new_xtrack_line=True,
-                                   deferred_expressions=False, add_aperture=False, plane='Y'):
+    def load_xsuite_line_and_twiss(self,
+                                   Qy_frac=25, 
+                                   beta_beat=None, 
+                                   use_symmetric_lattice=False,
+                                   add_non_linear_magnet_errors=False, 
+                                   save_new_xtrack_line=True,
+                                   deferred_expressions=False, 
+                                   add_aperture=False, 
+                                   plane='Y'):
         """
         Method to load pre-generated SPS lattice files for Xsuite, or generate new if does not exist
         
@@ -98,8 +120,7 @@ class SPS_sequence_maker:
         -------
         xsuite line
         twiss - twiss table from xtrack 
-        """
-        
+        """        
         # Substrings to identify line
         symmetric_string = '_symmetric' if use_symmetric_lattice else '_nominal'
         err_str = '_with_non_linear_chrom_error' if add_non_linear_magnet_errors else ''
@@ -144,8 +165,10 @@ class SPS_sequence_maker:
                                                                         sps_fname))
             # Make new line with beta-beat and/or non-linear chromatic errors
             if beta_beat is None:
-                sps_line = self.generate_xsuite_seq(use_symmetric_lattice=use_symmetric_lattice, deferred_expressions=deferred_expressions,
-                                                    add_non_linear_magnet_errors=add_non_linear_magnet_errors, add_aperture=add_aperture) 
+                sps_line = self.generate_xsuite_seq(use_symmetric_lattice=use_symmetric_lattice, 
+                                                    deferred_expressions=deferred_expressions,
+                                                    add_non_linear_magnet_errors=add_non_linear_magnet_errors, 
+                                                    add_aperture=add_aperture) 
             else:
                 sps_line = self.generate_xsuite_seq_with_beta_beat(beta_beat=beta_beat, use_symmetric_lattice=use_symmetric_lattice, 
                                                                    add_non_linear_magnet_errors=add_non_linear_magnet_errors, add_aperture=add_aperture,
@@ -164,7 +187,7 @@ class SPS_sequence_maker:
         return sps_line, twiss_sps
 
 
-    def generate_xsuite_seq(self, use_Pb_ions=True, 
+    def generate_xsuite_seq(self,
                             save_madx_seq=False, 
                             save_xsuite_seq=True, 
                             return_xsuite_line=True, voltage=3.0e6,
@@ -178,8 +201,6 @@ class SPS_sequence_maker:
         
         Parameters:
         -----------
-        use_Pb_ions : bool
-            whether to use Pb ion scenario (True), or protons (False)
         save_madx_seq : bool
             whether save madx sequence to directory 
         save_xsuite_seq : bool
@@ -201,7 +222,12 @@ class SPS_sequence_maker:
         --------
         None
         """
-        
+        # Check if proton or ion
+        if self.ion_type=='proton':
+            use_Pb_ions = False
+        else:
+            use_Pb_ions = True
+
         # Update sequence folder location
         os.makedirs(self.seq_folder, exist_ok=True)
         print('\nGenerating sequence for {} with qx = {}, qy = {}\n'.format(self.ion_type, self.qx0, self.qy0))
@@ -213,8 +239,8 @@ class SPS_sequence_maker:
         aperture_str = '_with_aperture' if add_aperture else ''
         
         # Load madx instance with SPS sequence
-        madx = self.load_simple_madx_seq(use_Pb_ions=use_Pb_ions, use_symmetric_lattice=use_symmetric_lattice, 
-                                         add_non_linear_magnet_errors=add_non_linear_magnet_errors, add_aperture=add_aperture,
+        madx = self.load_simple_madx_seq(add_non_linear_magnet_errors=add_non_linear_magnet_errors, 
+                                         add_aperture=add_aperture,
                                          nr_slices=nr_slices)
                 
         line = xt.Line.from_madx_sequence(madx.sequence['sps'], deferred_expressions=deferred_expressions,
@@ -229,10 +255,11 @@ class SPS_sequence_maker:
                 p0c = self.p_inj_SPS,
                 q0 = self.Q_SPS,
                 mass0 = self.m_in_eV)
-        print('\nGenerated SPS {} beam with gamma = {:.3f}, Qx = {:.3f}, Qy = {:.3f}'.format(self.ion_type, 
-                                                                                              self.particle_sample.gamma0[0],
-                                                                                              self.qx0,
-                                                                                              self.qy0))
+        print('\nGenerated SPS {} beam p = {:.4f}, gamma = {:.3f}, Qx = {:.3f}, Qy = {:.3f}\n'.format(self.ion_type,
+                                                                                                      self.p_inj_SPS * 1e-9, 
+                                                                                                      self.particle_sample.gamma0[0],
+                                                                                                      self.qx0,
+                                                                                                      self.qy0))
         
         line.particle_ref = self.particle_sample
         
@@ -243,16 +270,16 @@ class SPS_sequence_maker:
         # acl 800 MHz cavities
         # acfca crab cavities
         # Ions: all 200 MHz cavities: 1.7 MV, h=4653
-        harmonic_nb = 4653
-        nn = 'actcse.31632'
+        harmonic_nb = 4653 if use_Pb_ions else 4620
+        nn = 'actcse.31632' if use_Pb_ions else 'actcse.31637'
         
         # MADX sequence 
         # different convention between madx and xsuite - MADX uses MV, and requires multiplication by charge
-        madx.sequence.sps.elements[nn].lag = 0
+        madx.sequence.sps.elements[nn].lag = 0 if use_Pb_ions else 180 # above transition if protons
         madx.sequence.sps.elements[nn].volt = (voltage/1e6)*self.particle_sample.q0 
         
         # Xsuite sequence 
-        line[nn].lag = 0  # 0 if below transition
+        line[nn].lag = 0  if use_Pb_ions else 180 # above transition if protons
         line[nn].voltage = voltage # In Xsuite for ions, do not multiply by charge as in MADX
         line[nn].frequency = madx.sequence['sps'].beam.freq0*1e6*harmonic_nb
         
@@ -273,18 +300,7 @@ class SPS_sequence_maker:
                 
         if return_xsuite_line:
             return line
-
-
-    # TO BE FIXED WITH PROPER SEQUENCE MAKER
-    #def load_proton_seq(self)->xt.Line:
-    #    """Load generated matched SPS sequence for Q26 proton optics, with RF"""
-    #    with open('{}/protons_Q26/SPS_2021_Protons_matched_with_RF.json'.format(sequence_path), 'r') as fid:
-    #        loaded_dct = json.load(fid)
-    #    line = xt.Line.from_dict(loaded_dct)
-    #
-    #    return line
     
-
 
     def load_SPS_line_with_deferred_madx_expressions(self, use_symmetric_lattice=False, Qy_frac=25,
                                                      add_non_linear_magnet_errors=False, add_aperture=False,
@@ -310,6 +326,12 @@ class SPS_sequence_maker:
         -------
         xtrack line
         """
+        # Check if proton or ion
+        if self.ion_type=='proton':
+            use_Pb_ions = False
+        else:
+            use_Pb_ions = True
+
         err_str = '_with_non_linear_chrom_error' if add_non_linear_magnet_errors else ''
         aperture_str = '_with_aperture' if add_aperture else ''
         
@@ -318,12 +340,12 @@ class SPS_sequence_maker:
         
         # Try loading existing json file, otherwise create new from MADX
         if use_symmetric_lattice:
-            fname = '{}/qy_dot{}/SPS_2021_Pb_symmetric_deferred_exp{}{}.json'.format(sequence_path, Qy_frac, err_str, aperture_str)
+            fname = '{}/qy_dot{}/SPS_2021_{}_symmetric_deferred_exp{}{}.json'.format(sequence_path, Qy_frac, self.ion_type, err_str, aperture_str)
         else:
-            fname = '{}/qy_dot{}/SPS_2021_Pb_nominal_deferred_exp{}{}.json'.format(sequence_path, Qy_frac, err_str, aperture_str)
+            fname = '{}/qy_dot{}/SPS_2021_{}_nominal_deferred_exp{}{}.json'.format(sequence_path, Qy_frac, self.ion_type, err_str, aperture_str)
         
         #sps = SPS_sequence_maker()
-        madx = self.load_simple_madx_seq(use_symmetric_lattice, Qy_frac=25, add_non_linear_magnet_errors=add_non_linear_magnet_errors,
+        madx = self.load_simple_madx_seq(add_non_linear_magnet_errors=add_non_linear_magnet_errors,
                                          add_aperture=add_aperture)
 
         # Convert to line
@@ -345,16 +367,16 @@ class SPS_sequence_maker:
         # acl 800 MHz cavities
         # acfca crab cavities
         # Ions: all 200 MHz cavities: 1.7 MV, h=4653
-        harmonic_nb = 4653
-        nn = 'actcse.31632'
+        harmonic_nb = 4653 if use_Pb_ions else 4620
+        nn = 'actcse.31632' if use_Pb_ions else 'actcse.31637'
         
         # MADX sequence 
         # different convention between madx and xsuite - MADX uses MV, and requires multiplication by charge
-        madx.sequence.sps.elements[nn].lag = 0
-        madx.sequence.sps.elements[nn].volt = (voltage/1e6) * line.particle_ref.q0 
+        madx.sequence.sps.elements[nn].lag = 0 if use_Pb_ions else 180 # above transition if protons
+        madx.sequence.sps.elements[nn].volt = (voltage/1e6)*line.particle_ref.q0 
         
         # Xsuite sequence 
-        line[nn].lag = 0  # 0 if below transition
+        line[nn].lag = 0  if use_Pb_ions else 180 # above transition if protons
         line[nn].voltage = voltage # In Xsuite for ions, do not multiply by charge as in MADX
         line[nn].frequency = madx.sequence['sps'].beam.freq0*1e6*harmonic_nb
         
@@ -370,8 +392,10 @@ class SPS_sequence_maker:
 
 
 
-    def generate_xsuite_seq_with_beta_beat(self, beta_beat=0.05,
-                                           save_xsuite_seq=True, line=None,
+    def generate_xsuite_seq_with_beta_beat(self, 
+                                           beta_beat=0.05,
+                                           save_xsuite_seq=True, 
+                                           line=None,
                                            use_symmetric_lattice=False,
                                            add_non_linear_magnet_errors=False,
                                            plane='Y',
@@ -407,7 +431,7 @@ class SPS_sequence_maker:
         err_str = '_with_non_linear_chrom_error' if add_non_linear_magnet_errors else ''
 
         Qy_frac = int(100*(np.round(self.qy0 % 1, 2)))
-        self._line, twiss0 = self.load_SPS_line_with_deferred_madx_expressions(use_symmetric_lattice=use_symmetric_lattice, Qy_frac=Qy_frac,
+        self._line, _ = self.load_SPS_line_with_deferred_madx_expressions(use_symmetric_lattice=use_symmetric_lattice, Qy_frac=Qy_frac,
                                                          add_non_linear_magnet_errors=add_non_linear_magnet_errors, add_aperture=add_aperture)
         
         self._line0 = self._line.copy()
@@ -608,23 +632,26 @@ class SPS_sequence_maker:
         # Calculate Brho at SPS injection
         self._Brho_PS_extr = self.B_PS_extr * self.rho_PS
         
-        #print('\nCreating MADX-beam of {}\n'.format(self.ion_type))
-        m_in_eV = self.m_ion * constants.physical_constants['atomic mass unit-electron volt relationship'][0]   # 1 Dalton in eV/c^2 -- atomic mass unit
+        if self.ion_type == 'proton':
+            m_in_eV = xt.PROTON_MASS_EV
+        else:
+            m_in_eV = self.m_ion * constants.physical_constants['atomic mass unit-electron volt relationship'][0]   # 1 Dalton in eV/c^2 -- atomic mass unit
+        
         p_inj_SPS = 1e9 * (self._Brho_PS_extr * self.Q_PS) / 3.3356 # in  [eV/c], if q is number of elementary charges
 
         return m_in_eV, p_inj_SPS
 
 
-    def load_simple_madx_seq(self, use_Pb_ions=True,
-                             add_non_linear_magnet_errors=False, make_thin=True, add_aperture=False,
+    def load_simple_madx_seq(self,
+                             add_non_linear_magnet_errors=False, 
+                             make_thin=True, 
+                             add_aperture=False,
                              nr_slices=5):
         """
         Loads default SPS Pb sequence at flat bottom. 
         
         Parameters:
         -----------
-        use_Pb_ions : bool
-            whether to use Pb ion scenario (True), or protons (False)
         add_non_linear_magnet_errors : bool
             whether to add line with non-linear chromatic errors
         make_thin : bool
@@ -638,8 +665,12 @@ class SPS_sequence_maker:
         --------    
         madx - madx instance with SPS sequence    
         """
-        err_str = '_with_non_linear_chrom_error' if add_non_linear_magnet_errors else ''
-        
+        # Check if proton or ion
+        if self.ion_type=='proton':
+            use_Pb_ions = False
+        else:
+            use_Pb_ions = True
+
         # Load madx instance
         madx = self.load_madx_SPS_from_job(use_Pb_ions=use_Pb_ions)
 
@@ -843,10 +874,11 @@ class SPS_sequence_maker:
                 p0c = self.p_inj_SPS,
                 q0 = self.Q_SPS,
                 mass0 = self.m_in_eV)
-        print('\nGenerated SPS {} beam with gamma = {:.3f}, Qx = {:.3f}, Qy = {:.3f}\n'.format(self.ion_type, 
-                                                                                              self.particle_sample.gamma0[0],
-                                                                                              self.qx0,
-                                                                                              self.qy0))
+        print('\nGenerated SPS {} beam p = {:.4f}, gamma = {:.3f}, Qx = {:.3f}, Qy = {:.3f}\n'.format(self.ion_type,
+                                                                                                      self.p_inj_SPS * 1e-9, 
+                                                                                                      self.particle_sample.gamma0[0],
+                                                                                                      self.qx0,
+                                                                                                      self.qy0))
         
         line.particle_ref = self.particle_sample
         

@@ -11,7 +11,7 @@ import xfields as xf
 import xobjects as xo
 
 from .sequences import PS_sequence_maker, BeamParameters_PS
-from .sequences import SPS_sequence_maker, BeamParameters_SPS, BeamParameters_SPS_Oxygen
+from .sequences import SPS_sequence_maker, BeamParameters_SPS, BeamParameters_SPS_Oxygen, BeamParameters_SPS_Proton
 from .fma_ions import FMA
 from .helpers import Records, Records_Growth_Rates, Full_Records, _bunch_length, _geom_epsx, _geom_epsy, _sigma_delta
 from .tune_ripple import Tune_Ripple_SPS
@@ -212,6 +212,8 @@ class SPS_Flat_Bottom_Tracker:
                 beamParams = BeamParameters_SPS()
             if ion_type=='O':
                 beamParams = BeamParameters_SPS_Oxygen()
+            if ion_type=='proton':
+                beamParams = BeamParameters_SPS_Proton()
             if distribution_type == 'binomial':
                 beamParams.Nb = beamParams.Nb / 0.9108 # assume 8% of particles are lost outside of PS bucket, have to compensate for comparison
         print('Beam parameters:', beamParams)
@@ -227,9 +229,9 @@ class SPS_Flat_Bottom_Tracker:
         # Deferred expressions only needed for tune ripple
         load_line_with_deferred_expressions = True if add_tune_ripple else False
 
-        # Get SPS Pb line - select ion
-        if ion_type=='Pb':
-            sps = SPS_sequence_maker()
+        # Get SPS Pb line - select ion or proton
+        if ion_type=='Pb' or ion_type=='proton':
+            sps = SPS_sequence_maker(ion_type=ion_type)
         elif ion_type=='O':
             sps = SPS_sequence_maker(ion_type='O', Q_PS=4., Q_SPS=8., m_ion=15.9949) 
         else:
@@ -241,7 +243,7 @@ class SPS_Flat_Bottom_Tracker:
                                                    deferred_expressions=load_line_with_deferred_expressions,
                                                    plane=plane_for_beta_beat)
                 
-        if minimum_aperture_to_remove is not None:
+        if minimum_aperture_to_remove is not None and add_aperture:
             line = sps.remove_aperture_below_threshold(line, minimum_aperture_to_remove)
 
         # Add longitudinal limit rectangle - to kill particles that fall out of bucket
@@ -272,7 +274,7 @@ class SPS_Flat_Bottom_Tracker:
         # Install SC and build tracker - optimize line if line variables for tune ripple not needed
         if install_SC_on_line:
             fma_sps = FMA()
-            line = fma_sps.install_SC_and_get_line(line, beamParams, mode=SC_mode, optimize_for_tracking=(not add_tune_ripple), 
+            line = fma_sps.install_SC_and_get_line(line=line, beamParams=beamParams, mode=SC_mode, optimize_for_tracking=(not add_tune_ripple), 
                                                    distribution_type=distribution_type, context=context)
             print('Installed space charge on line\n')
             
