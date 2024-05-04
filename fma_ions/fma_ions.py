@@ -152,7 +152,7 @@ class FMA:
                 z0=0.,
                 q_parameter=q_val)
 
-        print('\nInstalled SC.')
+        print('\nInstalled SC with {} interactions.'.format(self.num_spacecharge_interactions))
         print(lprofile)
         print(line.particle_ref.show())
         print(beamParams)

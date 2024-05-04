@@ -135,7 +135,8 @@ class SPS_Flat_Bottom_Tracker:
                   save_full_particle_data=False,
                   full_particle_data_interval=None,
                   update_particles_and_sc_for_binomial=False,
-                  plane_for_beta_beat='Y'
+                  plane_for_beta_beat='Y',
+                  num_spacecharge_interactions=1080
                   ):
         """
         Run full tracking at SPS flat bottom
@@ -198,7 +199,9 @@ class SPS_Flat_Bottom_Tracker:
             then updating space charge to new distribution
         plane_for_beta_beat : str
             plane in which beta-beat exists: 'X', 'Y' (default) or 'both'
-
+        num_spacecharge_interactions : int
+            number of SC interactions per turn
+            
         Returns:
         --------
         None
@@ -273,7 +276,7 @@ class SPS_Flat_Bottom_Tracker:
 
         # Install SC and build tracker - optimize line if line variables for tune ripple not needed
         if install_SC_on_line:
-            fma_sps = FMA()
+            fma_sps = FMA(num_spacecharge_interactions=num_spacecharge_interactions)
             line = fma_sps.install_SC_and_get_line(line=line, beamParams=beamParams, mode=SC_mode, optimize_for_tracking=(not add_tune_ripple), 
                                                    distribution_type=distribution_type, context=context)
             print('Installed space charge on line\n')
