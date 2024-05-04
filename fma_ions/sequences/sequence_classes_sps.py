@@ -48,8 +48,8 @@ class BeamParameters_SPS_Proton:
     Nb:  float = 1e11 # 
     sigma_z: float = 0.22 #
     sigma_z_binomial: float = 0.285 # RMS bunch length of binomial, default value to match data
-    exn: float = 2.5e-6 # test values for round proton beams
-    eyn: float = 2.5e-6
+    exn: float = 0.65e-6 # to get same tune spread as Pb, 2.5e-6 is old test values for round proton beams
+    eyn: float = 0.65e-6
     Qx_int: float = 26.
     Qy_int: float = 26.
 
