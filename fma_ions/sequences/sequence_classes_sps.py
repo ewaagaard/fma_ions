@@ -95,7 +95,8 @@ class SPS_sequence_maker:
                                    save_new_xtrack_line=True,
                                    deferred_expressions=False, 
                                    add_aperture=False, 
-                                   plane='Y'):
+                                   plane='Y',
+                                   voltage=3.0e6):
         """
         Method to load pre-generated SPS lattice files for Xsuite, or generate new if does not exist
         
@@ -115,12 +116,20 @@ class SPS_sequence_maker:
             whether to include aperture for SPS
         plane : str
             if loading line with beta-beat, specify in which plane beat is taking place: 'X', 'Y' or 'both'
+        voltage : float
+            RF voltage in V
         
         Returns:
         -------
         xsuite line
         twiss - twiss table from xtrack 
         """        
+        # Check if proton or ion
+        if self.ion_type=='proton':
+            use_Pb_ions = False
+        else:
+            use_Pb_ions = True
+
         # Substrings to identify line
         symmetric_string = '_symmetric' if use_symmetric_lattice else '_nominal'
         err_str = '_with_non_linear_chrom_error' if add_non_linear_magnet_errors else ''
@@ -155,6 +164,12 @@ class SPS_sequence_maker:
         try:
             sps_line = xt.Line.from_json(sps_fname)
             print('\nSuccessfully loaded {}\n'.format(sps_fname))
+
+            # If loaded, set RF voltage to correct value
+            nn = 'actcse.31632' if use_Pb_ions else 'actcse.31637'
+            sps_line[nn].voltage = voltage # In Xsuite for ions, do not multiply by charge as in MADX    
+            print('RF voltage set to {:.3e} V\n'.format(voltage))
+
         except FileNotFoundError:
             print('\nPre-made SPS sequence does not exists, generating new sequence with Qx, Qy = ({}, {}), beta-beat = {} \
                   and non-linear error={} and aperture= {}\n{}'.format(self.qx0, 
@@ -168,11 +183,11 @@ class SPS_sequence_maker:
                 sps_line = self.generate_xsuite_seq(use_symmetric_lattice=use_symmetric_lattice, 
                                                     deferred_expressions=deferred_expressions,
                                                     add_non_linear_magnet_errors=add_non_linear_magnet_errors, 
-                                                    add_aperture=add_aperture) 
+                                                    add_aperture=add_aperture, voltage=voltage) 
             else:
                 sps_line = self.generate_xsuite_seq_with_beta_beat(beta_beat=beta_beat, use_symmetric_lattice=use_symmetric_lattice, 
                                                                    add_non_linear_magnet_errors=add_non_linear_magnet_errors, add_aperture=add_aperture,
-                                                                   plane=plane)
+                                                                   plane=plane, voltage=voltage)
                 
             # Save new Xsuite sequence if desired
             if save_new_xtrack_line:
@@ -190,7 +205,8 @@ class SPS_sequence_maker:
     def generate_xsuite_seq(self,
                             save_madx_seq=False, 
                             save_xsuite_seq=True, 
-                            return_xsuite_line=True, voltage=3.0e6,
+                            return_xsuite_line=True, 
+                            voltage=3.0e6,
                             use_symmetric_lattice=False,
                             add_non_linear_magnet_errors=False,
                             deferred_expressions=False,
@@ -399,7 +415,8 @@ class SPS_sequence_maker:
                                            use_symmetric_lattice=False,
                                            add_non_linear_magnet_errors=False,
                                            plane='Y',
-                                           add_aperture=False
+                                           add_aperture=False,
+                                           voltage=3.0e6
                                            ):
         """
         Generate Xsuite line with desired beta beat, optimizer quadrupole errors finds
@@ -421,6 +438,8 @@ class SPS_sequence_maker:
             'X' or 'Y' or 'both' - which plane(s) to find beta-beat for
         add_aperture : bool
             whether to include aperture for SPS
+        voltage : float
+            RF voltage in V
         
         Returns:
         -------
@@ -432,7 +451,8 @@ class SPS_sequence_maker:
 
         Qy_frac = int(100*(np.round(self.qy0 % 1, 2)))
         self._line, _ = self.load_SPS_line_with_deferred_madx_expressions(use_symmetric_lattice=use_symmetric_lattice, Qy_frac=Qy_frac,
-                                                         add_non_linear_magnet_errors=add_non_linear_magnet_errors, add_aperture=add_aperture)
+                                                         add_non_linear_magnet_errors=add_non_linear_magnet_errors, add_aperture=add_aperture,
+                                                         voltage=voltage)
         
         self._line0 = self._line.copy()
         self._twiss0 = self._line0.twiss()

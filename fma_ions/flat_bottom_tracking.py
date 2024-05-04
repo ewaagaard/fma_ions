@@ -136,7 +136,8 @@ class SPS_Flat_Bottom_Tracker:
                   full_particle_data_interval=None,
                   update_particles_and_sc_for_binomial=False,
                   plane_for_beta_beat='Y',
-                  num_spacecharge_interactions=1080
+                  num_spacecharge_interactions=1080,
+                  voltage=3.0e6
                   ):
         """
         Run full tracking at SPS flat bottom
@@ -201,6 +202,8 @@ class SPS_Flat_Bottom_Tracker:
             plane in which beta-beat exists: 'X', 'Y' (default) or 'both'
         num_spacecharge_interactions : int
             number of SC interactions per turn
+        voltage : float
+            RF voltage in V
             
         Returns:
         --------
@@ -244,7 +247,7 @@ class SPS_Flat_Bottom_Tracker:
         line, twiss = sps.load_xsuite_line_and_twiss(Qy_frac=Qy_frac, add_aperture=add_aperture, beta_beat=beta_beat,
                                                    add_non_linear_magnet_errors=add_non_linear_magnet_errors, 
                                                    deferred_expressions=load_line_with_deferred_expressions,
-                                                   plane=plane_for_beta_beat)
+                                                   plane=plane_for_beta_beat, voltage=voltage)
                 
         if minimum_aperture_to_remove is not None and add_aperture:
             line = sps.remove_aperture_below_threshold(line, minimum_aperture_to_remove)
