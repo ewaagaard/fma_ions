@@ -317,6 +317,57 @@ class SPS_sequence_maker:
         if return_xsuite_line:
             return line
     
+    
+    def change_synchrotron_tune_by_factor(self, A, line, sigma_z=None, Nb=None):
+        """
+        Scale synchrotron tune Qs while keeping bucket half-height delta constant, also adjusting
+        bunch length and bunch intensity accordingly for identical bunch filling factor and space charge effects
+
+        Parameters
+        ----------
+        line : xtrack.Line
+            line used in tracking
+        A : float
+            factor by which to scale the synchrotron tune
+        sigma_z : float
+            original bunch length
+        Nb : float
+            original bunch intensity
+
+        Returns
+        -------
+        line_new : xtrack.Line
+            line with updated RF voltage and harmonic
+        sigma_z_new : float
+            updated new bunch length
+        Nb_new : float
+            updated new bunch intensity
+        """
+        # Check if proton or ion
+        if self.ion_type=='proton':
+            use_Pb_ions = False
+        else:
+            use_Pb_ions = True
+            
+        # Provide default bunch length values if nothing given
+        beamParams = BeamParameters_SPS_Proton() if self.ion_type=='proton' else BeamParameters_SPS()
+        if sigma_z is None:
+            sigma_z = beamParams.sigma_z
+        if Nb is None:
+            Nb = beamParams.Nb
+        
+        # Find RF cavity number 
+        nn = 'actcse.31632' if use_Pb_ions else 'actcse.31637'
+        
+        line[nn].voltage *= A # scale voltage by desired factor
+        line[nn].frequency *= A # in reality scale harmonic number, but translates directly to frequency
+        sigma_z_new = sigma_z / A
+        Nb_new = Nb / A
+        
+        print('\nScaling RF voltage to {:.3e} V with factor {:.3f}'.format(line[nn].voltage, A))
+        
+        return line, sigma_z_new, Nb_new
+    
 
     def load_SPS_line_with_deferred_madx_expressions(self, use_symmetric_lattice=False, Qy_frac=25,
                                                      add_non_linear_magnet_errors=False, add_aperture=False,

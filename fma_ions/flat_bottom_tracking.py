@@ -49,8 +49,16 @@ class SPS_Flat_Bottom_Tracker:
     qy0: float = 26.19
     ion_inj_ctime : float = 0.725 # ion injection happens at this time in cycle, important for WS
 
-    def generate_particles(self, line: xt.Line, context : xo.context, distribution_type='gaussian', beamParams=None,
-                           engine=None, m=5.3, num_particles_linear_in_zeta=5, xy_norm_default=0.1) -> xp.Particles:
+    def generate_particles(self, 
+                           line: xt.Line, 
+                           context : xo.context, 
+                           distribution_type='gaussian', 
+                           beamParams=None,
+                           engine=None, 
+                           m=5.3, 
+                           num_particles_linear_in_zeta=5, 
+                           xy_norm_default=0.1,
+                           scale_factor_Qs=None) -> xp.Particles:
         """
         Generate xp.Particles object: matched Gaussian or longitudinally parabolic
 
@@ -65,6 +73,8 @@ class SPS_Flat_Bottom_Tracker:
         xy_norm_default : float
             if building particles linear in zeta, what is the default normalized transverse coordinates (exact center not ideal for 
             if we want to study space charge and resonances)
+        scale_factor_Qs : float
+            if not None, factor by which we scale Qs (V_RF, h) and divide sigma_z and Nb for similar space charge effects
         """
         if beamParams is None:
             beamParams = BeamParameters_SPS
@@ -96,7 +106,8 @@ class SPS_Flat_Bottom_Tracker:
         elif distribution_type=='linear_in_zeta':
             
             # Find suitable zeta range - make linear spacing between close to center of RF bucket and to separatrix
-            zetas = np.linspace(0.05, 0.7, num=num_particles_linear_in_zeta)
+            factor = scale_factor_Qs if scale_factor_Qs is not None else 1.0
+            zetas = np.linspace(0.05, 0.7 / factor, num=num_particles_linear_in_zeta)
 
             # Build the particle object
             particles = xp.build_particles(line = line, particle_ref = line.particle_ref,
@@ -137,7 +148,8 @@ class SPS_Flat_Bottom_Tracker:
                   update_particles_and_sc_for_binomial=False,
                   plane_for_beta_beat='Y',
                   num_spacecharge_interactions=1080,
-                  voltage=3.0e6
+                  voltage=3.0e6,
+                  scale_factor_Qs=None
                   ):
         """
         Run full tracking at SPS flat bottom
@@ -204,6 +216,8 @@ class SPS_Flat_Bottom_Tracker:
             number of SC interactions per turn
         voltage : float
             RF voltage in V
+        scale_factor_Qs : float
+            if not None, factor by which we scale Qs (V_RF, h) and divide sigma_z and Nb for similar space charge effects
             
         Returns:
         --------
@@ -220,6 +234,7 @@ class SPS_Flat_Bottom_Tracker:
                 beamParams = BeamParameters_SPS_Oxygen()
             if ion_type=='proton':
                 beamParams = BeamParameters_SPS_Proton()
+                harmonic_nb = 4620 # update harmonic number
             if distribution_type == 'binomial':
                 beamParams.Nb = beamParams.Nb / 0.9108 # assume 8% of particles are lost outside of PS bucket, have to compensate for comparison
         print('Beam parameters:', beamParams)
@@ -252,15 +267,25 @@ class SPS_Flat_Bottom_Tracker:
         if minimum_aperture_to_remove is not None and add_aperture:
             line = sps.remove_aperture_below_threshold(line, minimum_aperture_to_remove)
 
+        # If scale synchrotron tune
+        if scale_factor_Qs is not None:
+            line, sigma_z_new, Nb_new = sps.change_synchrotron_tune_by_factor(scale_factor_Qs, line, beamParams.sigma_z, beamParams.Nb)
+            beamParams.sigma_z = sigma_z_new # update parameters
+            beamParams.Nb = Nb_new # update parameters 
+            harmonic_nb *= scale_factor_Qs
+            print('Updated beam parameters with new Qs:')
+            print(beamParams)
+            
         # Add longitudinal limit rectangle - to kill particles that fall out of bucket
         bucket_length = line.get_length()/harmonic_nb
+        print('\nBucket length is {:.4f} m'.format(bucket_length))
         line.unfreeze() # if you had already build the tracker
         line.append_element(element=xt.LongitudinalLimitRect(min_zeta=-bucket_length/2, max_zeta=bucket_length/2), name='long_limit')
         line.build_tracker(_context=context)
 
         # Generate particles object to track    
         particles = self.generate_particles(line=line, context=context, distribution_type=distribution_type,
-                                            beamParams=beamParams, engine=engine)
+                                            beamParams=beamParams, engine=engine, scale_factor_Qs=scale_factor_Qs)
         particles.reorganize()
 
 
@@ -863,7 +888,9 @@ class SPS_Flat_Bottom_Tracker:
     def plot_longitudinal_phase_space_trajectories(self, 
                                                    output_folder=None, 
                                                    include_sps_separatrix=True,
-                                                   ylim=1.4):
+                                                   ylim=1.4,
+                                                   extra_plt_str='',
+                                                   scale_factor_Qs=None):
         """
         Plot color-coded trajectories in longitudinal phase space based on turns
         
@@ -875,6 +902,10 @@ class SPS_Flat_Bottom_Tracker:
             whether to plot line of SPS RF seperatrix
         ylim : float
             if not None, boundary in vertical plane to include
+        extra_plt_str : str
+            extra name to add to plot
+        scale_factor_Qs : float
+            if not None, factor by which we scale Qs (V_RF, h) and divide sigma_z and Nb for similar space charge effects
         """
         tbt_dict = self.load_full_records_json(output_folder=output_folder)
 
@@ -885,6 +916,11 @@ class SPS_Flat_Bottom_Tracker:
         if include_sps_separatrix:
             sps = SPS_sequence_maker()
             sps_line, twiss = sps.load_xsuite_line_and_twiss()
+            
+            # Adjust separatrix if we scale synchrotron tune
+            if scale_factor_Qs is not None:
+                sps_line, _, _ = sps.change_synchrotron_tune_by_factor(scale_factor_Qs, sps_line)
+            
             _, zeta_separatrix, delta_separatrix = generate_binomial_distribution_from_PS_extr(num_particles=50,
                                                                              nemitt_x= BeamParameters_SPS.exn, nemitt_y=BeamParameters_SPS.eyn,
                                                                              sigma_z=BeamParameters_SPS.sigma_z, total_intensity_particles=BeamParameters_SPS.Nb,
@@ -914,7 +950,7 @@ class SPS_Flat_Bottom_Tracker:
         cbar.set_label('Number of Turns')
 
         plt.tight_layout()
-        fig.savefig('output_plots/SPS_Pb_longitudinal_trajectories.png', dpi=250)
+        fig.savefig('output_plots/SPS_Pb_longitudinal_trajectories{}.png'.format(extra_plt_str), dpi=250)
 
 
 
