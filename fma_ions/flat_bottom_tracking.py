@@ -862,7 +862,8 @@ class SPS_Flat_Bottom_Tracker:
 
     def plot_longitudinal_phase_space_trajectories(self, 
                                                    output_folder=None, 
-                                                   include_sps_separatrix=True):
+                                                   include_sps_separatrix=True,
+                                                   ylim=1.4):
         """
         Plot color-coded trajectories in longitudinal phase space based on turns
         
@@ -872,6 +873,8 @@ class SPS_Flat_Bottom_Tracker:
             path to data. default is 'None', assuming then that data is in the same directory
         include_sps_separatrix : bool
             whether to plot line of SPS RF seperatrix
+        ylim : float
+            if not None, boundary in vertical plane to include
         """
         tbt_dict = self.load_full_records_json(output_folder=output_folder)
 
@@ -900,7 +903,8 @@ class SPS_Flat_Bottom_Tracker:
         if include_sps_separatrix:
             ax.plot(zeta_separatrix, delta_separatrix * 1e3, '-', color='red', alpha=0.7, label='SPS RF separatrix')
             ax.plot(zeta_separatrix, -delta_separatrix * 1e3, '-', color='red', alpha=0.7, label=None)
-        ax.set_ylim(-1.4, 1.4)
+        if ylim is not None:
+            ax.set_ylim(-ylim, ylim)
         ax.set_xlim(-0.85, 0.85)
         ax.set_xlabel(r'$\zeta$ [m]')
         ax.set_ylabel(r'$\delta$ [1e-3]')
@@ -996,10 +1000,73 @@ class SPS_Flat_Bottom_Tracker:
             ax.set_ylabel(r'$\delta$ [1e-3]')
             plt.tight_layout()
             fig.savefig('output_plots/SPS_Pb_longitudinal{}_turn_{}.png'.format(extra_ind, int(tbt_dict.full_data_turn_ind[i])), dpi=250)
-            
         
-    def plot_last_and_first_turn_longitudinal_phase_space_from_tbt(self, output_folder=None, include_sps_separatrix=False,
-                                               include_density_map=True):
+        
+    def plot_longitudinal_phase_space_tbt_from_index(self,
+                                                     output_folder=None, 
+                                                     random_index_nr = 10, 
+                                                     include_sps_separatrix=True):
+        """
+        Plot killed particles up to index nr in longitudinal phase space
+        
+        Parameters:
+        -----------
+        output_folder : str
+            path to data. default is 'None', assuming then that data is in the same directory
+        random_index_nr : int
+            among killed particles, select first particles up to this index 
+        include_sps_separatrix : bool
+            whether to plot line of SPS RF seperatrix
+        """    
+        tbt_dict = self.load_full_records_json(output_folder=output_folder)
+
+        # Output directory
+        os.makedirs('output_plots', exist_ok=True)
+        
+        # Get SPS zeta separatrix
+        if include_sps_separatrix:
+            sps = SPS_sequence_maker()
+            sps_line, twiss = sps.load_xsuite_line_and_twiss()
+            _, zeta_separatrix, delta_separatrix = generate_binomial_distribution_from_PS_extr(num_particles=50,
+                                                                             nemitt_x= BeamParameters_SPS.exn, nemitt_y=BeamParameters_SPS.eyn,
+                                                                             sigma_z=BeamParameters_SPS.sigma_z, total_intensity_particles=BeamParameters_SPS.Nb,
+                                                                             line=sps_line, return_separatrix_coord=True)
+        # Final dead and alive indices
+        dead_ind_final = tbt_dict.state[:, -1] < 1
+        first_random_dead = np.where(dead_ind_final > 0)[0][:random_index_nr]
+        
+        # Select subset of zeta and delta
+        zeta = tbt_dict.zeta[first_random_dead, :]
+        delta = tbt_dict.delta[first_random_dead, :]
+        colors = cm.winter(np.linspace(0, 1, len(zeta)))
+        
+        # Iterate over all turns that were recorded
+        for i in range(len(tbt_dict.full_data_turn_ind)):
+    
+            print('Plotting data from turn {}'.format(tbt_dict.full_data_turn_ind[i]))
+            # Plot longitudinal phase space, initial and final state
+            plt.close()
+            fig, ax = plt.subplots(1, 1, figsize = (8, 4.5))
+            
+            ax.scatter(zeta[:, i], delta[:, i]*1000, c=range(len(zeta)), marker='.')
+            if include_sps_separatrix:
+                ax.plot(zeta_separatrix, delta_separatrix * 1e3, '-', color='red', alpha=0.7, label='SPS RF separatrix')
+                ax.plot(zeta_separatrix, -delta_separatrix * 1e3, '-', color='red', alpha=0.7, label=None)
+            ax.set_ylim(-1.4, 1.4)
+            ax.set_xlim(-0.85, 0.85)
+            ax.text(0.02, 0.91, 'Turn {}'.format(tbt_dict.full_data_turn_ind[i]), fontsize=15, transform=ax.transAxes)
+            
+            #ax.legend(loc='upper right', fontsize=11)
+            ax.set_xlabel(r'$\zeta$ [m]')
+            ax.set_ylabel(r'$\delta$ [1e-3]')
+            plt.tight_layout()
+            fig.savefig('output_plots/SPS_Pb_longitudinal_first{}particles_turn_{}.png'.format(random_index_nr, int(tbt_dict.full_data_turn_ind[i])), dpi=250)
+        
+        
+    def plot_last_and_first_turn_longitudinal_phase_space_from_tbt(self, 
+                                                                   output_folder=None, 
+                                                                   include_sps_separatrix=False,
+                                                                   include_density_map=True):
         """
         Generate longitudinal phase space plots from full particle tracking data
         
