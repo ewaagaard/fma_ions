@@ -58,7 +58,8 @@ class SPS_Flat_Bottom_Tracker:
                            m=5.3, 
                            num_particles_linear_in_zeta=5, 
                            xy_norm_default=0.1,
-                           scale_factor_Qs=None) -> xp.Particles:
+                           scale_factor_Qs=None,
+                           only_one_zeta=False) -> xp.Particles:
         """
         Generate xp.Particles object: matched Gaussian or longitudinally parabolic
 
@@ -75,6 +76,8 @@ class SPS_Flat_Bottom_Tracker:
             if we want to study space charge and resonances)
         scale_factor_Qs : float
             if not None, factor by which we scale Qs (V_RF, h) and divide sigma_z and Nb for similar space charge effects
+        only_one_zeta : bool
+            for 'linear_in_zeta' distribution, whether to select only one particle in zeta (penultimate in amplitude) or not
         """
         if beamParams is None:
             beamParams = BeamParameters_SPS
@@ -108,6 +111,10 @@ class SPS_Flat_Bottom_Tracker:
             # Find suitable zeta range - make linear spacing between close to center of RF bucket and to separatrix
             factor = scale_factor_Qs if scale_factor_Qs is not None else 1.0
             zetas = np.linspace(0.05, 0.7 / factor, num=num_particles_linear_in_zeta)
+            
+            # If only want penultimate particle in amplitude, select this one
+            if only_one_zeta:
+                zetas = np.array(zetas[-2])
 
             # Build the particle object
             particles = xp.build_particles(line = line, particle_ref = line.particle_ref,
@@ -149,7 +156,8 @@ class SPS_Flat_Bottom_Tracker:
                   plane_for_beta_beat='Y',
                   num_spacecharge_interactions=1080,
                   voltage=3.0e6,
-                  scale_factor_Qs=None
+                  scale_factor_Qs=None,
+                  only_one_zeta=False
                   ):
         """
         Run full tracking at SPS flat bottom
@@ -218,6 +226,8 @@ class SPS_Flat_Bottom_Tracker:
             RF voltage in V
         scale_factor_Qs : float
             if not None, factor by which we scale Qs (V_RF, h) and divide sigma_z and Nb for similar space charge effects
+        only_one_zeta : bool
+            for 'linear_in_zeta' distribution, whether to select only one particle in zeta (penultimate in amplitude) or not
             
         Returns:
         --------
@@ -285,7 +295,8 @@ class SPS_Flat_Bottom_Tracker:
 
         # Generate particles object to track    
         particles = self.generate_particles(line=line, context=context, distribution_type=distribution_type,
-                                            beamParams=beamParams, engine=engine, scale_factor_Qs=scale_factor_Qs)
+                                            beamParams=beamParams, engine=engine, scale_factor_Qs=scale_factor_Qs,
+                                            only_one_zeta=only_one_zeta)
         particles.reorganize()
 
 
