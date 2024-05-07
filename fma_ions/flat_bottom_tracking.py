@@ -887,10 +887,12 @@ class SPS_Flat_Bottom_Tracker:
 
     def plot_longitudinal_phase_space_trajectories(self, 
                                                    output_folder=None, 
-                                                   include_sps_separatrix=True,
+                                                   include_sps_separatrix=False,
+                                                   xlim=0.85,
                                                    ylim=1.4,
                                                    extra_plt_str='',
-                                                   scale_factor_Qs=None):
+                                                   scale_factor_Qs=None,
+                                                   plot_zeta_delta_in_phase_space=True):
         """
         Plot color-coded trajectories in longitudinal phase space based on turns
         
@@ -900,12 +902,16 @@ class SPS_Flat_Bottom_Tracker:
             path to data. default is 'None', assuming then that data is in the same directory
         include_sps_separatrix : bool
             whether to plot line of SPS RF seperatrix
+        xlim : float
+            if not None, boundary in horizontal plane to include
         ylim : float
             if not None, boundary in vertical plane to include
         extra_plt_str : str
             extra name to add to plot
         scale_factor_Qs : float
-            if not None, factor by which we scale Qs (V_RF, h) and divide sigma_z and Nb for similar space charge effects
+            if not None, factor by which we scale Qs (V_RF, h) and divide sigma_z and Nb for similar space charge effects'
+        plot_zeta_delta_in_phase_space : bool
+            whether to plot delta over zeta in phase space. if False, plot zeta over turns
         """
         tbt_dict = self.load_full_records_json(output_folder=output_folder)
 
@@ -933,26 +939,72 @@ class SPS_Flat_Bottom_Tracker:
     
         # plot longitudinal phase space trajectories of all particles
         fig, ax = plt.subplots(1, 1, figsize = (8, 4.5))
-        for i in range(num_particles):
-            print(f'Plotting particle {i+1}')
-            ax.scatter(tbt_dict.zeta[i, :], tbt_dict.delta[i, :] * 1e3, c=range(num_turns), marker='.')
-        if include_sps_separatrix:
-            ax.plot(zeta_separatrix, delta_separatrix * 1e3, '-', color='red', alpha=0.7, label='SPS RF separatrix')
-            ax.plot(zeta_separatrix, -delta_separatrix * 1e3, '-', color='red', alpha=0.7, label=None)
-        if ylim is not None:
-            ax.set_ylim(-ylim, ylim)
-        ax.set_xlim(-0.85, 0.85)
-        ax.set_xlabel(r'$\zeta$ [m]')
-        ax.set_ylabel(r'$\delta$ [1e-3]')
 
-        # Adding color bar for the number of turns
-        cbar = plt.colorbar(ax.collections[0], ax=ax)
-        cbar.set_label('Number of Turns')
+        if plot_zeta_delta_in_phase_space:
+            # Plot particles in longitudinal phase space, or zeta of penultimate particle over turns
+            for i in range(num_particles):
+                print(f'Plotting particle {i+1}')
+                ax.scatter(tbt_dict.zeta[i, :], tbt_dict.delta[i, :] * 1e3, c=range(num_turns), marker='.')
+            if include_sps_separatrix:
+                ax.plot(zeta_separatrix, delta_separatrix * 1e3, '-', color='red', alpha=0.7, label='SPS RF separatrix')
+                ax.plot(zeta_separatrix, -delta_separatrix * 1e3, '-', color='red', alpha=0.7, label=None)
+            if ylim is not None:
+                ax.set_ylim(-ylim, ylim)
+            if xlim is not None:
+                ax.set_xlim(-xlim, xlim)
+            ax.set_xlabel(r'$\zeta$ [m]')
+            ax.set_ylabel(r'$\delta$ [1e-3]')
 
+            # Adding color bar for the number of turns
+            cbar = plt.colorbar(ax.collections[0], ax=ax)
+            cbar.set_label('Number of Turns')
+            plt.tight_layout()
+            fig.savefig('output_plots/SPS_Pb_longitudinal_trajectories{}.png'.format(extra_plt_str), dpi=250)
+
+        else:
+            i = num_particles - 2 # select penultimate particle
+            turns = np.arange(num_turns)
+            ax.plot(turns, tbt_dict.zeta[i, :] / tbt_dict.zeta[i, 0], alpha=0.7)
+            ax.set_xlabel('Turns')
+            ax.set_ylabel(r'$\zeta$ / $\zeta_{0}$')
+            plt.tight_layout()
+            fig.savefig('output_plots/zeta_over_turns{}.png'.format(extra_plt_str), dpi=250)
+
+
+    def plot_multiple_zeta(self, output_str_array, string_array):
+        """
+        Plot zetas from multiple runs
+        
+        Parameters:
+        ----------
+        output_str_array : [outfolder, outfolder, ...]
+            List containing string for outfolder tbt data
+        string_array : [str1, str2, ...]
+            List containing strings to explain the respective tbt data objects (which parameters were used)        
+        """
+        # Initialize figure, and plot all results
+        fig, ax = plt.subplots(1, 1, figsize = (8, 4.5))
+
+        tbt_array = []
+        for j, output_folder in reversed(list(enumerate(output_str_array))):
+            print(f'Plotting case {j+1}')
+            self.output_folder = output_folder
+            tbt = self.load_full_records_json(output_folder)
+            tbt_array.append(tbt)
+
+            # select penultimate particle
+            num_particles = len(tbt.x)
+            i = num_particles - 2 
+
+            turns = np.arange(len(tbt.zeta[0]))
+            ax.plot(turns, tbt.zeta[i, :] / tbt.zeta[i, 0], alpha=0.8, label=string_array[j])
+        
+        ax.set_xlabel('Turns')
+        ax.set_ylabel(r'$\zeta$ / $\zeta_{0}$')
+        ax.legend(loc='upper left', fontsize=10)
+        ax.set_ylim(0.97, 1.2)
         plt.tight_layout()
-        fig.savefig('output_plots/SPS_Pb_longitudinal_trajectories{}.png'.format(extra_plt_str), dpi=250)
-
-
+        fig.savefig('multiple_zetas_over_turns.png', dpi=250)
 
 
     def plot_longitudinal_phase_space_all_slices_from_tbt(self, 
