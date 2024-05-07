@@ -27,7 +27,7 @@ class Submitter:
 
         # Initiate settings for output
         settings = {}
-        settings['output_directory_afs'] = '/afs/cern.ch/user/e/elwaagaa/public/sps_flat_bottom_tracking/output_logs/{:%Y_%m_%d__%H_%M}{}'.format(datetime.datetime.now(), 
+        settings['output_directory_afs'] = '/afs/cern.ch/work/e/elwaagaa/public/output_logs/{:%Y_%m_%d__%H_%M}{}'.format(datetime.datetime.now(), 
                                                                                                                                                   extra_str)
         settings['output_directory_eos'] = '{}/{:%Y_%m_%d__%H_%M}_{}_gpu{}'.format(output_folder_eos, datetime.datetime.now(), 
                                                                                 number_of_turn_string, extra_str)
@@ -108,7 +108,7 @@ queue'''
 
         # Initiate settings for output
         settings = {}
-        settings['output_directory_afs'] = '/afs/cern.ch/user/e/elwaagaa/public/sps_flat_bottom_tracking/output_logs/{:%Y_%m_%d__%H_%M}{}'.format(datetime.datetime.now(), 
+        settings['output_directory_afs'] = '/afs/cern.ch/work/e/elwaagaa/public/output_logs/{:%Y_%m_%d__%H_%M}{}'.format(datetime.datetime.now(), 
                                                                                                                                                   extra_str)
         settings['output_directory_eos'] = '{}/{:%Y_%m_%d__%H_%M}_{}_gpu{}'.format(output_folder_eos, datetime.datetime.now(), 
                                                                                 number_of_turn_string, extra_str)
