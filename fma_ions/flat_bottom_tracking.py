@@ -92,6 +92,7 @@ class SPS_Flat_Bottom_Tracker:
                 particle_ref=line.particle_ref, 
                 line=line,
                 engine=engine)
+            print('\nGaussian distribution generated.')
         elif distribution_type=='parabolic':
             particles = generate_parabolic_distribution(
                 num_particles=self.num_part, 
@@ -100,12 +101,14 @@ class SPS_Flat_Bottom_Tracker:
                 nemitt_y=beamParams.eyn, 
                 sigma_z= beamParams.sigma_z,
                 line=line, _context=context)
+            print('\nParabolic distribution generated.')
         elif distribution_type=='binomial':
             # Also calculate SPS separatrix for plotting
             particles, self._zeta_separatrix, self._delta_separatrix = generate_binomial_distribution_from_PS_extr(num_particles=self.num_part,
                                                                     nemitt_x=beamParams.exn, nemitt_y=beamParams.eyn,
                                                                     sigma_z=beamParams.sigma_z_binomial, total_intensity_particles=beamParams.Nb,
                                                                     line=line, m=m, return_separatrix_coord=True)
+            print('\nBinomial distribution generated.')
         elif distribution_type=='linear_in_zeta':
             
             # Find suitable zeta range - make linear spacing between close to center of RF bucket and to separatrix
