@@ -1315,13 +1315,15 @@ class SPS_Flat_Bottom_Tracker:
         alive_ind_final = tbt_dict.state[:, -1] > 0
         
         # Generate histograms in all planes to inspect distribution
-        bin_heights, bin_borders = np.histogram(tbt_dict.zeta[:, 0], bins=60)
+        bin_heights, bin_borders = np.histogram(tbt_dict.zeta[:, 0], bins=40)
         bin_widths = np.diff(bin_borders)
         bin_centers = bin_borders[:-1] + bin_widths / 2
-        bin_heights = bin_heights/np.max(bin_heights) # normalize bin heights
+        ind_max = np.argmax(bin_heights)
+        norm_factor = np.mean(bin_heights[ind_max-1:ind_max+1]) # normalize of three values around peak
+        bin_heights = bin_heights/norm_factor # normalize bin heights
         
         # Only plot final alive particles
-        bin_heights2, bin_borders2 = np.histogram(tbt_dict.zeta[alive_ind_final, -1], bins=60)
+        bin_heights2, bin_borders2 = np.histogram(tbt_dict.zeta[alive_ind_final, -1], bins=40)
         bin_widths2 = np.diff(bin_borders2)
         bin_centers2 = bin_borders2[:-1] + bin_widths2 / 2
         bin_heights2 = bin_heights2/np.max(bin_heights2) # normalize bin heights
@@ -1351,8 +1353,8 @@ class SPS_Flat_Bottom_Tracker:
             
         ax[1].set_xlabel(r'$\zeta$ [m]')
         ax[1].set_ylabel('Counts')
-        ax[0].set_ylabel(r'$\delta$ [1e-3]')
-        ax[1].set_ylabel(r'$\delta$ [1e-3]')
+        ax[0].set_ylabel('Normalized count')
+        ax[1].set_ylabel('Normalized count')
         plt.tight_layout()
         fig.savefig('output_plots/SPS_Pb_longitudinal_profile_vs_data.png', dpi=250)
         plt.show()
