@@ -30,7 +30,7 @@ import json
 import matplotlib.pyplot as plt
 from matplotlib import cm
 from scipy.stats import gaussian_kde
-import scipy.constants.c as clight
+import scipy.constants as constants
 import time
 
 # Load default emittance measurement data from 2023_10_16
@@ -1317,36 +1317,39 @@ class SPS_Flat_Bottom_Tracker:
         bin_heights, bin_borders = np.histogram(tbt_dict.zeta[:, 0], bins=60)
         bin_widths = np.diff(bin_borders)
         bin_centers = bin_borders[:-1] + bin_widths / 2
-        #bin_heights = bin_heights/np.max(bin_heights) # normalize bin heights
+        bin_heights = bin_heights/np.max(bin_heights) # normalize bin heights
         
         # Only plot final alive particles
         bin_heights2, bin_borders2 = np.histogram(tbt_dict.zeta[alive_ind_final, -1], bins=60)
         bin_widths2 = np.diff(bin_borders2)
         bin_centers2 = bin_borders2[:-1] + bin_widths2 / 2
-        #bin_heights2 = bin_heights2/np.max(bin_heights2) # normalize bin heights
+        bin_heights2 = bin_heights2/np.max(bin_heights2) # normalize bin heights
         
+        # Load data
+        zeta_SPS_inj, data_SPS, zeta_PS_BSM, data_BSM = self.load_longitudinal_profile_data()
+
         # Plot longitudinal phase space, initial and final state
-        fig, ax = plt.subplots(2, 1, figsize = (10, 12), sharex=True)
+        fig, ax = plt.subplots(2, 1, figsize = (8, 10), sharex=True)
         
         # Plot initial and final particle distribution
-        ax[0].bar(bin_centers, bin_heights, width=bin_widths, alpha=1.0, color='darkturquoise', label='Initial')
-        ax[1].bar(bin_centers2, bin_heights2, width=bin_widths2, alpha=0.5, color='lime', label='Final (alive)')
+        ax[0].bar(bin_centers, bin_heights, width=bin_widths, alpha=0.8, color='darkturquoise', label='Simulated')
+        ax[0].plot(zeta_SPS_inj, data_SPS, label='SPS wall current monitor data')
+        ax[0].plot(zeta_PS_BSM, data_BSM, label='PS BSM data at extraction')
+        ax[1].bar(bin_centers2, bin_heights2, width=bin_widths2, alpha=0.8, color='lime', label='Final (alive)')
         ax[0].legend(loc='upper right', fontsize=13)
         ax[1].legend(loc='upper right', fontsize=13)
         
         # Adjust axis limits and plot turn
-        ax[0].set_ylim(-1.4, 1.4)
+        #ax[0].set_ylim(-1.4, 1.4)
         ax[0].set_xlim(-0.85, 0.85)
-        ax[1].set_ylim(-1.4, 1.4)
+        #ax[1].set_ylim(-1.4, 1.4)
         ax[1].set_xlim(-0.85, 0.85)
-        ax[2].set_xlim(-0.85, 0.85)
-        #ax[2].set_ylim(-0.05, 1.1)
         
         ax[0].text(0.02, 0.91, 'Turn {}'.format(tbt_dict.full_data_turn_ind[0]+1), fontsize=15, transform=ax[0].transAxes)
         ax[1].text(0.02, 0.91, 'Turn {}'.format(tbt_dict.full_data_turn_ind[-1]+1), fontsize=15, transform=ax[1].transAxes)
             
-        ax[2].set_xlabel(r'$\zeta$ [m]')
-        ax[2].set_ylabel('Counts')
+        ax[1].set_xlabel(r'$\zeta$ [m]')
+        ax[1].set_ylabel('Counts')
         ax[0].set_ylabel(r'$\delta$ [1e-3]')
         ax[1].set_ylabel(r'$\delta$ [1e-3]')
         plt.tight_layout()
@@ -1432,11 +1435,18 @@ class SPS_Flat_Bottom_Tracker:
             data_BSM = np.load(f)
 
         # Convert time data to position data - use PS extraction energy for Pb
-        sps = SPS_sequence_maker()
-        line, _ = sps.load_xsuite_line_and_twiss()
-        beta = np.sqrt(1 - 1/line.particle_ref.gamma0[0]**2)
-        zeta_SPS_inj = time * clight * beta # Convert time units to length
-        zeta_PS_BSM = time2 * clight * beta # Convert time units to length
+        #sps = SPS_sequence_maker()
+        #line, _ = sps.load_xsuite_line_and_twiss()
+        # line.particle_ref.gamma0[0]
+        gamma = 7.33 # typical SPS injection
+        beta = np.sqrt(1 - 1/gamma**2)
+        zeta_SPS_inj = time * constants.c * beta # Convert time units to length
+        zeta_PS_BSM = time2 * constants.c * beta # Convert time units to length
+
+        # BSM - only include data up to the artificial ringing, i.e. at around zeta = 0.36
+        ind = np.where(zeta_PS_BSM < 0.36)
+        zeta_PS_BSM = zeta_PS_BSM[ind]
+        data_BSM = data_BSM[ind]
 
         return zeta_SPS_inj, data_SPS, zeta_PS_BSM, data_BSM
 
