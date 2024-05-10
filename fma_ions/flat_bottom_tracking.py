@@ -30,11 +30,15 @@ import json
 import matplotlib.pyplot as plt
 from matplotlib import cm
 from scipy.stats import gaussian_kde
+import scipy.constants.c as clight
 import time
 
 # Load default emittance measurement data from 2023_10_16
 emittance_data_path = Path(__file__).resolve().parent.joinpath('../data/emittance_data/full_WS_data_SPS_2023_10_16.json').absolute()
 Nb_data_path = Path(__file__).resolve().parent.joinpath('../data/emittance_data/Nb_processed_SPS_2023_10_16.json').absolute()
+
+# Load Pb longitudinal profile measured at PS extraction and SPS injection
+longitudinal_data_path = Path(__file__).resolve().parent.joinpath('../data/longitudinal_profile_data/SPS_inj_longitudinal_data.npy').absolute()
 
 @dataclass
 class SPS_Flat_Bottom_Tracker:
@@ -985,7 +989,7 @@ class SPS_Flat_Bottom_Tracker:
             fig.savefig('output_plots/zeta_over_turns{}.png'.format(extra_plt_str), dpi=250)
 
 
-    def plot_multiple_zeta(self, output_str_array, string_array):
+    def plot_multiple_zeta(self, output_str_array, string_array, xlim=None, ylim=1.2):
         """
         Plot zetas from multiple runs
         
@@ -994,7 +998,11 @@ class SPS_Flat_Bottom_Tracker:
         output_str_array : [outfolder, outfolder, ...]
             List containing string for outfolder tbt data
         string_array : [str1, str2, ...]
-            List containing strings to explain the respective tbt data objects (which parameters were used)        
+            List containing strings to explain the respective tbt data objects (which parameters were used)     
+        xlim : float
+            upper x limit in turns   
+        ylim : float
+            upper x limit in turns   
         """
         # Initialize figure, and plot all results
         fig, ax = plt.subplots(1, 1, figsize = (8, 4.5))
@@ -1016,7 +1024,9 @@ class SPS_Flat_Bottom_Tracker:
         ax.set_xlabel('Turns')
         ax.set_ylabel(r'$\zeta$ / $\zeta_{0}$')
         ax.legend(loc='upper left', fontsize=10)
-        ax.set_ylim(0.97, 1.2)
+        ax.set_ylim(0.97, ylim)
+        if xlim is not None:
+            ax.set_xlim(-10, xlim)
         plt.tight_layout()
         fig.savefig('multiple_zetas_over_turns.png', dpi=250)
 
@@ -1279,7 +1289,70 @@ class SPS_Flat_Bottom_Tracker:
         plt.tight_layout()
         fig.savefig('output_plots/SPS_Pb_longitudinal.png', dpi=250)
         plt.show()
+
         
+    def compare_longitudinal_phase_space_vs_data(self, 
+                                                 output_folder=None,
+                                                 also_include_BSM_data=False):
+        """
+        Compare measured longitidinal profiles at SPS injection vs generated particles 
+        
+        Parameters:
+        -----------
+        output_folder : str
+            path to data. default is 'None', assuming then that data is in the same directory
+        also_include_BSM_data : bool
+            whether to also include BSM data from PS extraction
+        """
+        
+        tbt_dict = self.load_full_records_json(output_folder=output_folder)
+
+        # Output directory
+        os.makedirs('output_plots', exist_ok=True)
+        
+        # Final dead and alive indices
+        alive_ind_final = tbt_dict.state[:, -1] > 0
+        
+        # Generate histograms in all planes to inspect distribution
+        bin_heights, bin_borders = np.histogram(tbt_dict.zeta[:, 0], bins=60)
+        bin_widths = np.diff(bin_borders)
+        bin_centers = bin_borders[:-1] + bin_widths / 2
+        #bin_heights = bin_heights/np.max(bin_heights) # normalize bin heights
+        
+        # Only plot final alive particles
+        bin_heights2, bin_borders2 = np.histogram(tbt_dict.zeta[alive_ind_final, -1], bins=60)
+        bin_widths2 = np.diff(bin_borders2)
+        bin_centers2 = bin_borders2[:-1] + bin_widths2 / 2
+        #bin_heights2 = bin_heights2/np.max(bin_heights2) # normalize bin heights
+        
+        # Plot longitudinal phase space, initial and final state
+        fig, ax = plt.subplots(2, 1, figsize = (10, 12), sharex=True)
+        
+        # Plot initial and final particle distribution
+        ax[0].bar(bin_centers, bin_heights, width=bin_widths, alpha=1.0, color='darkturquoise', label='Initial')
+        ax[1].bar(bin_centers2, bin_heights2, width=bin_widths2, alpha=0.5, color='lime', label='Final (alive)')
+        ax[0].legend(loc='upper right', fontsize=13)
+        ax[1].legend(loc='upper right', fontsize=13)
+        
+        # Adjust axis limits and plot turn
+        ax[0].set_ylim(-1.4, 1.4)
+        ax[0].set_xlim(-0.85, 0.85)
+        ax[1].set_ylim(-1.4, 1.4)
+        ax[1].set_xlim(-0.85, 0.85)
+        ax[2].set_xlim(-0.85, 0.85)
+        #ax[2].set_ylim(-0.05, 1.1)
+        
+        ax[0].text(0.02, 0.91, 'Turn {}'.format(tbt_dict.full_data_turn_ind[0]+1), fontsize=15, transform=ax[0].transAxes)
+        ax[1].text(0.02, 0.91, 'Turn {}'.format(tbt_dict.full_data_turn_ind[-1]+1), fontsize=15, transform=ax[1].transAxes)
+            
+        ax[2].set_xlabel(r'$\zeta$ [m]')
+        ax[2].set_ylabel('Counts')
+        ax[0].set_ylabel(r'$\delta$ [1e-3]')
+        ax[1].set_ylabel(r'$\delta$ [1e-3]')
+        plt.tight_layout()
+        fig.savefig('output_plots/SPS_Pb_longitudinal_profile_vs_data.png', dpi=250)
+        plt.show()
+
 
     def load_emittance_data(self, path : str = emittance_data_path) -> pd.DataFrame:
         """
@@ -1339,7 +1412,34 @@ class SPS_Flat_Bottom_Tracker:
         df_Nb = df_Nb[(df_Nb['ctime'] < 46.55) & (df_Nb['ctime'] > 0.0)]
         
         return df_Nb
+
+
+    def load_longitudinal_profile_data(self, path : str = longitudinal_data_path):
+        """
+        Load Pb longitudinal profile measured at SPS injection with wall current monitor 
+        and at PS extraction with Bunch Shape Monitor (BSM)
         
+        Returns:
+        --------
+        zeta_SPS_inj, data_SPS, zeta_PS_BSM, data_BSM : np.ndarray
+            arrays containing longitudinal position and amplitude data of SPS 
+        """
+        # Load the data
+        with open(path, 'rb') as f:
+            time = np.load(f)
+            time2 = np.load(f)
+            data_SPS = np.load(f)
+            data_BSM = np.load(f)
+
+        # Convert time data to position data - use PS extraction energy for Pb
+        sps = SPS_sequence_maker()
+        line, _ = sps.load_xsuite_line_and_twiss()
+        beta = np.sqrt(1 - 1/line.particle_ref.gamma0[0]**2)
+        zeta_SPS_inj = time * clight * beta # Convert time units to length
+        zeta_PS_BSM = time2 * clight * beta # Convert time units to length
+
+        return zeta_SPS_inj, data_SPS, zeta_PS_BSM, data_BSM
+
         
     def run_analytical_vs_kinetic_emittance_evolution(self,
                                                       Qy_frac : int = 25,
