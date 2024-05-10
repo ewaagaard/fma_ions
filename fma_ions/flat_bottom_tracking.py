@@ -52,6 +52,7 @@ class SPS_Flat_Bottom_Tracker:
     qx0: float = 26.30
     qy0: float = 26.19
     ion_inj_ctime : float = 0.725 # ion injection happens at this time in cycle, important for WS
+    proton_optics : str = 'q26'
 
     def generate_particles(self, 
                            line: xt.Line, 
@@ -269,7 +270,7 @@ class SPS_Flat_Bottom_Tracker:
 
         # Get SPS Pb line - select ion or proton
         if ion_type=='Pb' or ion_type=='proton':
-            sps = SPS_sequence_maker(ion_type=ion_type)
+            sps = SPS_sequence_maker(ion_type=ion_type, proton_optics=self.proton_optics)
         elif ion_type=='O':
             sps = SPS_sequence_maker(ion_type='O', Q_PS=4., Q_SPS=8., m_ion=15.9949) 
         else:
@@ -527,7 +528,7 @@ class SPS_Flat_Bottom_Tracker:
 
         ax1.set_xlabel('Turns' if x_unit_in_turns else 'Time [s]')
         ax2.set_xlabel('Turns' if x_unit_in_turns else 'Time [s]')
-        ax3.set_xlabel('Turns' if x_unit_in_turns else 'Time [s]')
+        ax3.set_xlabel('Turns' if   x_unit_in_turns else 'Time [s]')
         ax1.set_ylabel(r'$\varepsilon_{x}^{n}$ [$\mu$m]')
         ax2.set_ylabel(r'$\varepsilon_{y}^{n}$ [$\mu$m]')
         ax3.set_ylabel(r'$N_{b}$')

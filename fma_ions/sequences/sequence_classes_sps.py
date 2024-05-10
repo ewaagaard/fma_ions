@@ -80,6 +80,7 @@ class SPS_sequence_maker:
     Q_PS: float = 54.
     Q_SPS: float = 82.
     m_ion: float = 207.98 # atomic units
+    proton_optics : str = 'q26'
 
     def __post_init__(self):
         # Check that proton charge is be correct
@@ -777,7 +778,8 @@ class SPS_sequence_maker:
 
         madx.exec(f"sps_match_tunes({self.qx0}, {self.qy0});")
         madx.exec("sps_define_sext_knobs();")
-        madx.exec("sps_set_chroma_weights_q26();")
+        if self.proton_optics == 'q26':
+            madx.exec("sps_set_chroma_weights_q26();")
         madx.input(f"""match;
         global, dq1={self.dq1};
         global, dq2={self.dq2};
@@ -813,7 +815,10 @@ class SPS_sequence_maker:
         if use_Pb_ions:
             madx.call("{}/strengths/lhc_ion.str".format(optics))
         else:
-            madx.call("{}/strengths/lhc_q26.str".format(optics))
+            if self.proton_optics == 'q26':
+                madx.call("{}/strengths/lhc_q26.str".format(optics))
+            elif self.proton_optics == 'q20':
+                madx.call("{}/strengths/lhc_q20.str".format(optics))
 
         # Generate SPS beam - use default Pb or make custom beam
         self.m_in_eV, self.p_inj_SPS = self.generate_SPS_beam()
