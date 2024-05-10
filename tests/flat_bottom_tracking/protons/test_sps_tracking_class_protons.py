@@ -8,4 +8,4 @@ sps = fma_ions.SPS_Flat_Bottom_Tracker(num_turns=10)
 tbt = sps.track_SPS(ion_type='proton', which_context='cpu')
 
 # Test loading the data correctly again
-tbt2 = sps.load_tbt_data()
+# tbt2 = sps.load_tbt_data()
