@@ -1338,7 +1338,7 @@ class SPS_Flat_Bottom_Tracker:
         bin_heights2 = bin_heights2/np.max(bin_heights2) # normalize bin heights
         
         # Load data
-        zeta_SPS_inj, data_SPS, zeta_PS_BSM, data_BSM = self.load_longitudinal_profile_data()
+        zeta_SPS_inj, zeta_SPS_final, zeta_PS_BSM, data_SPS_inj, data_SPS_final, data_PS_BSM = self.load_longitudinal_profile_data()
 
         # Plot longitudinal phase space, initial and final state
         if include_final_turn:
@@ -1346,8 +1346,8 @@ class SPS_Flat_Bottom_Tracker:
             
             # Plot initial and final particle distribution
             ax[0].bar(bin_centers, bin_heights, width=bin_widths, alpha=0.8, color='darkturquoise', label='Simulated')
-            ax[0].plot(zeta_SPS_inj, data_SPS, label='SPS wall current monitor data')
-            ax[0].plot(zeta_PS_BSM, data_BSM, label='PS BSM data at extraction')
+            ax[0].plot(zeta_SPS_inj, data_SPS_inj, label='SPS wall current monitor data')
+            ax[0].plot(zeta_PS_BSM, data_PS_BSM, label='PS BSM data at extraction')
             ax[1].bar(bin_centers2, bin_heights2, width=bin_widths2, alpha=0.8, color='lime', label='Final (alive)')
             ax[0].legend(loc='upper right', fontsize=13)
             ax[1].legend(loc='upper right', fontsize=13)
@@ -1370,8 +1370,8 @@ class SPS_Flat_Bottom_Tracker:
 
             # Plot initial particle distribution only
             ax.bar(bin_centers, bin_heights, width=bin_widths, alpha=0.8, color='darkturquoise', label='Simulated')
-            ax.plot(zeta_SPS_inj, data_SPS, label='SPS wall current monitor data')
-            ax.plot(zeta_PS_BSM, data_BSM, label='PS BSM data at extraction')
+            ax.plot(zeta_SPS_inj, data_SPS_inj, label='SPS wall current monitor data')
+            ax.plot(zeta_PS_BSM, data_PS_BSM, label='PS BSM data at extraction')
             ax.legend(loc='upper right', fontsize=13)
             ax.set_xlim(-0.85, 0.85)
             ax.text(0.02, 0.91, 'Turn {}'.format(tbt_dict.full_data_turn_ind[0]+1), fontsize=15, transform=ax.transAxes)
@@ -1459,26 +1459,30 @@ class SPS_Flat_Bottom_Tracker:
         """
         # Load the data
         with open(path, 'rb') as f:
-            time = np.load(f)
-            time2 = np.load(f)
-            data_SPS = np.load(f)
-            data_BSM = np.load(f)
+            time_SPS_inj = np.load(f)
+            time_SPS_final = np.load(f)
+            time_PS_BSM = np.load(f)
+            data_SPS_inj = np.load(f)
+            data_SPS_final = np.load(f)
+            data_PS_BSM = np.load(f)
 
         # Convert time data to position data - use PS extraction energy for Pb
         beta = np.sqrt(1 - 1/gamma**2)
-        zeta_SPS_inj = time * constants.c * beta # Convert time units to length
-        zeta_PS_BSM = time2 * constants.c * beta # Convert time units to length
+        zeta_SPS_inj = time_SPS_inj * constants.c * beta # Convert time units to length
+        zeta_SPS_final = time_SPS_final * constants.c * beta # Convert time units to length
+        zeta_PS_BSM = time_PS_BSM * constants.c * beta # Convert time units to length
 
         # Adjust to ensure peak is at maximum
-        zeta_SPS_inj -= zeta_SPS_inj[np.argmax(data_SPS)]
-        zeta_PS_BSM -= zeta_SPS_inj[np.argmax(data_SPS)] # adjust both accordingly
+        zeta_SPS_inj -= zeta_SPS_inj[np.argmax(data_SPS_inj)]
+        zeta_SPS_final -= zeta_SPS_inj[np.argmax(data_SPS_inj)]
+        zeta_PS_BSM -= zeta_SPS_inj[np.argmax(data_SPS_inj)] # adjust both accordingly
 
         # BSM - only include data up to the artificial ringing, i.e. at around zeta = 0.36
         ind = np.where(zeta_PS_BSM < 0.36)
         zeta_PS_BSM = zeta_PS_BSM[ind]
-        data_BSM = data_BSM[ind]
+        data_PS_BSM = data_PS_BSM[ind]
 
-        return zeta_SPS_inj, data_SPS, zeta_PS_BSM, data_BSM
+        return zeta_SPS_inj, zeta_SPS_final, zeta_PS_BSM, data_SPS_inj, data_SPS_final, data_PS_BSM
 
         
     def run_analytical_vs_kinetic_emittance_evolution(self,
