@@ -1293,20 +1293,29 @@ class SPS_Flat_Bottom_Tracker:
 
         
     def compare_longitudinal_phase_space_vs_data(self, 
+                                                 tbt_dict=None,
                                                  output_folder=None,
-                                                 also_include_BSM_data=False):
+                                                 also_include_BSM_data=False,
+                                                 include_final_turn=True,
+                                                 num_bins=40):
         """
         Compare measured longitidinal profiles at SPS injection vs generated particles 
         
         Parameters:
         -----------
+        tbt_dict : dict
+            turn-by-turn dictionary with particle data. Default None will load dictionary from json file
         output_folder : str
             path to data. default is 'None', assuming then that data is in the same directory
         also_include_BSM_data : bool
             whether to also include BSM data from PS extraction
+        include_final_turn : bool
+            whether to plot particle data from the final turn
+        num_bins : int
+            number of bins to include in histogram
         """
-        
-        tbt_dict = self.load_full_records_json(output_folder=output_folder)
+        if tbt_dict is None:
+            tbt_dict = self.load_full_records_json(output_folder=output_folder)
 
         # Output directory
         os.makedirs('output_plots', exist_ok=True)
@@ -1315,15 +1324,15 @@ class SPS_Flat_Bottom_Tracker:
         alive_ind_final = tbt_dict.state[:, -1] > 0
         
         # Generate histograms in all planes to inspect distribution
-        bin_heights, bin_borders = np.histogram(tbt_dict.zeta[:, 0], bins=40)
+        bin_heights, bin_borders = np.histogram(tbt_dict.zeta[:, 0], bins=num_bins)
         bin_widths = np.diff(bin_borders)
         bin_centers = bin_borders[:-1] + bin_widths / 2
         ind_max = np.argmax(bin_heights)
-        norm_factor = np.mean(bin_heights[ind_max-1:ind_max+1]) # normalize of three values around peak
+        norm_factor = np.max(bin_heights) # np.mean(bin_heights[ind_max-1:ind_max+1]) # normalize of three values around peak
         bin_heights = bin_heights/norm_factor # normalize bin heights
         
         # Only plot final alive particles
-        bin_heights2, bin_borders2 = np.histogram(tbt_dict.zeta[alive_ind_final, -1], bins=40)
+        bin_heights2, bin_borders2 = np.histogram(tbt_dict.zeta[alive_ind_final, -1], bins=num_bins)
         bin_widths2 = np.diff(bin_borders2)
         bin_centers2 = bin_borders2[:-1] + bin_widths2 / 2
         bin_heights2 = bin_heights2/np.max(bin_heights2) # normalize bin heights
@@ -1332,29 +1341,43 @@ class SPS_Flat_Bottom_Tracker:
         zeta_SPS_inj, data_SPS, zeta_PS_BSM, data_BSM = self.load_longitudinal_profile_data()
 
         # Plot longitudinal phase space, initial and final state
-        fig, ax = plt.subplots(2, 1, figsize = (8, 10), sharex=True)
-        
-        # Plot initial and final particle distribution
-        ax[0].bar(bin_centers, bin_heights, width=bin_widths, alpha=0.8, color='darkturquoise', label='Simulated')
-        ax[0].plot(zeta_SPS_inj, data_SPS, label='SPS wall current monitor data')
-        ax[0].plot(zeta_PS_BSM, data_BSM, label='PS BSM data at extraction')
-        ax[1].bar(bin_centers2, bin_heights2, width=bin_widths2, alpha=0.8, color='lime', label='Final (alive)')
-        ax[0].legend(loc='upper right', fontsize=13)
-        ax[1].legend(loc='upper right', fontsize=13)
-        
-        # Adjust axis limits and plot turn
-        #ax[0].set_ylim(-1.4, 1.4)
-        ax[0].set_xlim(-0.85, 0.85)
-        #ax[1].set_ylim(-1.4, 1.4)
-        ax[1].set_xlim(-0.85, 0.85)
-        
-        ax[0].text(0.02, 0.91, 'Turn {}'.format(tbt_dict.full_data_turn_ind[0]+1), fontsize=15, transform=ax[0].transAxes)
-        ax[1].text(0.02, 0.91, 'Turn {}'.format(tbt_dict.full_data_turn_ind[-1]+1), fontsize=15, transform=ax[1].transAxes)
+        if include_final_turn:
+            fig, ax = plt.subplots(2, 1, figsize = (8, 10), sharex=True)
             
-        ax[1].set_xlabel(r'$\zeta$ [m]')
-        ax[1].set_ylabel('Counts')
-        ax[0].set_ylabel('Normalized count')
-        ax[1].set_ylabel('Normalized count')
+            # Plot initial and final particle distribution
+            ax[0].bar(bin_centers, bin_heights, width=bin_widths, alpha=0.8, color='darkturquoise', label='Simulated')
+            ax[0].plot(zeta_SPS_inj, data_SPS, label='SPS wall current monitor data')
+            ax[0].plot(zeta_PS_BSM, data_BSM, label='PS BSM data at extraction')
+            ax[1].bar(bin_centers2, bin_heights2, width=bin_widths2, alpha=0.8, color='lime', label='Final (alive)')
+            ax[0].legend(loc='upper right', fontsize=13)
+            ax[1].legend(loc='upper right', fontsize=13)
+            
+            # Adjust axis limits and plot turn
+            #ax[0].set_ylim(-1.4, 1.4)
+            ax[0].set_xlim(-0.85, 0.85)
+            #ax[1].set_ylim(-1.4, 1.4)
+            ax[1].set_xlim(-0.85, 0.85)
+            
+            ax[0].text(0.02, 0.91, 'Turn {}'.format(tbt_dict.full_data_turn_ind[0]+1), fontsize=15, transform=ax[0].transAxes)
+            ax[1].text(0.02, 0.91, 'Turn {}'.format(tbt_dict.full_data_turn_ind[-1]+1), fontsize=15, transform=ax[1].transAxes)
+                
+            ax[1].set_xlabel(r'$\zeta$ [m]')
+            ax[1].set_ylabel('Counts')
+            ax[0].set_ylabel('Normalized count')
+            ax[1].set_ylabel('Normalized count')
+        else: 
+            fig, ax = plt.subplots(1, 1, figsize = (8, 6))
+
+            # Plot initial particle distribution only
+            ax.bar(bin_centers, bin_heights, width=bin_widths, alpha=0.8, color='darkturquoise', label='Simulated')
+            ax.plot(zeta_SPS_inj, data_SPS, label='SPS wall current monitor data')
+            ax.plot(zeta_PS_BSM, data_BSM, label='PS BSM data at extraction')
+            ax.legend(loc='upper right', fontsize=13)
+            ax.set_xlim(-0.85, 0.85)
+            ax.text(0.02, 0.91, 'Turn {}'.format(tbt_dict.full_data_turn_ind[0]+1), fontsize=15, transform=ax.transAxes)
+                
+            ax.set_xlabel(r'$\zeta$ [m]')
+            ax.set_ylabel('Counts')
         plt.tight_layout()
         fig.savefig('output_plots/SPS_Pb_longitudinal_profile_vs_data.png', dpi=250)
         plt.show()
@@ -1420,7 +1443,9 @@ class SPS_Flat_Bottom_Tracker:
         return df_Nb
 
 
-    def load_longitudinal_profile_data(self, path : str = longitudinal_data_path):
+    def load_longitudinal_profile_data(self, 
+                                       path : str = longitudinal_data_path,
+                                       gamma = 7.33):
         """
         Load Pb longitudinal profile measured at SPS injection with wall current monitor 
         and at PS extraction with Bunch Shape Monitor (BSM)
@@ -1429,6 +1454,8 @@ class SPS_Flat_Bottom_Tracker:
         --------
         zeta_SPS_inj, data_SPS, zeta_PS_BSM, data_BSM : np.ndarray
             arrays containing longitudinal position and amplitude data of SPS 
+        gamma : float
+            relativistic gamma at injection (7.33 typical value at SPS injection)
         """
         # Load the data
         with open(path, 'rb') as f:
@@ -1438,13 +1465,13 @@ class SPS_Flat_Bottom_Tracker:
             data_BSM = np.load(f)
 
         # Convert time data to position data - use PS extraction energy for Pb
-        #sps = SPS_sequence_maker()
-        #line, _ = sps.load_xsuite_line_and_twiss()
-        # line.particle_ref.gamma0[0]
-        gamma = 7.33 # typical SPS injection
         beta = np.sqrt(1 - 1/gamma**2)
         zeta_SPS_inj = time * constants.c * beta # Convert time units to length
         zeta_PS_BSM = time2 * constants.c * beta # Convert time units to length
+
+        # Adjust to ensure peak is at maximum
+        zeta_SPS_inj -= zeta_SPS_inj[np.argmax(data_SPS)]
+        zeta_PS_BSM -= zeta_SPS_inj[np.argmax(data_SPS)] # adjust both accordingly
 
         # BSM - only include data up to the artificial ringing, i.e. at around zeta = 0.36
         ind = np.where(zeta_PS_BSM < 0.36)
