@@ -1295,9 +1295,12 @@ class SPS_Flat_Bottom_Tracker:
     def compare_longitudinal_phase_space_vs_data(self, 
                                                  tbt_dict=None,
                                                  output_folder=None,
-                                                 also_include_BSM_data=False,
+                                                 also_include_profile_data=True,
                                                  include_final_turn=True,
-                                                 num_bins=40):
+                                                 num_bins=40,
+                                                 final_profile_time_in_s=20.0,
+                                                 plot_closest_to_last_profile_instead_of_last_turn=True,
+                                                 generate_new_zero_turn_binomial_particle_data_without_pretracking=True):
         """
         Compare measured longitidinal profiles at SPS injection vs generated particles 
         
@@ -1307,12 +1310,19 @@ class SPS_Flat_Bottom_Tracker:
             turn-by-turn dictionary with particle data. Default None will load dictionary from json file
         output_folder : str
             path to data. default is 'None', assuming then that data is in the same directory
-        also_include_BSM_data : bool
-            whether to also include BSM data from PS extraction
+        also_include_profile_data : bool
+            whether to also include wall current monitor data from SPS and BSM data from PS extraction
         include_final_turn : bool
             whether to plot particle data from the final turn
         num_bins : int
             number of bins to include in histogram
+        final_profile_time_in_s : float
+            time in seconds where the last profile has been recorded
+        plot_closest_to_last_profile_instead_of_last_turn : bool
+            whether to plot final profile as close to final_profile_time_in_s as possible, otherwise plot last turn
+        generate_new_zero_turn_binomial_particle_data_without_pretracking : bool
+            if pre-tracking has been done for binomial distribution and particles outside of RF bucket have been removed,
+            setting this to True will re-generate a binomial particle distribution with default parameters
         """
         if tbt_dict is None:
             tbt_dict = self.load_full_records_json(output_folder=output_folder)
@@ -1320,11 +1330,32 @@ class SPS_Flat_Bottom_Tracker:
         # Output directory
         os.makedirs('output_plots', exist_ok=True)
         
+        # Find final index corresponding closest to 20 s (where extraction data is)
+        sps = SPS_sequence_maker()
+        line, twiss = sps.load_xsuite_line_and_twiss()
+        turns_per_sec = 1 / twiss.T_rev0
+        full_data_turns_seconds_index = tbt_dict.full_data_turn_ind / turns_per_sec # number of seconds we are running for
+        closest_index = np.array(np.abs(full_data_turns_seconds_index - final_profile_time_in_s)).argmin()
+        
+        # Select final index to plot
+        ind_final = closest_index if plot_closest_to_last_profile_instead_of_last_turn else -1
+        
         # Final dead and alive indices
-        alive_ind_final = tbt_dict.state[:, -1] > 0
+        alive_ind_final = tbt_dict.state[:, ind_final] > 0
+        
+        # If pre-tracking has been done, decide whether to generate new binomial particle distribution before pre-tracking
+        if generate_new_zero_turn_binomial_particle_data_without_pretracking:
+            self.num_part = len(tbt_dict.zeta[:, 0])
+            print('\nGenerating new binomial distribution of {} particles before pre-tracking...'.format(self.num_part))
+            context = xo.ContextCpu()
+            particles = self.generate_particles(line, context, distribution_type='binomial')
+            initial_zeta = particles.zeta
+        else:
+            print('\nUse particle data from first turn...')
+            initial_zeta = tbt_dict.zeta[:, 0]
         
         # Generate histograms in all planes to inspect distribution
-        bin_heights, bin_borders = np.histogram(tbt_dict.zeta[:, 0], bins=num_bins)
+        bin_heights, bin_borders = np.histogram(initial_zeta, bins=num_bins)
         bin_widths = np.diff(bin_borders)
         bin_centers = bin_borders[:-1] + bin_widths / 2
         ind_max = np.argmax(bin_heights)
@@ -1332,7 +1363,7 @@ class SPS_Flat_Bottom_Tracker:
         bin_heights = bin_heights/norm_factor # normalize bin heights
         
         # Only plot final alive particles
-        bin_heights2, bin_borders2 = np.histogram(tbt_dict.zeta[alive_ind_final, -1], bins=num_bins)
+        bin_heights2, bin_borders2 = np.histogram(tbt_dict.zeta[alive_ind_final, ind_final], bins=num_bins)
         bin_widths2 = np.diff(bin_borders2)
         bin_centers2 = bin_borders2[:-1] + bin_widths2 / 2
         bin_heights2 = bin_heights2/np.max(bin_heights2) # normalize bin heights
@@ -1346,9 +1377,12 @@ class SPS_Flat_Bottom_Tracker:
             
             # Plot initial and final particle distribution
             ax[0].bar(bin_centers, bin_heights, width=bin_widths, alpha=0.8, color='darkturquoise', label='Simulated')
-            ax[0].plot(zeta_SPS_inj, data_SPS_inj, label='SPS wall current monitor data')
-            ax[0].plot(zeta_PS_BSM, data_PS_BSM, label='PS BSM data at extraction')
+            if also_include_profile_data:
+                ax[0].plot(zeta_SPS_inj, data_SPS_inj, label='SPS wall current\nmonitor data at inj')
+                ax[0].plot(zeta_PS_BSM, data_PS_BSM, label='PS BSM data \nat extraction')
             ax[1].bar(bin_centers2, bin_heights2, width=bin_widths2, alpha=0.8, color='lime', label='Final (alive)')
+            if also_include_profile_data:
+                ax[1].plot(zeta_SPS_final, data_SPS_final, color='darkgreen', label='SPS wall current\nmonitor data (at 20 s)')
             ax[0].legend(loc='upper right', fontsize=13)
             ax[1].legend(loc='upper right', fontsize=13)
             
@@ -1360,6 +1394,7 @@ class SPS_Flat_Bottom_Tracker:
             
             ax[0].text(0.02, 0.91, 'Turn {}'.format(tbt_dict.full_data_turn_ind[0]+1), fontsize=15, transform=ax[0].transAxes)
             ax[1].text(0.02, 0.91, 'Turn {}'.format(tbt_dict.full_data_turn_ind[-1]+1), fontsize=15, transform=ax[1].transAxes)
+            ax[1].text(0.02, 0.85, 'Time = {:.2f} s'.format(full_data_turns_seconds_index[ind_final]), fontsize=12, transform=ax[1].transAxes)
                 
             ax[1].set_xlabel(r'$\zeta$ [m]')
             ax[1].set_ylabel('Counts')
@@ -1370,8 +1405,9 @@ class SPS_Flat_Bottom_Tracker:
 
             # Plot initial particle distribution only
             ax.bar(bin_centers, bin_heights, width=bin_widths, alpha=0.8, color='darkturquoise', label='Simulated')
-            ax.plot(zeta_SPS_inj, data_SPS_inj, label='SPS wall current monitor data')
-            ax.plot(zeta_PS_BSM, data_PS_BSM, label='PS BSM data at extraction')
+            if also_include_profile_data:
+                ax.plot(zeta_SPS_inj, data_SPS_inj, label='SPS wall current monitor data')
+                ax.plot(zeta_PS_BSM, data_PS_BSM, label='PS BSM data at extraction')
             ax.legend(loc='upper right', fontsize=13)
             ax.set_xlim(-0.85, 0.85)
             ax.text(0.02, 0.91, 'Turn {}'.format(tbt_dict.full_data_turn_ind[0]+1), fontsize=15, transform=ax.transAxes)
