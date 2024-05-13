@@ -29,7 +29,6 @@ class BeamParameters_SPS:
     eyn: float = 0.9e-6
     Qx_int: float = 26.
     Qy_int: float = 26.
-    Nb_O: float = 50e8/2 # half of (John, Bartosik 2021) for oxygen, assuming bunch splitting
 
 @dataclass
 class BeamParameters_SPS_Oxygen:
