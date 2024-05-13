@@ -11,8 +11,8 @@ num_part = 100_000
 # Instantiate beam parameters, custom made to compare with 2016 measurements
 beamParams = fma_ions.BeamParameters_SPS()
 beamParams.Nb = 3.536e8
-beamParams.exn = 0.8
-beamParams.eyn = 1.3
+beamParams.exn = 0.8e-6 # in m
+beamParams.eyn = 1.3e-6 # in m
 Qy_frac = 25 # old fractional tune
 
 # Test default tracking with space charge on CPU context - then test plotting
