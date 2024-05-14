@@ -35,6 +35,16 @@ git clone https://gitlab.cern.ch/acc-models/acc-models-ps.git
 ```
 If this command is executed correctly, two repositories `acc-models-ps` and `acc-models-sps` should appear inside the `data` folder with content. 
 
+#### GPU support
+
+Tracking many particles for millions of turns can take a long time. Although the default context for most functions is with CPU, most of them also contain support for GPUs for faster particle tracking. If you machine supports GPU usage, check out [Xsuite GPU/Multithreading support](https://xsuite.readthedocs.io/en/latest/installation.html#gpu-multithreading-support). The `cupy` should already be installed from `venvs/requirements.txt`, but it can be useful to run the following lines again:
+
+```
+conda install mamba -n base -c conda-forge
+pip install cupy-cuda11x
+mamba install cudatoolkit=11.8.0
+```
+
 ## FMA class
 
 The `FMA` class contains all the methods and imports all helper functions needed to track particle objects and analyze the tune diffusion. The class is instantiated by
