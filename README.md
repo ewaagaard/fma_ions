@@ -12,25 +12,28 @@ This repository contains FMA classes for ion beams in the CERN accelerator compl
 
 ### Quick set-up
 
-When using Python for scientific computing, it is important to be aware of dependencies and compatibility of different packages. This guide gives a good explanation: [Python dependency manager guide](https://aaltoscicomp.github.io/python-for-scicomp/dependencies/#dependency-management). An isolated environment allows installing packages without affecting the rest of your operating system or any other projects. A useful resource to handle virtual environments is [Anaconda](https://www.anaconda.com/) (or its lighter version Miniconda), when once installed has many useful commands of which many can be found in the [Conda cheat sheet](https://docs.conda.io/projects/conda/en/4.6.0/_downloads/52a95608c49671267e40c689e0bc00ca/conda-cheatsheet.pdf) 
+When using Python for scientific computing, it is important to be aware of dependencies and compatibility of different packages. This guide gives a good explanation: [Python dependency manager guide](https://aaltoscicomp.github.io/python-for-scicomp/dependencies/#dependency-management). An isolated environment allows installing packages without affecting the rest of your operating system or any other projects. A useful resource to handle virtual environments is [Anaconda](https://www.anaconda.com/) (or its lighter version Miniconda), when once installed has many useful commands of which many can be found in the [Conda cheat sheet](https://docs.conda.io/projects/conda/en/4.6.0/_downloads/52a95608c49671267e40c689e0bc00ca/conda-cheatsheet.pdf). A guide to manage conda environments is found [here](https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html). 
 
-To directly start calculating different ion performances with the `fma_ions`, create an isolated virtual environment and perform a local install to use the `fma_ions` freely. Once the repository is cloned and from **inside** the `fma_ions` repository, run in the terminal:
+To directly start using `fma_ions`, create an isolated virtual environment with conda and perform a local install to use the `fma_ions`. Run in the terminal to clone the repository, install a virtual environment (with all requirements) and then a local editable install of `fma_ions`:
 
 ```
-conda env create -f environment.yml
-conda activate fma_xsuite_env
+git clone https://github.com/ewaagaard/fma_ions.git
+conda create --name fma_env python=3.11.7
+conda activate fma_env
+python -m pip install -r venvs/requirements.txt
 cd ..
 python -m pip install -e fma_ions
 ```
-The virtual environment can also be installed directly from the `requirements.txt`: `python -m pip install -r requirements.txt`
 
-#### Submodules for PS and SPS sequences
+#### Cloning repos for PS and SPS sequences
 
-The `fma_ions` come with pre-built sequence generator for PS and SPS ions, relying on [git submodules](https://git-scm.com/book/en/v2/Git-Tools-Submodules) from [acc-models](https://gitlab.cern.ch/acc-models). In order to retrieve the latest version of these submodules, run from inside the `fma_ions` repository:
+The `fma_ions` relies on sequence generators for PS and SPS ions, which requires MADX sequence files from [git submodules](https://git-scm.com/book/en/v2/Git-Tools-Submodules) from [acc-models](https://gitlab.cern.ch/acc-models). Clone these repositories as submodules inside the `fma_ions`:
 ```
-git submodule update --init --recursive
+cd fma_ions/data/
+git clone https://gitlab.cern.ch/acc-models/acc-models-sps.git
+git clone https://gitlab.cern.ch/acc-models/acc-models-ps.git
 ```
-If this command is executed correctly, two repositories `acc-models-ps` and `acc-models-sps` should appear inside the `data` folder. 
+If this command is executed correctly, two repositories `acc-models-ps` and `acc-models-sps` should appear inside the `data` folder with content. 
 
 ## FMA class
 
