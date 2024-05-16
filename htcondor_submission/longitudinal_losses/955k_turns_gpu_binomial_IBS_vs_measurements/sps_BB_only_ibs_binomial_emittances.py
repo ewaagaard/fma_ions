@@ -5,14 +5,15 @@ import fma_ions
 import pandas as pd
 output_dir = './'
 
-n_turns = 860_000  # corresponds to 20 s
+n_turns = 955_000  # corresponds to 22 s
 num_part = 100_000
 
 # Instantiate beam parameters, custom made to compare with 2016 measurements
 beamParams = fma_ions.BeamParameters_SPS()
-beamParams.Nb = 3.536e8
-beamParams.exn = 0.8e-6 # in m
-beamParams.eyn = 1.3e-6 # in m
+beamParams.Nb = 3.536e8 * 0.95  # loss factor from first turn observed with wall current monitor
+beamParams.exn = 1.3e-6 # in m
+beamParams.eyn = 0.8e-6 # in m
+beamParams.sigma_z_binomial = 0.215 # what we measure after initial losses out of the RF bucket
 Qy_frac = 25 # old fractional tune
 
 # Test default tracking with space charge on CPU context - then test plotting

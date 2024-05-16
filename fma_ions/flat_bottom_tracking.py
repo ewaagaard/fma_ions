@@ -40,6 +40,11 @@ Nb_data_path = Path(__file__).resolve().parent.joinpath('../data/emittance_data/
 # Load Pb longitudinal profile measured at PS extraction and SPS injection
 longitudinal_data_path = Path(__file__).resolve().parent.joinpath('../data/longitudinal_profile_data/SPS_inj_longitudinal_data.npy').absolute()
 
+# Load bunch length data from fitting, choose whether to load data where right tail is cut or not
+cut_right_tail_from_fitting_for_bunch_length = True
+cut_str = '_cut_right_tail' if cut_right_tail_from_fitting_for_bunch_length else ''
+bunch_length_data_path = Path(__file__).resolve().parent.joinpath('../data/longitudinal_profile_data/SPS_inj_bunch_length_data{}.npy'.format(cut_str)).absolute()
+
 @dataclass
 class SPS_Flat_Bottom_Tracker:
     """
@@ -462,7 +467,8 @@ class SPS_Flat_Bottom_Tracker:
                            tbt : pd.DataFrame, 
                            include_emittance_measurements=False,
                            show_plot=False,
-                           x_unit_in_turns=True):
+                           x_unit_in_turns=True,
+                           plot_bunch_length_measurements=False):
         """
         Generates emittance plots from turn-by-turn (TBT) data class from simulations,
         compare with emittance measurements (default 2023-10-16) if desired.
@@ -476,7 +482,16 @@ class SPS_Flat_Bottom_Tracker:
             whether to run "plt.show()" in addtion
         x_units_in_turns : bool
             if True, x axis units will be turn, otherwise in seconds
+        plot_bunch_length_measurements : bool
+            whether to include bunch length measurements from SPS wall current monitor from 2016 studies by Hannes and Tomas
         """
+
+        # If bunch length measurements present, need to plot in seconds
+        if plot_bunch_length_measurements:
+            x_unit_in_turns = False
+            
+            # Load bunch length data
+            sigma_RMS_Gaussian, sigma_RMS_Binomial, sigma_RMS_Gaussian_in_m, sigma_RMS_Binomial_in_m, ctime = self.load_bunch_length_data()
 
         # Convert measured emittances to turns if this unit is used, otherwise keep seconds
         if x_unit_in_turns:
@@ -540,35 +555,42 @@ class SPS_Flat_Bottom_Tracker:
         f.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
 
         # Sigma_delta and bunch length
-        f2, (ax12, ax22) = plt.subplots(1, 2, figsize = (8,4))
-
+        f2, ax12 = plt.subplots(1, 1, figsize = (8,6))
         ax12.plot(time_units, tbt.sigma_delta * 1e3, alpha=0.7, lw=1.5, label='$\sigma_{\delta}$')
-        ax22.plot(time_units, tbt.bunch_length, alpha=0.7, lw=1.5, label='Bunch intensity')
-
+        f2.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
         ax12.set_ylabel(r'$\sigma_{\delta}$')
         ax12.set_xlabel('Turns' if x_unit_in_turns else 'Time [s]')
+        
+        f3, ax22 = plt.subplots(1, 1, figsize = (8,6))
+        ax22.plot(time_units, tbt.bunch_length, alpha=0.7, lw=1.5, label='Simulated')
+        ax22.plot(ctime, sigma_RMS_Gaussian_in_m, label='Measured RMS Gaussian')
+        ax22.plot(ctime, sigma_RMS_Binomial_in_m, label='Measured RMS Binomial')
         ax22.set_ylabel(r'$\sigma_{z}$ [m]')
-        ax22.set_xlabel('Turns' if x_unit_in_turns else 'Time [s]')    
-        f2.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+        ax22.set_xlabel('Turns' if x_unit_in_turns else 'Time [s]')
+        ax22.legend()
+        f3.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
 
         # Save figures
         os.makedirs(self.output_folder, exist_ok=True)
         f.savefig('{}/epsilon_Nb.png'.format(self.output_folder), dpi=250)
-        f2.savefig('{}/sigma_z_and_delta.png'.format(self.output_folder), dpi=250)
+        f2.savefig('{}/sigma_delta.png'.format(self.output_folder), dpi=250)
+        f3.savefig('{}/sigma.png'.format(self.output_folder), dpi=250)
 
         if show_plot:
             plt.show()
         plt.close()
         
         
-    def load_tbt_data_and_plot(self, include_emittance_measurements=False, x_unit_in_turns=True, show_plot=False, output_folder=None):
+    def load_tbt_data_and_plot(self, include_emittance_measurements=False, x_unit_in_turns=True, show_plot=False, output_folder=None,
+                               plot_bunch_length_measurements=False):
         """Load already tracked data and plot"""
         try:
             tbt = self.load_tbt_data(output_folder=output_folder)
             self.plot_tracking_data(tbt, 
                                     include_emittance_measurements=include_emittance_measurements,
                                     x_unit_in_turns=x_unit_in_turns,
-                                    show_plot=show_plot)
+                                    show_plot=show_plot,
+                                    plot_bunch_length_measurements=plot_bunch_length_measurements)
         except FileNotFoundError:
             raise FileNotFoundError('Tracking data does not exist - set correct path or generate the data!')
         
@@ -1382,7 +1404,7 @@ class SPS_Flat_Bottom_Tracker:
                 ax[0].plot(zeta_PS_BSM, data_PS_BSM, label='PS BSM data \nat extraction')
             ax[1].bar(bin_centers2, bin_heights2, width=bin_widths2, alpha=0.8, color='lime', label='Final (alive)')
             if also_include_profile_data:
-                ax[1].plot(zeta_SPS_final, data_SPS_final, color='darkgreen', label='SPS wall current\nmonitor data (at 20 s)')
+                ax[1].plot(zeta_SPS_final, data_SPS_final, color='darkgreen', label='SPS wall current\nmonitor data (at ~20 s)')
             ax[0].legend(loc='upper right', fontsize=13)
             ax[1].legend(loc='upper right', fontsize=13)
             
@@ -1519,6 +1541,29 @@ class SPS_Flat_Bottom_Tracker:
         data_PS_BSM = data_PS_BSM[ind]
 
         return zeta_SPS_inj, zeta_SPS_final, zeta_PS_BSM, data_SPS_inj, data_SPS_final, data_PS_BSM
+
+
+    def load_bunch_length_data(self, path : str = bunch_length_data_path):
+        """
+        Load fitted bunch lengths (assuming either Gaussian or binomial profiles) from
+        Pb longitudinal profile measured at SPS injection plateau with wall current monitor
+        from 2016 studies of Timas and Hannes
+        
+        Returns:
+        --------
+        sigma_RMS_Gaussian, sigma_RMS_Binomial, sigma_RMS_Gaussian_in_m, sigma_RMS_Binomial_in_m, ctime : np.ndarrays
+            arrays containing fitted RMS beam size for Gaussian and Binomial, first in ns and then in m, and corresponding cycle time
+        """
+        
+        # Save the bunch length data
+        with open(bunch_length_data_path, 'rb') as f:
+            sigma_RMS_Gaussian = np.load(f)
+            sigma_RMS_Binomial = np.load(f)
+            sigma_RMS_Gaussian_in_m = np.load(f)
+            sigma_RMS_Binomial_in_m = np.load(f)
+            ctime = np.load(f)
+        
+        return sigma_RMS_Gaussian, sigma_RMS_Binomial, sigma_RMS_Gaussian_in_m, sigma_RMS_Binomial_in_m, ctime
 
         
     def run_analytical_vs_kinetic_emittance_evolution(self,
