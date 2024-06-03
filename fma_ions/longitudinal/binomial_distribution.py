@@ -84,7 +84,7 @@ def generate_binomial_distribution_from_PS_extr(_context=None,
                                 nemitt_x=nemitt_x, nemitt_y=nemitt_y,
                                 weight=total_intensity_particles/num_particles, line=line)
 
-    print(f'Generated binomially longitudinal particles with m = {m}')
+    print('Generated binomially longitudinal particles with m = {} and sigma_z = {:.3f} m'.format(m, np.std(particles.zeta)))
 
     if return_separatrix_coord:
         return particles, zeta_separatrix, delta_separatrix

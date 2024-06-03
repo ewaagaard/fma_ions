@@ -39,6 +39,7 @@ Nb_data_path = Path(__file__).resolve().parent.joinpath('../data/emittance_data/
 
 # Load Pb longitudinal profile measured at PS extraction and SPS injection
 longitudinal_data_path = Path(__file__).resolve().parent.joinpath('../data/longitudinal_profile_data/SPS_inj_longitudinal_data.npy').absolute()
+longitudinal_data_path_after_RF_spill = Path(__file__).resolve().parent.joinpath('../data/longitudinal_profile_data/SPS_inj_longitudinal_data_AFTER_RF_SPILL.npy').absolute()
 
 # Load bunch length data from fitting, choose whether to load data where right tail is cut or not
 cut_right_tail_from_fitting_for_bunch_length = True
@@ -114,6 +115,7 @@ class SPS_Flat_Bottom_Tracker:
             print('\nParabolic distribution generated.')
         elif distribution_type=='binomial':
             # Also calculate SPS separatrix for plotting
+            print('\nCreating binomial with sigma_z = {:.3f} m'.format(beamParams.sigma_z_binomial))
             particles, self._zeta_separatrix, self._delta_separatrix = generate_binomial_distribution_from_PS_extr(num_particles=self.num_part,
                                                                     nemitt_x=beamParams.exn, nemitt_y=beamParams.eyn,
                                                                     sigma_z=beamParams.sigma_z_binomial, total_intensity_particles=beamParams.Nb,
@@ -1360,7 +1362,8 @@ class SPS_Flat_Bottom_Tracker:
                                                  num_bins=40,
                                                  final_profile_time_in_s=20.0,
                                                  plot_closest_to_last_profile_instead_of_last_turn=True,
-                                                 generate_new_zero_turn_binomial_particle_data_without_pretracking=True):
+                                                 generate_new_zero_turn_binomial_particle_data_without_pretracking=True,
+                                                 also_show_SPS_inj_profile_after_RF_spill=False):
         """
         Compare measured longitidinal profiles at SPS injection vs generated particles 
         
@@ -1383,6 +1386,8 @@ class SPS_Flat_Bottom_Tracker:
         generate_new_zero_turn_binomial_particle_data_without_pretracking : bool
             if pre-tracking has been done for binomial distribution and particles outside of RF bucket have been removed,
             setting this to True will re-generate a binomial particle distribution with default parameters
+        also_show_SPS_inj_profile_after_RF_spill : bool
+            if True, show plot after a few milliseconds when SPS RF bucket spill has finished
         """
         if tbt_dict is None:
             tbt_dict = self.load_full_records_json(output_folder=output_folder)
@@ -1404,6 +1409,7 @@ class SPS_Flat_Bottom_Tracker:
         alive_ind_final = tbt_dict.state[:, ind_final] > 0
         
         # If pre-tracking has been done, decide whether to generate new binomial particle distribution before pre-tracking
+        # SHOULD BE FALSE if interested in after the RF spill
         if generate_new_zero_turn_binomial_particle_data_without_pretracking:
             self.num_part = len(tbt_dict.zeta[:, 0])
             print('\nGenerating new binomial distribution of {} particles before pre-tracking...'.format(self.num_part))
@@ -1430,6 +1436,8 @@ class SPS_Flat_Bottom_Tracker:
         
         # Load data
         zeta_SPS_inj, zeta_SPS_final, zeta_PS_BSM, data_SPS_inj, data_SPS_final, data_PS_BSM = self.load_longitudinal_profile_data()
+        if also_show_SPS_inj_profile_after_RF_spill:
+            zeta_SPS_inj_after_RF_spill, data_SPS_inj_after_RF_spill = self.load_longitudinal_profile_after_SPS_injection_RF_spill()
 
         # Plot longitudinal phase space, initial and final state
         if include_final_turn:
@@ -1439,6 +1447,8 @@ class SPS_Flat_Bottom_Tracker:
             ax[0].bar(bin_centers, bin_heights, width=bin_widths, alpha=0.8, color='darkturquoise', label='Simulated')
             if also_include_profile_data:
                 ax[0].plot(zeta_SPS_inj, data_SPS_inj, label='SPS wall current\nmonitor data at inj')
+                if also_show_SPS_inj_profile_after_RF_spill:
+                    ax[0].plot(zeta_SPS_inj_after_RF_spill, data_SPS_inj_after_RF_spill, label='SPS wall current\nmonitor data after RF spill')    
                 ax[0].plot(zeta_PS_BSM, data_PS_BSM, label='PS BSM data \nat extraction')
             ax[1].bar(bin_centers2, bin_heights2, width=bin_widths2, alpha=0.8, color='lime', label='Final (alive)')
             if also_include_profile_data:
@@ -1467,6 +1477,8 @@ class SPS_Flat_Bottom_Tracker:
             ax.bar(bin_centers, bin_heights, width=bin_widths, alpha=0.8, color='darkturquoise', label='Simulated')
             if also_include_profile_data:
                 ax.plot(zeta_SPS_inj, data_SPS_inj, label='SPS wall current monitor data')
+                if also_show_SPS_inj_profile_after_RF_spill:
+                    ax.plot(zeta_SPS_inj_after_RF_spill, data_SPS_inj_after_RF_spill, label='SPS wall current\nmonitor data after RF spill')    
                 ax.plot(zeta_PS_BSM, data_PS_BSM, label='PS BSM data at extraction')
             ax.legend(loc='upper right', fontsize=13)
             ax.set_xlim(-0.85, 0.85)
@@ -1475,7 +1487,10 @@ class SPS_Flat_Bottom_Tracker:
             ax.set_xlabel(r'$\zeta$ [m]')
             ax.set_ylabel('Counts')
         plt.tight_layout()
-        fig.savefig('output_plots/SPS_Pb_longitudinal_profile_vs_data.png', dpi=250)
+        if also_show_SPS_inj_profile_after_RF_spill:
+            fig.savefig('output_plots/SPS_Pb_longitudinal_profile_vs_data_after_RF_spill.png', dpi=250)
+        else:
+            fig.savefig('output_plots/SPS_Pb_longitudinal_profile_vs_data.png', dpi=250)
         plt.show()
 
 
@@ -1592,7 +1607,7 @@ class SPS_Flat_Bottom_Tracker:
         Returns:
         --------
         zeta_SPS_inj, data_SPS, zeta_PS_BSM, data_BSM : np.ndarray
-            arrays containing longitudinal position and amplitude data of SPS 
+            arrays containing longitudinal position and amplitude data of SPS and PS
         gamma : float
             relativistic gamma at injection (7.33 typical value at SPS injection)
         """
@@ -1622,6 +1637,36 @@ class SPS_Flat_Bottom_Tracker:
         data_PS_BSM = data_PS_BSM[ind]
 
         return zeta_SPS_inj, zeta_SPS_final, zeta_PS_BSM, data_SPS_inj, data_SPS_final, data_PS_BSM
+
+
+    def load_longitudinal_profile_after_SPS_injection_RF_spill(self, 
+                                                               path : str = longitudinal_data_path_after_RF_spill, 
+                                                               gamma = 7.33):
+        """
+        Load Pb longitudinal profile measured at SPS injection with wall current monitor 
+        but AFTER initial spill out of RF bucket
+        
+        Returns:
+        --------
+        zeta_SPS_inj, data_SPS
+            arrays containing longitudinal position and amplitude data of SPS 
+        gamma : float
+            relativistic gamma at injection (7.33 typical value at SPS injection)
+        """
+        # Load the data
+        with open(path, 'rb') as f:
+            time_SPS_inj_after_RF_spill = np.load(f)
+            data_SPS_inj_after_RF_spill = np.load(f)
+
+        # Convert time data to position data - use PS extraction energy for Pb
+        beta = np.sqrt(1 - 1/gamma**2)
+        zeta_SPS_inj_after_RF_spill = time_SPS_inj_after_RF_spill * constants.c * beta # Convert time units to length
+
+        # Adjust to ensure peak is at maximum
+        zeta_SPS_inj_after_RF_spill -= zeta_SPS_inj_after_RF_spill[np.argmax(data_SPS_inj_after_RF_spill)]
+
+        return zeta_SPS_inj_after_RF_spill, data_SPS_inj_after_RF_spill
+
 
 
     def load_bunch_length_data(self, path : str = bunch_length_data_path):
