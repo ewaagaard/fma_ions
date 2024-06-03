@@ -153,6 +153,7 @@ class Full_Records:
     state: np.ndarray
     which_context : str
     full_data_turn_ind: np.ndarray
+    includes_WS_profile_data : bool = False
 
     def update_at_turn(self, turn: int, parts: xp.Particles, twiss: xt.TwissTable):
         """Automatically update the records at given turn from the xpart.Particles."""
@@ -239,6 +240,22 @@ class Full_Records:
             which_context=self.which_context
         )
 
+    def append_WS_profile_monitor_data(self,
+                                       monitorH_x_grid, 
+                                       monitorH_x_intensity,
+                                       monitorV_y_grid, 
+                                       monitorV_y_intensity):
+        """
+        If tracking has been done with installed beam profile monitors, append data
+        and save to json file
+        """
+        self.monitorH_x_grid = monitorH_x_grid.tolist()
+        self.monitorH_x_intensity = monitorH_x_intensity.tolist()
+        self.monitorV_y_grid = monitorV_y_grid.tolist()
+        self.monitorV_y_intensity = monitorV_y_intensity.tolist()
+        self.includes_WS_profile_data = True
+
+
     def to_json(self, file_path):
         """
         Save the data to a JSON file.
@@ -259,6 +276,14 @@ class Full_Records:
             'which_context': self.which_context,
             'full_data_turn_ind': self.full_data_turn_ind.tolist()
         }
+        if self.includes_WS_profile_data:
+            print('\nAppending WS profile data to dictionary\n')
+            data['monitorH_x_grid'] = self.monitorH_x_grid
+            data['monitorH_x_intensity'] = self.monitorH_x_intensity
+            data['monitorV_y_grid'] = self.monitorV_y_grid
+            data['monitorV_y_intensity'] = self.monitorV_y_intensity
+            del data['x'], data['y'], data['px'], data['py'] # delete as we have full transverse picture anyway
+
         with open(file_path, 'w') as f:
             json.dump(data, f)
 
@@ -287,3 +312,14 @@ class Full_Records:
             which_context=data['which_context'],
             full_data_turn_ind=np.array(data['full_data_turn_ind'])
         )
+    
+
+    @classmethod
+    def dict_from_json(cls, file_path):
+        """
+        Load the data from a JSON file and construct a dictionary from data
+        """
+        with open(file_path, 'r') as f:
+            tbt_dict = json.load(f)
+
+        return tbt_dict

@@ -170,7 +170,8 @@ class SPS_Flat_Bottom_Tracker:
                   num_spacecharge_interactions=1080,
                   voltage=3.0e6,
                   scale_factor_Qs=None,
-                  only_one_zeta=False
+                  only_one_zeta=False,
+                  install_beam_monitors_at_WS_locations=False
                   ):
         """
         Run full tracking at SPS flat bottom
@@ -241,7 +242,9 @@ class SPS_Flat_Bottom_Tracker:
             if not None, factor by which we scale Qs (V_RF, h) and divide sigma_z and Nb for similar space charge effects
         only_one_zeta : bool
             for 'linear_in_zeta' distribution, whether to select only one particle in zeta (penultimate in amplitude) or not
-            
+        install_beam_monitors_at_WS_locations : bool
+            whether to install beam profile monitors at H and V Wire Scanner locations in SPS, that will record beam profiles
+
         Returns:
         --------
         None
@@ -299,12 +302,39 @@ class SPS_Flat_Bottom_Tracker:
             print('Updated beam parameters with new Qs:')
             print(beamParams)
             
+        ################# Longitudinal limit rect and Beam Profile Monitors (at Wire Scanner locations) #################
         # Add longitudinal limit rectangle - to kill particles that fall out of bucket
         bucket_length = line.get_length()/harmonic_nb
         print('\nBucket length is {:.4f} m'.format(bucket_length))
         line.unfreeze() # if you had already build the tracker
         line.append_element(element=xt.LongitudinalLimitRect(min_zeta=-bucket_length/2, max_zeta=bucket_length/2), name='long_limit')
+        
+        # Create horizontal beam monitor
+        if install_beam_monitors_at_WS_locations:
+            nbins = 200
+            nturns_profile_accumulation = 100
+            monitorH = xt.BeamProfileMonitor(
+                start_at_turn=nturns_profile_accumulation/2, stop_at_turn=self.num_turns,
+                frev=1,
+                sampling_frequency=1/nturns_profile_accumulation,
+                n=nbins,
+                x_range=0.05,
+                y_range=0.05)
+            line.insert_element(index='bwsrc.51637', element=monitorH, name='monitorH')
+
+            # Create vertical beam monitor
+            monitorV = xt.BeamProfileMonitor(
+                start_at_turn=nturns_profile_accumulation/2, stop_at_turn=self.num_turns,
+                frev=1,
+                sampling_frequency=1/nturns_profile_accumulation,
+                n=nbins,
+                x_range=0.05,
+                y_range=0.05)
+            line.insert_element(index='bwsrc.41677', element=monitorV, name='monitorV')
+        
         line.build_tracker(_context=context)
+        #######################################################################################################################
+
 
         # Generate particles object to track    
         particles = self.generate_particles(line=line, context=context, distribution_type=distribution_type,
@@ -448,6 +478,11 @@ class SPS_Flat_Bottom_Tracker:
                 seconds = self.num_turns / turns_per_sec # number of seconds we are running for
                 tbt_dict['Seconds'] = np.linspace(0.0, seconds, num=int(self.num_turns))
                 tbt = pd.DataFrame(tbt_dict)
+
+            else:
+                # If WS beam profile monitor data has been active
+                if install_beam_monitors_at_WS_locations:
+                   tbt.append_WS_profile_monitor_data(monitorH.x_grid, monitorH.x_intensity, monitorV.y_grid, monitorV.y_intensity)
             
             return tbt
 
@@ -764,14 +799,17 @@ class SPS_Flat_Bottom_Tracker:
             f.savefig('main_plots/result_multiple_trackings.png', dpi=250)
             plt.show()
 
-    def load_full_records_json(self, output_folder=None) -> Full_Records:
+    def load_full_records_json(self, output_folder=None, return_dictionary=False):
         """
         Loads json file with full particle data from tracking
         """
         folder_path = '{}/'.format(output_folder) if output_folder is not None else ''
 
-        # Read the json file
-        tbt = Full_Records.from_json("{}tbt.json".format(folder_path))
+        # Read the json file, return either instanced class or dictionary (if WS profile data is there)
+        if return_dictionary:
+            tbt = Full_Records.dict_from_json("{}tbt.json".format(folder_path))
+        else:
+            tbt = Full_Records.from_json("{}tbt.json".format(folder_path))
 
         return tbt
 
@@ -1438,6 +1476,49 @@ class SPS_Flat_Bottom_Tracker:
             ax.set_ylabel('Counts')
         plt.tight_layout()
         fig.savefig('output_plots/SPS_Pb_longitudinal_profile_vs_data.png', dpi=250)
+        plt.show()
+
+
+    def plot_WS_profile_monitor_data(self, 
+                                     output_folder=None,
+                                     index_to_plot=None
+                                     ):
+        """
+        Use WS beam profile monitor data from tracking to plot transverse beam profiles
+        
+        Parameters:
+        -----------
+        output_folder : str
+            path to data. default is 'None', assuming then that data is in the same directory
+        index_to_plot : np.ndarray
+            which profiles in time to plot. If None, then automatically plot first and last
+        """
+        tbt_dict = self.load_full_records_json(output_folder=output_folder, return_dictionary=True)
+
+        # If index not provided, select first and last
+        if index_to_plot is None:
+            index_to_plot = [0, -1]
+
+
+        # Plot profile of particles
+        fig, ax = plt.subplots(1, 1, figsize = (8, 6))
+        for i in index_to_plot:
+            ax.plot(tbt_dict['monitorH_x_grid'], tbt_dict['monitorH_x_intensity'][i], 
+                    label='Aggreation index {}'.format(i))
+        ax.set_xlabel('x [m]')
+        ax.set_ylabel('Counts')
+        ax.legend()
+        plt.tight_layout()
+
+        # Plot profile of particles
+        fig2, ax2 = plt.subplots(1, 1, figsize = (8, 6))
+        for i in index_to_plot:
+            ax2.plot(tbt_dict['monitorV_y_grid'], tbt_dict['monitorV_y_intensity'][i], 
+                     label='Aggreation index {}'.format(i))
+        ax2.set_ylabel('Counts')
+        ax2.set_xlabel('y [m]')
+        ax2.legend()
+        plt.tight_layout()
         plt.show()
 
 
