@@ -25,6 +25,7 @@ class BeamParameters_SPS:
     Nb:  float = 2.46e8 # measured 2.46e8 ions per bunch on 2023-10-16
     sigma_z: float = 0.225 # in m, is the old value (close to Isabelle's and  Hannes'), but then bucket is too full if Gaussian longitudinal. 0.19 also used
     sigma_z_binomial: float = 0.285 # RMS bunch length of binomial, default value to match data
+    m : float = 5.3 # binomial parameter to determine tail of parabolic distribution
     exn: float = 1.1e-6
     eyn: float = 0.9e-6
     Qx_int: float = 26.
@@ -36,6 +37,7 @@ class BeamParameters_SPS_Oxygen:
     Nb:  float = 25e8 # half of (John, Bartosik 2021) for oxygen, assuming bunch splitting
     sigma_z: float = 0.225 # in m, is the old value (close to Isabelle's and  Hannes'), but then bucket is too full if Gaussian longitudinal. 0.19 also used
     sigma_z_binomial: float = 0.285 # RMS bunch length of binomial, default value to match data
+    m : float = 5.3 # binomial parameter to determine tail of parabolic distribution
     exn: float = 1.3e-6
     eyn: float = 0.9e-6
     Qx_int: float = 26.

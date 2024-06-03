@@ -66,7 +66,6 @@ class SPS_Flat_Bottom_Tracker:
                            distribution_type='gaussian', 
                            beamParams=None,
                            engine=None, 
-                           m=5.3, 
                            num_particles_linear_in_zeta=5, 
                            xy_norm_default=0.1,
                            scale_factor_Qs=None,
@@ -78,8 +77,6 @@ class SPS_Flat_Bottom_Tracker:
         -----------
         distribution_type : str
             'gaussian', 'parabolic', 'binomial' or 'linear_in_zeta'
-        m : float
-            binomial parameter to determine tail of parabolic distribution
         num_particles_linear_in_zeta : int
             number of equally spaced macroparticles linear in zeta
         xy_norm_default : float
@@ -119,7 +116,7 @@ class SPS_Flat_Bottom_Tracker:
             particles, self._zeta_separatrix, self._delta_separatrix = generate_binomial_distribution_from_PS_extr(num_particles=self.num_part,
                                                                     nemitt_x=beamParams.exn, nemitt_y=beamParams.eyn,
                                                                     sigma_z=beamParams.sigma_z_binomial, total_intensity_particles=beamParams.Nb,
-                                                                    line=line, m=m, return_separatrix_coord=True)
+                                                                    line=line, m=beamParams.m, return_separatrix_coord=True)
             print('\nBinomial distribution generated.')
         elif distribution_type=='linear_in_zeta':
             
