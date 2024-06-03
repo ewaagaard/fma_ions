@@ -14,11 +14,11 @@ context = xo.ContextCpu()
 # Update bunch length
 beamParams = fma_ions.BeamParameters_SPS()
 beamParams.sigma_z_binomial = 0.215 # more accurate starting value after RF spill
-m=2.8 # meausred for binomial after SPS injection
+beamParams.m = 2.8 # meausred for binomial after SPS injection
 
 # Test default tracking with space charge on GPU context - then test plotting
 sps = fma_ions.SPS_Flat_Bottom_Tracker(num_part=500_000, num_turns=100)
-particles = sps.generate_particles(line, context, distribution_type='binomial', beamParams=beamParams, m=m)
+particles = sps.generate_particles(line, context, distribution_type='binomial', beamParams=beamParams)
 
 # initialize first particle data
 tbt = fma_ions.Full_Records.init_zeroes(len(particles.x[particles.state > 0]), 1,
