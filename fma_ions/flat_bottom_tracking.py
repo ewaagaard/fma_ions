@@ -1360,7 +1360,8 @@ class SPS_Flat_Bottom_Tracker:
                                                  final_profile_time_in_s=20.0,
                                                  plot_closest_to_last_profile_instead_of_last_turn=True,
                                                  generate_new_zero_turn_binomial_particle_data_without_pretracking=True,
-                                                 also_show_SPS_inj_profile_after_RF_spill=False):
+                                                 also_show_SPS_inj_profile_after_RF_spill=False,
+                                                 read_format_is_dict=True):
         """
         Compare measured longitidinal profiles at SPS injection vs generated particles 
         
@@ -1385,9 +1386,21 @@ class SPS_Flat_Bottom_Tracker:
             setting this to True will re-generate a binomial particle distribution with default parameters
         also_show_SPS_inj_profile_after_RF_spill : bool
             if True, show plot after a few milliseconds when SPS RF bucket spill has finished
+        read_format_is_dict : bool
+            whether to load json file as Full_Records class or as dictionary
         """
         if tbt_dict is None:
-            tbt_dict = self.load_full_records_json(output_folder=output_folder)
+            tbt_dict = self.load_full_records_json(output_folder=output_folder, return_dictionary=read_format_is_dict)
+
+            # Read data in correct way
+            if read_format_is_dict:
+                full_data_turn_ind = np.array(tbt_dict['full_data_turn_ind'])
+                state = np.array(tbt_dict['state'])
+                zeta = np.array(tbt_dict['zeta'])
+            else:
+                full_data_turn_ind = tbt_dict.full_data_turn_ind
+                state = tbt_dict.state
+                zeta = tbt_dict.zeta
 
         # Output directory
         os.makedirs('output_plots', exist_ok=True)
@@ -1396,26 +1409,26 @@ class SPS_Flat_Bottom_Tracker:
         sps = SPS_sequence_maker()
         line, twiss = sps.load_xsuite_line_and_twiss()
         turns_per_sec = 1 / twiss.T_rev0
-        full_data_turns_seconds_index = tbt_dict.full_data_turn_ind / turns_per_sec # number of seconds we are running for
+        full_data_turns_seconds_index = full_data_turn_ind / turns_per_sec # number of seconds we are running for
         closest_index = np.array(np.abs(full_data_turns_seconds_index - final_profile_time_in_s)).argmin()
         
         # Select final index to plot
         ind_final = closest_index if plot_closest_to_last_profile_instead_of_last_turn else -1
         
         # Final dead and alive indices
-        alive_ind_final = tbt_dict.state[:, ind_final] > 0
+        alive_ind_final = state[:, ind_final] > 0
         
         # If pre-tracking has been done, decide whether to generate new binomial particle distribution before pre-tracking
         # SHOULD BE FALSE if interested in after the RF spill
         if generate_new_zero_turn_binomial_particle_data_without_pretracking:
-            self.num_part = len(tbt_dict.zeta[:, 0])
+            self.num_part = len(zeta[:, 0])
             print('\nGenerating new binomial distribution of {} particles before pre-tracking...'.format(self.num_part))
             context = xo.ContextCpu()
             particles = self.generate_particles(line, context, distribution_type='binomial')
-            initial_zeta = particles.zeta
+            initial_zeta = zeta
         else:
             print('\nUse particle data from first turn...')
-            initial_zeta = tbt_dict.zeta[:, 0]
+            initial_zeta = zeta[:, 0]
         
         # Generate histograms in all planes to inspect distribution
         bin_heights, bin_borders = np.histogram(initial_zeta, bins=num_bins)
@@ -1426,7 +1439,7 @@ class SPS_Flat_Bottom_Tracker:
         bin_heights = bin_heights/norm_factor # normalize bin heights
         
         # Only plot final alive particles
-        bin_heights2, bin_borders2 = np.histogram(tbt_dict.zeta[alive_ind_final, ind_final], bins=num_bins)
+        bin_heights2, bin_borders2 = np.histogram(zeta[alive_ind_final, ind_final], bins=num_bins)
         bin_widths2 = np.diff(bin_borders2)
         bin_centers2 = bin_borders2[:-1] + bin_widths2 / 2
         bin_heights2 = bin_heights2/np.max(bin_heights2) # normalize bin heights
@@ -1459,8 +1472,8 @@ class SPS_Flat_Bottom_Tracker:
             #ax[1].set_ylim(-1.4, 1.4)
             ax[1].set_xlim(-0.85, 0.85)
             
-            ax[0].text(0.02, 0.91, 'Turn {}'.format(tbt_dict.full_data_turn_ind[0]+1), fontsize=15, transform=ax[0].transAxes)
-            ax[1].text(0.02, 0.91, 'Turn {}'.format(tbt_dict.full_data_turn_ind[-1]+1), fontsize=15, transform=ax[1].transAxes)
+            ax[0].text(0.02, 0.91, 'Turn {}'.format(full_data_turn_ind[0]+1), fontsize=15, transform=ax[0].transAxes)
+            ax[1].text(0.02, 0.91, 'Turn {}'.format(full_data_turn_ind[-1]+1), fontsize=15, transform=ax[1].transAxes)
             ax[1].text(0.02, 0.85, 'Time = {:.2f} s'.format(full_data_turns_seconds_index[ind_final]), fontsize=12, transform=ax[1].transAxes)
                 
             ax[1].set_xlabel(r'$\zeta$ [m]')
@@ -1479,7 +1492,7 @@ class SPS_Flat_Bottom_Tracker:
                 ax.plot(zeta_PS_BSM, data_PS_BSM, label='PS BSM data at extraction')
             ax.legend(loc='upper right', fontsize=13)
             ax.set_xlim(-0.85, 0.85)
-            ax.text(0.02, 0.91, 'Turn {}'.format(tbt_dict.full_data_turn_ind[0]+1), fontsize=15, transform=ax.transAxes)
+            ax.text(0.02, 0.91, 'Turn {}'.format(full_data_turn_ind[0]+1), fontsize=15, transform=ax.transAxes)
                 
             ax.set_xlabel(r'$\zeta$ [m]')
             ax.set_ylabel('Counts')
