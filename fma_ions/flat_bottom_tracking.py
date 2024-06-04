@@ -535,6 +535,14 @@ class SPS_Flat_Bottom_Tracker:
         else:
             if 'Seconds' in tbt.columns:
                 time_units = tbt['Seconds']
+            elif 'full_data_turn_ind' in tbt.columns:
+                sps = SPS_sequence_maker()
+                _, twiss = sps.load_xsuite_line_and_twiss()
+                turns_per_sec = 1 / twiss.T_rev0
+                tbt['Seconds'] = tbt['full_data_turn_ind'] /  turns_per_sec
+                time_units = tbt['Seconds'].copy()
+                print('Set time units to seconds')
+                time_units
             else:
                 sps = SPS_sequence_maker()
                 _, twiss = sps.load_xsuite_line_and_twiss()
@@ -597,8 +605,9 @@ class SPS_Flat_Bottom_Tracker:
         
         f3, ax22 = plt.subplots(1, 1, figsize = (8,6))
         ax22.plot(time_units, tbt.bunch_length, alpha=0.7, lw=1.5, label='Simulated')
-        ax22.plot(ctime, sigma_RMS_Gaussian_in_m, label='Measured RMS Gaussian')
-        ax22.plot(ctime, sigma_RMS_Binomial_in_m, label='Measured RMS Binomial')
+        if plot_bunch_length_measurements:
+            ax22.plot(ctime, sigma_RMS_Gaussian_in_m, label='Measured RMS Gaussian')
+            ax22.plot(ctime, sigma_RMS_Binomial_in_m, label='Measured RMS Binomial')
         ax22.set_ylabel(r'$\sigma_{z}$ [m]')
         ax22.set_xlabel('Turns' if x_unit_in_turns else 'Time [s]')
         ax22.legend()
@@ -1524,12 +1533,11 @@ class SPS_Flat_Bottom_Tracker:
         if index_to_plot is None:
             index_to_plot = [0, -1]
 
-
         # Plot profile of particles
         fig, ax = plt.subplots(1, 1, figsize = (8, 6))
         for i in index_to_plot:
             ax.plot(tbt_dict['monitorH_x_grid'], tbt_dict['monitorH_x_intensity'][i], 
-                    label='Aggreation index {}'.format(i))
+                    label='Turn {}'.format(tbt_dict['full_data_turn_ind'][i]))
         ax.set_xlabel('x [m]')
         ax.set_ylabel('Counts')
         ax.legend()
@@ -1539,7 +1547,7 @@ class SPS_Flat_Bottom_Tracker:
         fig2, ax2 = plt.subplots(1, 1, figsize = (8, 6))
         for i in index_to_plot:
             ax2.plot(tbt_dict['monitorV_y_grid'], tbt_dict['monitorV_y_intensity'][i], 
-                     label='Aggreation index {}'.format(i))
+                     label='Turn {}'.format(tbt_dict['full_data_turn_ind'][i]))
         ax2.set_ylabel('Counts')
         ax2.set_xlabel('y [m]')
         ax2.legend()

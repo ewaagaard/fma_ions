@@ -45,8 +45,8 @@ class Records:
     Data class to store numpy.ndarray of results during tracking 
     - here NORMALIZED emittance is used
     """
-    nepsilon_x: np.ndarray
-    nepsilon_y: np.ndarray
+    exn: np.ndarray
+    eyn: np.ndarray
     sigma_delta: np.ndarray
     bunch_length: np.ndarray
     Nb: np.ndarray
@@ -55,8 +55,8 @@ class Records:
         """Automatically update the records at given turn from the xpart.Particles."""
 
         # Store the particle ensemble quantities
-        self.nepsilon_x[turn] = _geom_epsx(parts, twiss) * parts.beta0[0] * parts.gamma0[0]
-        self.nepsilon_y[turn] = _geom_epsy(parts, twiss) * parts.beta0[0] * parts.gamma0[0]
+        self.exn[turn] = _geom_epsx(parts, twiss) * parts.beta0[0] * parts.gamma0[0]
+        self.eyn[turn] = _geom_epsy(parts, twiss) * parts.beta0[0] * parts.gamma0[0]
         self.Nb[turn] = parts.weight[parts.state > 0][0]*len(parts.x[parts.state > 0])
         self.sigma_delta[turn] = _sigma_delta(parts)
         self.bunch_length[turn] = _bunch_length(parts)
@@ -65,8 +65,8 @@ class Records:
     def init_zeroes(cls, n_turns: int) -> Self:  # noqa: F821
         """Initialize the dataclass with arrays of zeroes."""
         return cls(
-            nepsilon_x=np.zeros(n_turns, dtype=float),
-            nepsilon_y=np.zeros(n_turns, dtype=float),
+            exn=np.zeros(n_turns, dtype=float),
+            eyn=np.zeros(n_turns, dtype=float),
             Nb=np.zeros(n_turns, dtype=float),
             sigma_delta=np.zeros(n_turns, dtype=float),
             bunch_length=np.zeros(n_turns, dtype=float)
@@ -74,8 +74,8 @@ class Records:
     
     def to_dict(self):
         return {
-            'exn': self.nepsilon_x,
-            'eyn': self.nepsilon_y,
+            'exn': self.exn,
+            'eyn': self.eyn,
             'sigma_delta': self.sigma_delta,
             'bunch_length': self.bunch_length,
             'Nb' : self.Nb
@@ -145,8 +145,8 @@ class Full_Records:
     py: np.ndarray
     delta: np.ndarray
     zeta: np.ndarray
-    nepsilon_x: np.ndarray
-    nepsilon_y: np.ndarray
+    exn: np.ndarray
+    eyn: np.ndarray
     sigma_delta: np.ndarray
     bunch_length: np.ndarray
     Nb: np.ndarray
@@ -159,8 +159,8 @@ class Full_Records:
         """Automatically update the records at given turn from the xpart.Particles."""
 
         # Store the particle ensemble quantities
-        self.nepsilon_x[turn] = _geom_epsx(parts, twiss) * parts.beta0[0] * parts.gamma0[0]
-        self.nepsilon_y[turn] = _geom_epsy(parts, twiss) * parts.beta0[0] * parts.gamma0[0]
+        self.exn[turn] = _geom_epsx(parts, twiss) * parts.beta0[0] * parts.gamma0[0]
+        self.eyn[turn] = _geom_epsy(parts, twiss) * parts.beta0[0] * parts.gamma0[0]
         self.Nb[turn] = parts.weight[0]*len(parts.x[parts.state > 0])
         self.sigma_delta[turn] = _sigma_delta(parts)
         self.bunch_length[turn] = _bunch_length(parts)
@@ -195,8 +195,8 @@ class Full_Records:
             delta=np.zeros([num_part, n_turns], dtype=float),
             zeta=np.zeros([num_part, n_turns], dtype=float),
             state=np.zeros([num_part, n_turns], dtype=float),
-            nepsilon_x=np.zeros(n_turns, dtype=float),
-            nepsilon_y=np.zeros(n_turns, dtype=float),
+            exn=np.zeros(n_turns, dtype=float),
+            eyn=np.zeros(n_turns, dtype=float),
             Nb=np.zeros(n_turns, dtype=float),
             sigma_delta=np.zeros(n_turns, dtype=float),
             bunch_length=np.zeros(n_turns, dtype=float),
@@ -206,8 +206,8 @@ class Full_Records:
     
     def to_dict(self):
         return {
-            'exn': self.nepsilon_x,
-            'eyn': self.nepsilon_y,
+            'exn': self.exn,
+            'eyn': self.eyn,
             'sigma_delta': self.sigma_delta,
             'bunch_length': self.bunch_length,
             'Nb' : self.Nb,
@@ -231,8 +231,8 @@ class Full_Records:
             py=np.hstack((self.py[:, :1], self.py[:, -1:])),
             delta=np.hstack((self.delta[:, :1], self.delta[:, -1:])),
             zeta=np.hstack((self.zeta[:, :1], self.zeta[:, -1:])),
-            nepsilon_x=np.hstack((self.nepsilon_x[:1], self.nepsilon_x[-1:])),
-            nepsilon_y=np.hstack((self.nepsilon_y[:1], self.nepsilon_y[-1:])),
+            exn=np.hstack((self.exn[:1], self.exn[-1:])),
+            eyn=np.hstack((self.eyn[:1], self.eyn[-1:])),
             sigma_delta=np.hstack((self.sigma_delta[:1], self.sigma_delta[-1:])),
             bunch_length=np.hstack((self.bunch_length[:1], self.bunch_length[-1:])),
             Nb=np.hstack((self.Nb[:1], self.Nb[-1:])),
@@ -267,8 +267,8 @@ class Full_Records:
             'py': self.py.tolist(),
             'delta': self.delta.tolist(),
             'zeta': self.zeta.tolist(),
-            'nepsilon_x': self.nepsilon_x.tolist(),
-            'nepsilon_y': self.nepsilon_y.tolist(),
+            'exn': self.exn.tolist(),
+            'eyn': self.eyn.tolist(),
             'sigma_delta': self.sigma_delta.tolist(),
             'bunch_length': self.bunch_length.tolist(),
             'Nb': self.Nb.tolist(),
@@ -303,8 +303,8 @@ class Full_Records:
             py=np.array(data['py']),
             delta=np.array(data['delta']),
             zeta=np.array(data['zeta']),
-            nepsilon_x=np.array(data['nepsilon_x']),
-            nepsilon_y=np.array(data['nepsilon_y']),
+            exn=np.array(data['exn']),
+            eyn=np.array(data['eyn']),
             sigma_delta=np.array(data['sigma_delta']),
             bunch_length=np.array(data['bunch_length']),
             Nb=np.array(data['Nb']),
