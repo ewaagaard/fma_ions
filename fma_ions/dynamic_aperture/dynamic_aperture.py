@@ -10,9 +10,9 @@ import xtrack as xt
 import xpart as xp
 import xobjects as xo
 
-from .fma_ions import FMA
-from .sequences import PS_sequence_maker, BeamParameters_PS
-from .sequences import SPS_sequence_maker, BeamParameters_SPS
+from ..fma_ions import FMA
+from ..sequences import PS_sequence_maker, BeamParameters_PS
+from ..sequences import SPS_sequence_maker, BeamParameters_SPS
 
 @dataclass
 class Dynamic_Aperture: 
