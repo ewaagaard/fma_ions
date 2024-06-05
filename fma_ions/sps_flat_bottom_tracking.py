@@ -444,31 +444,20 @@ class SPS_Flat_Bottom_Tracker:
                                                                                                           np.max(np.bincount(np.abs(particles.state[particles.state <= 0]))),
                                                                                                           len(particles.state[particles.state <= 0])))
             
-            
         time01 = time.time()
         dt0 = time01-time00
         print('\nTracking time: {:.1f} s = {:.1f} h'.format(dt0, dt0/3600))
-
-        # MAKE Small statistics of beam losses
                 
-        # Make json file from dictionary
-
-        # If WS beam profile monitor data has been active
-        if install_beam_monitors:
-            tbt.append_WS_profile_monitor_data(monitorH.x_grid, 
-                                               monitorH.x_intensity,
-                                               monitorV.y_grid, 
-                                               monitorV.y_intensity)
-            
-        tbt_dict = tbt.to_dict()
-
         # Convert turns to seconds
         turns_per_sec = 1 / twiss.T_rev0
-        seconds = self.num_turns / turns_per_sec # number of seconds we are running for
-        tbt_dict['Seconds'] = np.linspace(0.0, seconds, num=int(self.num_turns))
-        tbt = pd.DataFrame(tbt_dict)
-        
-        return zeta_monitor # instead, X, Y, Z monitors + ensemble values + statistics - in json?
+        num_seconds = self.num_turns / turns_per_sec # number of seconds we are running for
+        seconds_array = np.linspace(0.0, num_seconds, num=int(self.num_turns))
+
+        # If beam profile monitors have been active
+        if install_beam_monitors:
+            tbt.append_profile_monitor_data(monitorH, monitorV, zeta_monitor, seconds_array)
+            
+        return tbt
 
 
         

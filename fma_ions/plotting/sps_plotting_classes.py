@@ -35,30 +35,17 @@ bunch_length_data_path = Path(__file__).resolve().parent.joinpath('../data/longi
 @dataclass
 class SPS_Plotting:
     
-    def load_tbt_data(self, output_folder=None) -> Records:
-        """
-        Loads numpy data if tracking has already been made
-        """
-        folder_path = '{}/'.format(output_folder) if output_folder is not None else ''
 
-        # Read the parquet file
-        tbt = pd.read_parquet('{}tbt.parquet'.format(folder_path))
-        return tbt
-
-
-    def load_full_records_json(self, output_folder=None, return_dictionary=False):
+    def load_records_dict_from_json(self, output_folder=None):
         """
-        Loads json file with full particle data from tracking
+        Loads json file with particle data from tracking
         """
         folder_path = '{}/'.format(output_folder) if output_folder is not None else ''
 
-        # Read the json file, return either instanced class or dictionary (if WS profile data is there)
-        if return_dictionary:
-            tbt = Full_Records.dict_from_json("{}tbt.json".format(folder_path))
-        else:
-            tbt = Full_Records.from_json("{}tbt.json".format(folder_path))
+        # Read the json file, return either instanced class or dictionary
+        tbt_dict = Records.dict_from_json("{}tbt.json".format(folder_path))
 
-        return tbt
+        return tbt_dict
 
 
     def plot_tracking_data(self, 
@@ -359,6 +346,7 @@ class SPS_Plotting:
 
 
     def plot_WS_profile_monitor_data(self, 
+                                     tbt_dict=None,
                                      output_folder=None,
                                      index_to_plot=None
                                      ):
@@ -367,41 +355,47 @@ class SPS_Plotting:
         
         Parameters:
         -----------
+        tbt_dict : dict
+            dictionary containing turn-by-turn data. If None, will load json file
         output_folder : str
             path to data. default is 'None', assuming then that data is in the same directory
         index_to_plot : np.ndarray
             which profiles in time to plot. If None, then automatically plot first and last
         """
-        tbt_dict = self.load_full_records_json(output_folder=output_folder, return_dictionary=True)
+        os.makedirs('output_plots', exist_ok=True)
+
+        if tbt_dict is None:
+            tbt_dict = self.load_records_dict_from_json(output_folder=output_folder)
 
         # If index not provided, select first and last
         if index_to_plot is None:
             index_to_plot = [0, -1]
+            plot_str = ['At turn {}'.format(tbt_dict['nturns_profile_accumulation_interval']), 
+                        'At turn {}'.format(int(tbt_dict['nturns_profile_accumulation_interval'] * len(tbt_dict['z_bin_heights'][0])))]
 
         # Plot profile of particles
         fig, ax = plt.subplots(1, 1, figsize = (8, 6))
-        for i in index_to_plot:
-            ax.plot(tbt_dict['monitorH_x_grid'], tbt_dict['monitorH_x_intensity'][i], 
-                    label='Turn {}'.format(tbt_dict['full_data_turn_ind'][i]))
+        for j, i in enumerate(index_to_plot):
+            ax.plot(tbt_dict['monitorH_x_grid'], tbt_dict['monitorH_x_intensity'][i], label=plot_str[j])
         ax.set_xlabel('x [m]')
         ax.set_ylabel('Counts')
         ax.legend()
         plt.tight_layout()
+        fig.savefig('output_plots/SPS_X_Beam_Profile_WS.png', dpi=250)
 
         # Plot profile of particles
         fig2, ax2 = plt.subplots(1, 1, figsize = (8, 6))
-        for i in index_to_plot:
-            ax2.plot(tbt_dict['monitorV_y_grid'], tbt_dict['monitorV_y_intensity'][i], 
-                     label='Turn {}'.format(tbt_dict['full_data_turn_ind'][i]))
+        for j, i in enumerate(index_to_plot):
+            ax2.plot(tbt_dict['monitorV_y_grid'], tbt_dict['monitorV_y_intensity'][i], label=plot_str[j])
         ax2.set_ylabel('Counts')
         ax2.set_xlabel('y [m]')
         ax2.legend()
         plt.tight_layout()
-        plt.show()
+        fig2.savefig('output_plots/SPS_Y_Beam_Profile_WS.png', dpi=250)
 
 
     def plot_longitudinal_monitor_data(self,
-                                       monitor,
+                                       tbt_dict=None,
                                        output_folder=None,
                                        ):
         """
@@ -409,27 +403,30 @@ class SPS_Plotting:
         
         Parameters:
         -----------
-        monitor : Longitudinal_Monitor
-            dataclass object with data 
+        tbt_dict : dict
+            dictionary containing turn-by-turn data. If None, will load json file
         output_folder : str
             path to data. default is 'None', assuming then that data is in the same directory
         """
+        if tbt_dict is None:
+            tbt_dict = self.load_records_dict_from_json(output_folder=output_folder)
+
         # Select first and last profiles to plot
         index_to_plot = [0, -1]
-        plot_str = ['At turn {}'.format(monitor.nturns_profile_accumulation_interval), 
-                    'At turn {}'.format(int(monitor.nturns_profile_accumulation_interval * len(monitor.z_bin_heights[0])))]
+        plot_str = ['At turn {}'.format(tbt_dict['nturns_profile_accumulation_interval']), 
+                    'At turn {}'.format(int(tbt_dict['nturns_profile_accumulation_interval'] * len(tbt_dict['z_bin_heights'][0])))]
 
         # Plot profile of particles
         fig, ax = plt.subplots(1, 1, figsize = (8, 6))
         j = 0
         for i in index_to_plot:
-            ax.plot(monitor.z_bin_centers, monitor.z_bin_heights[:, i], label=plot_str[j])
+            ax.plot(np.array(tbt_dict['z_bin_centers']), np.array(tbt_dict['z_bin_heights'])[:, i], label=plot_str[j])
             j += 1
         ax.set_xlabel('zeta [m]')
         ax.set_ylabel('Counts')
         ax.legend()
         plt.tight_layout()
-        plt.show()
+        fig.savefig('output_plots/SPS_Zeta_Beam_Profile_WS.png', dpi=250)
 
 
 
