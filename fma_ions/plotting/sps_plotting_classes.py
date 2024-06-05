@@ -163,8 +163,12 @@ class SPS_Plotting:
         plt.close()
 
 
-    def plot_multiple_sets_of_tracking_data(self, output_str_array, string_array, compact_mode=False,
-                                            include_emittance_measurements=False, x_unit_in_turns=True,
+    def plot_multiple_sets_of_tracking_data(self, 
+                                            output_str_array, 
+                                            string_array, 
+                                            compact_mode=False,
+                                            include_emittance_measurements=False, 
+                                            x_unit_in_turns=True,
                                             bbox_to_anchor_position=(0.0, 1.3),
                                             labelsize = 20,
                                             ylim=None, ax_for_legend=2,
@@ -218,7 +222,6 @@ class SPS_Plotting:
         for output_folder in output_str_array:
             self.output_folder = output_folder
             tbt = self.load_tbt_data(output_folder)
-            tbt['turns'] = np.arange(len(tbt.Nb), dtype=int)
             tbt_array.append(tbt)
 
         # If binomial distribution, find index corresponding to after 30 turns (when distribution has stabilized)
@@ -234,15 +237,8 @@ class SPS_Plotting:
             time_units = tbt['turns']
             print('Set time units to turns')
         else:
-            if 'Seconds' in tbt.columns:
-                time_units = tbt['Seconds']
-            else:
-                sps = SPS_sequence_maker()
-                _, twiss = sps.load_xsuite_line_and_twiss()
-                turns_per_sec = 1 / twiss.T_rev0
-                seconds = len(tbt.exn) / turns_per_sec # number of seconds we are running for
-                time_units = np.linspace(0.0, seconds, num=int(len(tbt.exn))) 
-                print('Set time units to seconds')
+            time_units = tbt['Seconds']
+            print('Set time units to seconds')
 
         # Load emittance measurements
         if include_emittance_measurements:
