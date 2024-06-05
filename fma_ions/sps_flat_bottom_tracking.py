@@ -156,7 +156,8 @@ class SPS_Flat_Bottom_Tracker:
                   scale_factor_Qs=None,
                   only_one_zeta=False,
                   install_beam_monitors_at_WS_locations=True,
-                  nturns_profile_accumulation_interval = 100
+                  nturns_profile_accumulation_interval = 100,
+                  nbins = 200
                   ):
         """
         Run full tracking at SPS flat bottom
@@ -229,7 +230,9 @@ class SPS_Flat_Bottom_Tracker:
             whether to install beam profile monitors at H and V Wire Scanner locations in SPS, that will record beam profiles
         nturns_profile_accumulation_interval : int
             turn interval between which to aggregate transverse and longitudinal particles for histogram
-        
+        nbins : int
+            number of bins for histograms of transverse and longitudinal monitors
+
         Returns:
         --------
         tbt : pd.DataFrame
@@ -297,7 +300,6 @@ class SPS_Flat_Bottom_Tracker:
         
         # Create horizontal beam monitor
         if install_beam_monitors_at_WS_locations:
-            nbins = 200
             monitorH = xt.BeamProfileMonitor(
                 start_at_turn=nturns_profile_accumulation_interval/2, stop_at_turn=self.num_turns,
                 frev=1,
@@ -390,6 +392,9 @@ class SPS_Flat_Bottom_Tracker:
         tbt.update_at_turn(0, particles, twiss)
         zetas.update_at_turn(0, particles)
 
+        # Borders for longitudinal histogram
+        zmin_hist, zmax_hist = -1.2*bucket_length, 1.2*bucket_length
+
         # Make one dictionary for ensemble data
         # and histograms with beam monitors
         '''
@@ -440,18 +445,20 @@ class SPS_Flat_Bottom_Tracker:
             # ----- Track and update records for tracked particles ----- #
             line.track(particles, num_turns=1)
 
-
-            # update tbt
+            # Update TBT, and save zetas
             tbt.update_at_turn(turn, particles, twiss)
-            # save last 100 turns of zeta, flatten and save to histogram
             zetas.update_at_turn(turn, particles) 
 
             # Merge all longitudinal coordinates to profile and stack
             if turn % nturns_profile_accumulation_interval == 0:
                 
+                # Generate and stack histogram
+
                 # Initialize new zeta containers
+                del zetas
                 zetas = Zeta_Container.init_zeroes(len(particles.x), nturns_profile_accumulation_interval, 
                                            which_context=which_context)
+                zetas.update_at_turn(0, particles) # start from turn, but 0 in new dataclass
                 
 
             '''

@@ -126,8 +126,40 @@ class Longitudinal_Monitor:
     """
     Data class to store histogram of longitudinal zeta coordinate 
     """
-    def convert_zetas_to_histogram(self, ):
-        pass
+    z_bin_centers : np.ndarray
+    z_bin_heights : np.ndarray
+    z_bin_widths : float
+    index : int = 0 # index to keep track on where to append
+
+    @classmethod
+    def init_monitor(cls, num_z_bins : int, n_turns: int) -> Self:  # noqa: F821
+        """Initialize dataclass with empty arrays containing zeta bin edges and zeta bin heights for every turn"""
+        return cls(
+            z_bin_centers = np.zeros(num_z_bins, dtype=float),
+            z_bin_heights = np.zeros([num_z_bins, n_turns], dtype=float),
+        )
+
+    def convert_zetas_and_stack_histogram(self, zetas : Zeta_Container, num_z_bins : int, z_range : tuple):
+        # Convert data class of particles to histogram
+        z = zetas.zeta.flatten()
+        s = zetas.state.flatten()
+
+        # Aggregate longitudinal coordinates of particles still alive
+        zetas_accumulated = z[s>0]
+        bin_heights, bin_borders = np.histogram(zetas_accumulated, bins=num_z_bins, range=(z_range[0], z_range[1]),)
+        bin_widths = np.diff(bin_borders)
+        bin_centers = bin_borders[:-1] + bin_widths / 2
+
+        # Append zeta bin centers and width only once
+        if self.index == 0:
+            self.z_bin_centers = bin_centers
+            self.z_bin_widths = bin_widths
+
+        # Append bin heights
+        self.z_bin_heights[:, self.index] = bin_heights
+
+        self.index += 1
+
 
     
 # Set up a dataclass to store the results - also growth rates 
