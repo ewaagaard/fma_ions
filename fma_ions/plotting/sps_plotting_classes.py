@@ -35,7 +35,6 @@ bunch_length_data_path = Path(__file__).resolve().parent.joinpath('../data/longi
 @dataclass
 class SPS_Plotting:
     
-
     def load_records_dict_from_json(self, output_folder=None):
         """
         Loads json file with particle data from tracking
@@ -49,7 +48,8 @@ class SPS_Plotting:
 
 
     def plot_tracking_data(self, 
-                           tbt : pd.DataFrame, 
+                           tbt_dict=None, 
+                           output_folder=None,
                            include_emittance_measurements=False,
                            show_plot=False,
                            x_unit_in_turns=True,
@@ -59,8 +59,10 @@ class SPS_Plotting:
         compare with emittance measurements (default 2023-10-16) if desired.
         
         Parameters:
-        tbt : pd.DataFrame
-            dataframe containing the TBT data
+        tbt_dict : dict
+            dictionary containing the TBT data. If None, loads json file.
+        output_folder : str
+            path to data. default is 'None', assuming then that data is in the same directory
         include_emittance_measurements : bool
             whether to include measured emittance or not
         show_plot : bool
@@ -70,38 +72,24 @@ class SPS_Plotting:
         plot_bunch_length_measurements : bool
             whether to include bunch length measurements from SPS wall current monitor from 2016 studies by Hannes and Tomas
         """
+        if tbt_dict is None:
+            tbt_dict = self.load_records_dict_from_json(output_folder=output_folder)
 
         # If bunch length measurements present, need to plot in seconds
         if plot_bunch_length_measurements:
             x_unit_in_turns = False
             
             # Load bunch length data
-            sigma_RMS_Gaussian, sigma_RMS_Binomial, sigma_RMS_Gaussian_in_m, sigma_RMS_Binomial_in_m, ctime = self.load_bunch_length_data()
+            _, _, sigma_RMS_Gaussian_in_m, sigma_RMS_Binomial_in_m, ctime = self.load_bunch_length_data()
 
         # Convert measured emittances to turns if this unit is used, otherwise keep seconds
         if x_unit_in_turns:
-            turns = np.arange(len(tbt.exn), dtype=int)             
+            turns = np.arange(len(tbt_dict['exn']), dtype=int)             
             time_units = turns
             print('Set time units to turns')
         else:
-            if 'Seconds' in tbt.columns:
-                time_units = tbt['Seconds']
-            elif 'full_data_turn_ind' in tbt.columns:
-                sps = SPS_sequence_maker()
-                _, twiss = sps.load_xsuite_line_and_twiss()
-                turns_per_sec = 1 / twiss.T_rev0
-                tbt['Seconds'] = tbt['full_data_turn_ind'] /  turns_per_sec
-                time_units = tbt['Seconds'].copy()
-                print('Set time units to seconds')
-                time_units
-            else:
-                sps = SPS_sequence_maker()
-                _, twiss = sps.load_xsuite_line_and_twiss()
-                turns_per_sec = 1 / twiss.T_rev0
-                seconds = len(tbt.exn) / turns_per_sec # number of seconds we are running for
-                tbt['Seconds'] = np.linspace(0.0, seconds, num=int(len(tbt.exn)))
-                time_units = tbt['Seconds'].copy()
-                print('Set time units to seconds')
+            time_units = tbt_dict['Seconds']
+            print('Set time units to seconds')
 
         # Load emittance measurements
         if include_emittance_measurements:
@@ -117,9 +105,9 @@ class SPS_Plotting:
         # Emittances and bunch intensity 
         f, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize = (14,5))
 
-        ax1.plot(time_units, tbt.exn * 1e6, alpha=0.7, lw=1.5, label='Simulated')
-        ax2.plot(time_units, tbt.eyn * 1e6, alpha=0.7, c='orange', lw=1.5, label='Simulated')
-        ax3.plot(time_units, tbt.Nb, alpha=0.7, lw=1.5, c='r', label='Bunch intensity')
+        ax1.plot(time_units, np.array(tbt_dict['exn']) * 1e6, alpha=0.7, lw=1.5, label='Simulated')
+        ax2.plot(time_units, np.array(tbt_dict['eyn']) * 1e6, alpha=0.7, c='orange', lw=1.5, label='Simulated')
+        ax3.plot(time_units, np.array(tbt_dict['Nb']), alpha=0.7, lw=1.5, c='r', label='Bunch intensity')
 
         if include_emittance_measurements:
             ax1.errorbar(time_units_x, 1e6 * np.array(full_data['N_avg_emitX']), yerr=1e6 * full_data['N_emitX_error'], 
@@ -128,7 +116,7 @@ class SPS_Plotting:
                        color='darkorange', fmt="o", label="Measured")
             
         # Find min and max emittance values - set window limits 
-        all_emit = np.concatenate((tbt.exn, tbt.eyn))
+        all_emit = np.concatenate((np.array(tbt_dict['exn']), np.array(tbt_dict['eyn'])))
         if include_emittance_measurements:
             all_emit = np.concatenate((all_emit, np.array(full_data['N_avg_emitX']), np.array(full_data['N_avg_emitY'])))
         min_emit = 1e6 * np.min(all_emit)
@@ -140,7 +128,7 @@ class SPS_Plotting:
         ax1.set_ylabel(r'$\varepsilon_{x}^{n}$ [$\mu$m]')
         ax2.set_ylabel(r'$\varepsilon_{y}^{n}$ [$\mu$m]')
         ax3.set_ylabel(r'$N_{b}$')
-        ax3.set_xlabel('Turns')
+        ax3.set_xlabel('Turns' if x_unit_in_turns else 'Time [s]')
         ax1.legend()
         ax2.legend()
         ax1.set_ylim(min_emit-0.08, max_emit+0.1)
@@ -149,13 +137,13 @@ class SPS_Plotting:
 
         # Sigma_delta and bunch length
         f2, ax12 = plt.subplots(1, 1, figsize = (8,6))
-        ax12.plot(time_units, tbt.sigma_delta * 1e3, alpha=0.7, lw=1.5, label='$\sigma_{\delta}$')
+        ax12.plot(time_units, np.array(tbt_dict['sigma_delta']) * 1e3, alpha=0.7, lw=1.5, label='$\sigma_{\delta}$')
         f2.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
         ax12.set_ylabel(r'$\sigma_{\delta}$')
         ax12.set_xlabel('Turns' if x_unit_in_turns else 'Time [s]')
         
         f3, ax22 = plt.subplots(1, 1, figsize = (8,6))
-        ax22.plot(time_units, tbt.bunch_length, alpha=0.7, lw=1.5, label='Simulated')
+        ax22.plot(time_units, np.array(tbt_dict['bunch_length']), alpha=0.7, lw=1.5, label='Simulated')
         if plot_bunch_length_measurements:
             ax22.plot(ctime, sigma_RMS_Gaussian_in_m, label='Measured RMS Gaussian')
             ax22.plot(ctime, sigma_RMS_Binomial_in_m, label='Measured RMS Binomial')
@@ -165,10 +153,10 @@ class SPS_Plotting:
         f3.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
 
         # Save figures
-        os.makedirs(self.output_folder, exist_ok=True)
-        f.savefig('{}/epsilon_Nb.png'.format(self.output_folder), dpi=250)
-        f2.savefig('{}/sigma_delta.png'.format(self.output_folder), dpi=250)
-        f3.savefig('{}/sigma.png'.format(self.output_folder), dpi=250)
+        os.makedirs('output_plots', exist_ok=True)
+        f.savefig('output_plots/epsilon_Nb.png', dpi=250)
+        f2.savefig('output_plots/sigma_delta.png', dpi=250)
+        f3.savefig('output_plots/sigma.png', dpi=250)
 
         if show_plot:
             plt.show()

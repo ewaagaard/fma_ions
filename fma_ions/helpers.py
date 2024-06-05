@@ -156,6 +156,8 @@ class Records:
         with open(file_path, 'r') as f:
             tbt_dict = json.load(f)
 
+        # Convert every list to numpy array directly?
+
         return tbt_dict
 
 
