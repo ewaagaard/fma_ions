@@ -1,1 +1,1 @@
-from .plotting_classes_SPS import SPS_Plotting
+from .sps_plotting_classes import SPS_Plotting
