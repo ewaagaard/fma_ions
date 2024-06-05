@@ -2,9 +2,35 @@
 Container for all plotting classes relevant to treating SPS data
 """
 from dataclasses import dataclass
+from pathlib import Path
+import os, json
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib import cm
 
+import scipy.constants as constants
+from scipy.stats import gaussian_kde
+import xobjects as xo
+
+from ..sequences import SPS_sequence_maker, BeamParameters_SPS, BeamParameters_SPS_Oxygen, BeamParameters_SPS_Proton
+from ..longitudinal import generate_parabolic_distribution
+from ..longitudinal import generate_binomial_distribution_from_PS_extr
+from ..helpers import Records, Records_Growth_Rates, Full_Records, _bunch_length, _geom_epsx, _geom_epsy, _sigma_delta
+
+
+# Load default emittance measurement data from 2023_10_16
+emittance_data_path = Path(__file__).resolve().parent.joinpath('../data/emittance_data/full_WS_data_SPS_2023_10_16.json').absolute()
+Nb_data_path = Path(__file__).resolve().parent.joinpath('../data/emittance_data/Nb_processed_SPS_2023_10_16.json').absolute()
+
+# Load Pb longitudinal profile measured at PS extraction and SPS injection
+longitudinal_data_path = Path(__file__).resolve().parent.joinpath('../data/longitudinal_profile_data/SPS_inj_longitudinal_data.npy').absolute()
+longitudinal_data_path_after_RF_spill = Path(__file__).resolve().parent.joinpath('../data/longitudinal_profile_data/SPS_inj_longitudinal_data_AFTER_RF_SPILL.npy').absolute()
+
+# Load bunch length data from fitting, choose whether to load data where right tail is cut or not
+cut_right_tail_from_fitting_for_bunch_length = True
+cut_str = '_cut_right_tail' if cut_right_tail_from_fitting_for_bunch_length else ''
+bunch_length_data_path = Path(__file__).resolve().parent.joinpath('../data/longitudinal_profile_data/SPS_inj_bunch_length_data{}.npy'.format(cut_str)).absolute()
 
 @dataclass
 class SPS_Plotting:
@@ -162,6 +188,176 @@ class SPS_Plotting:
         plt.close()
 
 
+    def plot_multiple_sets_of_tracking_data(self, output_str_array, string_array, compact_mode=False,
+                                            include_emittance_measurements=False, x_unit_in_turns=True,
+                                            bbox_to_anchor_position=(0.0, 1.3),
+                                            labelsize = 20,
+                                            ylim=None, ax_for_legend=2,
+                                            distribution_type='gaussian',
+                                            legend_font_size=11.5):
+        """
+        If multiple runs with turn-by-turn (tbt) data has been made, provide list with Records class objects and list
+        of explaining string to generate comparative plots of emittances, bunch intensities, etc
+
+        Parameters:
+        ----------
+        output_str_array : [outfolder, outfolder, ...]
+            List containing string for outfolder tbt data
+        string:_array : [str1, str2, ...]
+            List containing strings to explain the respective tbt data objects (which parameters were used)
+        compact_mode : bool
+            whether to slim plot in more compact format 
+        include_emittance_measurements : bool
+            whether to include measured emittance or not
+        x_units_in_turns : bool
+            if True, x axis units will be turn, otherwise in seconds
+        bbox_to_anchor_position : tuple
+            x-y coordinates of relative plot position for legend
+        labelsize : int
+            labelsize for axes
+        ylim : list
+            lower and upper bounds for emittance plots, if None (default), automatic limits are set
+        ax_for_legend : int
+            which axis to use to place legend, either 1 or 2 (default is 2)
+        distribution_type : str
+            'gaussian' or 'parabolic' or 'binomial': particle distribution for tracking
+        legend_font_size : int
+            labelsize for legend
+        """
+        os.makedirs('main_plots', exist_ok=True)
+        plt.rcParams.update(
+            {
+                "font.family": "serif",
+                "font.size": 18,
+                "axes.titlesize": 18,
+                "axes.labelsize": labelsize,
+                "xtick.labelsize": 15,
+                "ytick.labelsize": 15,
+                "legend.fontsize": 15,
+                "figure.titlesize": 20,
+            }
+        )
+
+        # Load TBT data 
+        tbt_array = []
+        for output_folder in output_str_array:
+            self.output_folder = output_folder
+            tbt = self.load_tbt_data(output_folder)
+            tbt['turns'] = np.arange(len(tbt.Nb), dtype=int)
+            tbt_array.append(tbt)
+
+        # If binomial distribution, find index corresponding to after 30 turns (when distribution has stabilized)
+        if distribution_type=='binomial':
+            ii = tbt['turns'] > 30
+            print('\nSetting binomial turn index\n')
+        else:
+            ii = tbt['turns'] > -1 # select all turns
+            print('\nGaussian beam - select all turns\n')
+
+        # Convert measured emittances to turns if this unit is used, otherwise keep seconds
+        if x_unit_in_turns:         
+            time_units = tbt['turns']
+            print('Set time units to turns')
+        else:
+            if 'Seconds' in tbt.columns:
+                time_units = tbt['Seconds']
+            else:
+                sps = SPS_sequence_maker()
+                _, twiss = sps.load_xsuite_line_and_twiss()
+                turns_per_sec = 1 / twiss.T_rev0
+                seconds = len(tbt.exn) / turns_per_sec # number of seconds we are running for
+                time_units = np.linspace(0.0, seconds, num=int(len(tbt.exn))) 
+                print('Set time units to seconds')
+
+        # Load emittance measurements
+        if include_emittance_measurements:
+            if x_unit_in_turns:
+                sps = SPS_sequence_maker()
+                _, twiss = sps.load_xsuite_line_and_twiss()
+                turns_per_sec = 1 / twiss.T_rev0
+            
+            full_data = self.load_emittance_data()
+            time_units_x = (turns_per_sec * full_data['Ctime_X']) if x_unit_in_turns else full_data['Ctime_X']
+            time_units_y = (turns_per_sec * full_data['Ctime_Y']) if x_unit_in_turns else full_data['Ctime_Y']
+
+            df_Nb = self.load_Nb_data()
+            time_Nb = (turns_per_sec * df_Nb['ctime']) if x_unit_in_turns else df_Nb['ctime']
+
+        # Normal, or compact mode
+        if compact_mode:
+            # Emittances and bunch intensity 
+            f = plt.figure(figsize = (6, 6))
+            gs = f.add_gridspec(3, hspace=0, height_ratios= [1, 2, 2])
+            (ax3, ax2, ax1) = gs.subplots(sharex=True, sharey=False)
+
+            # Plot measurements, if desired                
+            if include_emittance_measurements:
+                ax3.plot(time_Nb, df_Nb['Nb'], color='blue', marker="o", ms=2.5, alpha=0.7, label="Measured")
+            
+            # Loop over the tbt records classes 
+            for i, tbt in enumerate(tbt_array):
+                ax1.plot(time_units, tbt.exn * 1e6, alpha=0.7, lw=1.5, label=string_array[i])
+                ax2.plot(time_units, tbt.eyn * 1e6, alpha=0.7, lw=1.5, label=string_array[i])
+                ax3.plot(time_units[ii], tbt.Nb[ii], alpha=0.7, lw=2.5, label=string_array[i])
+                
+            # Include wire scanner data - subtract ion injection cycle time
+            if include_emittance_measurements:
+                ax1.errorbar(time_units_x - self.ion_inj_ctime, 1e6 * np.array(full_data['N_avg_emitX']), yerr=1e6 * full_data['N_emitX_error'], 
+                           color='blue', fmt="o", label="Measured")
+                ax2.errorbar(time_units_y - self.ion_inj_ctime, 1e6 * np.array(full_data['N_avg_emitY']), yerr=1e6 * full_data['N_emitY_error'], 
+                           color='blue', fmt="o", label="Measured")
+                
+            ax1.set_ylabel(r'$\varepsilon_{x}^{n}$ [$\mu$m rad]')
+            ax2.set_ylabel(r'$\varepsilon_{y}^{n}$ [$\mu$m rad]')
+            ax3.set_ylabel(r'$N_{b}$')
+            #ax1.text(0.94, 0.94, 'X', color='darkgreen', fontsize=20, transform=ax1.transAxes)
+            #ax2.text(0.02, 0.94, 'Y', color='darkgreen', fontsize=20, transform=ax2.transAxes)
+            ax1.set_xlabel('Turns' if x_unit_in_turns else 'Time [s]')
+            ax2.set_xlabel('Turns' if x_unit_in_turns else 'Time [s]')
+            if ylim is not None:
+                ax1.set_ylim(ylim[0], ylim[1])
+                ax2.set_ylim(ylim[0], ylim[1])
+            if ax_for_legend == 2:
+                ax2.legend(fontsize=legend_font_size, loc='upper left', bbox_to_anchor=bbox_to_anchor_position)
+            elif ax_for_legend == 1:
+                ax1.legend(fontsize=legend_font_size, loc='upper left', bbox_to_anchor=bbox_to_anchor_position)
+            
+            for ax in f.get_axes():
+                ax.label_outer()
+            
+            f.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+            f.savefig('main_plots/result_multiple_trackings_compact.png', dpi=250)
+            plt.show()
+                #ax3.plot(tbt.turns, tbt.Nb, alpha=0.7, lw=1.5, label=string_array[i])
+            
+        else:
+            # Emittances and bunch intensity 
+            f, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize = (14,5))
+    
+            # Loop over the tbt records classes 
+            for i, tbt in enumerate(tbt_array):
+                ax1.plot(tbt.turns, tbt.exn * 1e6, alpha=0.7, lw=1.5, label=string_array[i])
+                ax2.plot(tbt.turns, tbt.eyn * 1e6, alpha=0.7, lw=1.5, label=string_array[i])
+                ax3.plot(tbt.turns, tbt.Nb, alpha=0.7, lw=1.5, label=string_array[i])
+    
+            if include_emittance_measurements:
+                ax1.errorbar(time_units_x, 1e6 * np.array(full_data['N_avg_emitX']), yerr=1e6 * full_data['N_emitX_error'], 
+                           color='blue', fmt="o", label="Measured")
+                ax2.errorbar(time_units_y, 1e6 * np.array(full_data['N_avg_emitY']), yerr=1e6 * full_data['N_emitY_error'], 
+                           color='darkorange', fmt="o", label="Measured")
+    
+            ax1.set_xlabel('Turns')
+            ax2.set_xlabel('Turns')
+            ax3.set_xlabel('Turns')
+            ax1.set_ylabel(r'$\varepsilon_{x}^{n}$ [$\mu$m]')
+            ax2.set_ylabel(r'$\varepsilon_{y}^{n}$ [$\mu$m]')
+            ax3.set_ylabel(r'$N_{b}$')
+            ax1.legend(fontsize=10)
+            f.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+            f.savefig('main_plots/result_multiple_trackings.png', dpi=250)
+            plt.show()
+
+
     def plot_WS_profile_monitor_data(self, 
                                      output_folder=None,
                                      index_to_plot=None
@@ -216,6 +412,162 @@ class SPS_Plotting:
                                     plot_bunch_length_measurements=plot_bunch_length_measurements)
         except FileNotFoundError:
             raise FileNotFoundError('Tracking data does not exist - set correct path or generate the data!')
+
+
+    def load_emittance_data(self, path : str = emittance_data_path) -> pd.DataFrame:
+        """
+        Loads measured emittance data from SPS MDs, processed with CCC miner
+        https://github.com/ewaagaard/ccc_miner, returns pd.DataFrame
+        
+        Default date - 2023-10-16 with (Qx, Qy) = (26.3, 26.19) in SPS
+        """
+        
+        # Load dictionary with emittance data
+        try:
+            with open(path, 'r') as fp:
+                full_data = json.load(fp)
+        except FileNotFoundError:
+            print('\nFILE NOT FOUND - check input path!\n')
+            return
+        
+        # Convert timestamp strings to datetime, and find spread
+        full_data['TimestampX_datetime'] = pd.to_datetime(full_data['UTC_timestamp_X'])
+        full_data['TimestampY_datetime'] = pd.to_datetime(full_data['UTC_timestamp_Y'])
+        
+        full_data['N_emitX_error'] = np.std(full_data['N_emittances_X'], axis=1)
+        full_data['N_emitY_error'] = np.std(full_data['N_emittances_Y'], axis=1)
+        
+        # Only keep the average emittances, not full emittance tables
+        #del full_data['N_emittances_X'], full_data['N_emittances_Y']
+        
+        df = pd.DataFrame(dict([ (k, pd.Series(v)) for k,v in full_data.items() ]))
+        
+        # Remove emittance data after ramping starts, i.e. from around 48.5 s
+        df = df[df['Ctime_Y'] < 48.5]
+        
+        return df
+
+
+    def load_Nb_data(self, path : str = Nb_data_path, index=0) -> pd.DataFrame:
+        """
+        Loads measured FBCT bunch intensity data from SPS MDs, processed with CCC miner
+        https://github.com/ewaagaard/ccc_miner, returns pd.DataFrame
+        
+        Default date - 2023-10-16 with (Qx, Qy) = (26.3, 26.19) in SPS
+        """
+        # Load dictionary with emittance data
+        try:
+            with open(path, 'r') as fp:
+                Nb_dict = json.load(fp)
+        except FileNotFoundError:
+            print('\nFILE NOT FOUND - check input path!\n')
+            return
+        
+        # Create new dictionary wiht numpy arrays - divide by charge
+        new_dict = {'ctime' : Nb_dict['ctime'],
+                    'Nb' : np.array(Nb_dict['Nb1'])[:, index] / 82}
+        
+        # Create dataframe with four bunches
+        df_Nb = pd.DataFrame(new_dict)
+        df_Nb = df_Nb[(df_Nb['ctime'] < 46.55) & (df_Nb['ctime'] > 0.0)]
+        
+        return df_Nb
+
+
+    def load_longitudinal_profile_data(self, 
+                                       path : str = longitudinal_data_path,
+                                       gamma = 7.33):
+        """
+        Load Pb longitudinal profile measured at SPS injection with wall current monitor 
+        and at PS extraction with Bunch Shape Monitor (BSM)
+        
+        Returns:
+        --------
+        zeta_SPS_inj, data_SPS, zeta_PS_BSM, data_BSM : np.ndarray
+            arrays containing longitudinal position and amplitude data of SPS and PS
+        gamma : float
+            relativistic gamma at injection (7.33 typical value at SPS injection)
+        """
+        # Load the data
+        with open(path, 'rb') as f:
+            time_SPS_inj = np.load(f)
+            time_SPS_final = np.load(f)
+            time_PS_BSM = np.load(f)
+            data_SPS_inj = np.load(f)
+            data_SPS_final = np.load(f)
+            data_PS_BSM = np.load(f)
+
+        # Convert time data to position data - use PS extraction energy for Pb
+        beta = np.sqrt(1 - 1/gamma**2)
+        zeta_SPS_inj = time_SPS_inj * constants.c * beta # Convert time units to length
+        zeta_SPS_final = time_SPS_final * constants.c * beta # Convert time units to length
+        zeta_PS_BSM = time_PS_BSM * constants.c * beta # Convert time units to length
+
+        # Adjust to ensure peak is at maximum
+        zeta_SPS_inj -= zeta_SPS_inj[np.argmax(data_SPS_inj)]
+        zeta_SPS_final -= zeta_SPS_inj[np.argmax(data_SPS_inj)]
+        zeta_PS_BSM -= zeta_SPS_inj[np.argmax(data_SPS_inj)] # adjust both accordingly
+
+        # BSM - only include data up to the artificial ringing, i.e. at around zeta = 0.36
+        ind = np.where(zeta_PS_BSM < 0.36)
+        zeta_PS_BSM = zeta_PS_BSM[ind]
+        data_PS_BSM = data_PS_BSM[ind]
+
+        return zeta_SPS_inj, zeta_SPS_final, zeta_PS_BSM, data_SPS_inj, data_SPS_final, data_PS_BSM
+
+
+    def load_longitudinal_profile_after_SPS_injection_RF_spill(self, 
+                                                               path : str = longitudinal_data_path_after_RF_spill, 
+                                                               gamma = 7.33):
+        """
+        Load Pb longitudinal profile measured at SPS injection with wall current monitor 
+        but AFTER initial spill out of RF bucket
+        
+        Returns:
+        --------
+        zeta_SPS_inj, data_SPS
+            arrays containing longitudinal position and amplitude data of SPS 
+        gamma : float
+            relativistic gamma at injection (7.33 typical value at SPS injection)
+        """
+        # Load the data
+        with open(path, 'rb') as f:
+            time_SPS_inj_after_RF_spill = np.load(f)
+            data_SPS_inj_after_RF_spill = np.load(f)
+
+        # Convert time data to position data - use PS extraction energy for Pb
+        beta = np.sqrt(1 - 1/gamma**2)
+        zeta_SPS_inj_after_RF_spill = time_SPS_inj_after_RF_spill * constants.c * beta # Convert time units to length
+
+        # Adjust to ensure peak is at maximum
+        zeta_SPS_inj_after_RF_spill -= zeta_SPS_inj_after_RF_spill[np.argmax(data_SPS_inj_after_RF_spill)]
+
+        return zeta_SPS_inj_after_RF_spill, data_SPS_inj_after_RF_spill
+
+
+
+    def load_bunch_length_data(self, path : str = bunch_length_data_path):
+        """
+        Load fitted bunch lengths (assuming either Gaussian or binomial profiles) from
+        Pb longitudinal profile measured at SPS injection plateau with wall current monitor
+        from 2016 studies of Timas and Hannes
+        
+        Returns:
+        --------
+        sigma_RMS_Gaussian, sigma_RMS_Binomial, sigma_RMS_Gaussian_in_m, sigma_RMS_Binomial_in_m, ctime : np.ndarrays
+            arrays containing fitted RMS beam size for Gaussian and Binomial, first in ns and then in m, and corresponding cycle time
+        """
+        
+        # Save the bunch length data
+        with open(bunch_length_data_path, 'rb') as f:
+            sigma_RMS_Gaussian = np.load(f)
+            sigma_RMS_Binomial = np.load(f)
+            sigma_RMS_Gaussian_in_m = np.load(f)
+            sigma_RMS_Binomial_in_m = np.load(f)
+            ctime = np.load(f)
+        
+        return sigma_RMS_Gaussian, sigma_RMS_Binomial, sigma_RMS_Gaussian_in_m, sigma_RMS_Binomial_in_m, ctime
+
         
 
 @dataclass

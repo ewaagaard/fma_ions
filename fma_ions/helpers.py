@@ -81,6 +81,17 @@ class Records:
             'Nb' : self.Nb
         }
     
+
+    def to_json(self, file_path):
+        """
+        Save the data to a JSON file.
+        """
+        records_dict = self.to_dict()
+        df = pd.DataFrame(records_dict)
+        df.to_json('{}tbt.json'.format(file_path))
+
+
+    
 # Set up a dataclass to store the results - also growth rates 
 @dataclass
 class Records_Growth_Rates:
@@ -253,6 +264,8 @@ class Full_Records:
         self.monitorH_x_intensity = monitorH_x_intensity.tolist()
         self.monitorV_y_grid = monitorV_y_grid.tolist()
         self.monitorV_y_intensity = monitorV_y_intensity.tolist()
+
+        ## ADD Z MONITOR HERE
         self.includes_WS_profile_data = True
 
 
