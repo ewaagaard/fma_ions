@@ -136,7 +136,6 @@ class SPS_Flat_Bottom_Tracker:
                   distribution_type='gaussian',
                   apply_kinetic_IBS_kicks=False,
                   harmonic_nb = 4653,
-                  auto_recompute_ibs_coefficients=False,
                   auto_recompute_coefficients_percent=5,
                   ibs_step = 5000,
                   Qy_frac: int = 19,
@@ -155,9 +154,9 @@ class SPS_Flat_Bottom_Tracker:
                   voltage=3.0e6,
                   scale_factor_Qs=None,
                   only_one_zeta=False,
-                  install_beam_monitors_at_WS_locations=True,
+                  install_beam_monitors=True,
                   nturns_profile_accumulation_interval = 100,
-                  nbins = 200
+                  nbins = 160
                   ):
         """
         Run full tracking at SPS flat bottom
@@ -188,12 +187,10 @@ class SPS_Flat_Bottom_Tracker:
             whether to apply kinetic kicks from xibs 
         harmonic_nb : int
             harmonic used for SPS RF system
-        auto_recompute_ibs_coefficients : bool
-            whether to automatically recalculate IBS coefficients for a given emittance change
         auto_recompute_coefficients_percent : float
             relative emittance change after which to recompute 
         ibs_step : int
-            if auto_recompute_ibs_coefficients=False, the turn interval at which to recalculate IBS growth rates
+            Turn interval at which to recalculate IBS growth rates
         Qy_frac : int
             fractional part of vertical tune, e.g. "19" for 26.19
         minimum_aperture_to_remove : float 
@@ -226,7 +223,7 @@ class SPS_Flat_Bottom_Tracker:
             if not None, factor by which we scale Qs (V_RF, h) and divide sigma_z and Nb for similar space charge effects
         only_one_zeta : bool
             for 'linear_in_zeta' distribution, whether to select only one particle in zeta (penultimate in amplitude) or not
-        install_beam_monitors_at_WS_locations : bool
+        install_beam_monitors : bool
             whether to install beam profile monitors at H and V Wire Scanner locations in SPS, that will record beam profiles
         nturns_profile_accumulation_interval : int
             turn interval between which to aggregate transverse and longitudinal particles for histogram
@@ -299,7 +296,7 @@ class SPS_Flat_Bottom_Tracker:
         line.append_element(element=xt.LongitudinalLimitRect(min_zeta=-bucket_length/2, max_zeta=bucket_length/2), name='long_limit')
         
         # Create horizontal beam monitor
-        if install_beam_monitors_at_WS_locations:
+        if install_beam_monitors:
             monitorH = xt.BeamProfileMonitor(
                 start_at_turn=nturns_profile_accumulation_interval/2, stop_at_turn=self.num_turns,
                 frev=1,
@@ -333,12 +330,8 @@ class SPS_Flat_Bottom_Tracker:
         if apply_kinetic_IBS_kicks:
             beamparams = BeamParameters.from_line(line, n_part=beamParams.Nb)
             opticsparams = OpticsParameters.from_line(line) # read from line without space  charge
-            if auto_recompute_ibs_coefficients:
-                IBS = KineticKickIBS(beamparams, opticsparams, auto_recompute_coefficients_percent=auto_recompute_coefficients_percent)
-                print('\nAutomatic IBS coefficient recomputation when change exceeds {} percent\n'.format(auto_recompute_coefficients_percent))
-            else: 
-                IBS = KineticKickIBS(beamparams, opticsparams)
-                print('\nFixed IBS coefficient recomputation at interval = {} steps\n'.format(ibs_step))
+            IBS = KineticKickIBS(beamparams, opticsparams)
+            print('\nFixed IBS coefficient recomputation at interval = {} steps\n'.format(ibs_step))
             kinetic_kick_coefficients = IBS.compute_kick_coefficients(particles)
             print(kinetic_kick_coefficients)
 
@@ -395,25 +388,7 @@ class SPS_Flat_Bottom_Tracker:
         # Longitudinal monitor - initiate class and define bucket length
         zeta_monitor = Longitudinal_Monitor.init_monitor(num_z_bins=nbins, n_turns_tot=self.num_turns, 
                                                          nturns_profile_accumulation_interval=nturns_profile_accumulation_interval)
-        zmin_hist, zmax_hist = -0.6*bucket_length, 0.6*bucket_length
-
-        # Make one dictionary for ensemble data
-        # and histograms with beam monitors
-        '''
-        if not save_full_particle_data:
-            tbt = Records.init_zeroes(self.num_turns)  # only emittances and bunch intensity
-        else:
-            # First find the interval at which to save data
-            if full_particle_data_interval is None:
-                full_data_ind = np.array([0, self.num_turns-1])
-            else:
-                full_data_ind = np.arange(0, self.num_turns, full_particle_data_interval)
-                if not (self.num_turns-1 in full_data_ind):  # at last turn if in index array
-                    full_data_ind  = np.append(full_data_ind, self.num_turns-1)
-            tbt = Full_Records.init_zeroes(len(particles.x[particles.state > 0]), len(full_data_ind), 
-                                           which_context=which_context, full_data_turn_ind=full_data_ind) # full particle data
-        tbt.update_at_turn(0, particles, twiss)
-        '''
+        zmin_hist, zmax_hist = -0.55*bucket_length, 0.55*bucket_length
 
         # Start tracking 
         time00 = time.time()
@@ -423,7 +398,7 @@ class SPS_Flat_Bottom_Tracker:
                 print('\nTracking turn {}'.format(turn))            
 
             ########## IBS -> Potentially re-compute the ellitest_parts integrals and IBS growth rates #########
-            if apply_kinetic_IBS_kicks and ((turn % ibs_step == 0) or (turn == 1)) and not auto_recompute_ibs_coefficients:
+            if apply_kinetic_IBS_kicks and ((turn % ibs_step == 0) or (turn == 1)):
                 
                 # We compute from values at the previous turn
                 kinetic_kick_coefficients = IBS.compute_kick_coefficients(particles)
@@ -462,47 +437,38 @@ class SPS_Flat_Bottom_Tracker:
                                            which_context=which_context)
                 zetas.update_at_turn(0, particles) # start from turn, but 0 in new dataclass
                 
-            '''
-            # Update ensemble records or full records
-            if not save_full_particle_data:
-                tbt.update_at_turn(turn, particles, twiss)
-            else:
-                if turn in full_data_ind:
-                    print(f'Updating full particle dictionary at turn {turn}')
-                    update_ind = np.where(turn==full_data_ind)[0][0]
-                    tbt.update_at_turn(update_ind, particles, twiss)
-
+            # Print number and cause of lost particles
             if particles.state[particles.state <= 0].size > 0:
                 if print_lost_particle_state and turn % self.turn_print_interval == 0:
                     print('Lost particle state: most common code: "-{}" for {} particles out of {} lost in total'.format(np.bincount(np.abs(particles.state[particles.state <= 0])).argmax(),
                                                                                                           np.max(np.bincount(np.abs(particles.state[particles.state <= 0]))),
                                                                                                           len(particles.state[particles.state <= 0])))
-        '''
+            
             
         time01 = time.time()
         dt0 = time01-time00
         print('\nTracking time: {:.1f} s = {:.1f} h'.format(dt0, dt0/3600))
 
-        if apply_kinetic_IBS_kicks and auto_recompute_ibs_coefficients:
-            print('\nNumber of times auto-recomputed growth rates: {}\n'.format(IBS._number_of_coefficients_computations))
+        # MAKE Small statistics of beam losses
                 
         # Make json file from dictionary
-        '''
-            # If not full particle data is saved, return pandas version of  TBT dictionary with particle data
-            if not save_full_particle_data:
-                tbt_dict = tbt.to_dict()
-                # Convert turns to seconds
-                turns_per_sec = 1 / twiss.T_rev0
-                seconds = self.num_turns / turns_per_sec # number of seconds we are running for
-                tbt_dict['Seconds'] = np.linspace(0.0, seconds, num=int(self.num_turns))
-                tbt = pd.DataFrame(tbt_dict)
 
         # If WS beam profile monitor data has been active
-        if install_beam_monitors_at_WS_locations:
-            tbt.append_WS_profile_monitor_data(monitorH.x_grid, monitorH.x_intensity, monitorV.y_grid, monitorV.y_intensity)
-        '''
+        if install_beam_monitors:
+            tbt.append_WS_profile_monitor_data(monitorH.x_grid, 
+                                               monitorH.x_intensity,
+                                               monitorV.y_grid, 
+                                               monitorV.y_intensity)
+            
+        tbt_dict = tbt.to_dict()
 
-        return zeta_monitor
+        # Convert turns to seconds
+        turns_per_sec = 1 / twiss.T_rev0
+        seconds = self.num_turns / turns_per_sec # number of seconds we are running for
+        tbt_dict['Seconds'] = np.linspace(0.0, seconds, num=int(self.num_turns))
+        tbt = pd.DataFrame(tbt_dict)
+        
+        return zeta_monitor # instead, X, Y, Z monitors + ensemble values + statistics - in json?
 
 
         

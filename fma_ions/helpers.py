@@ -51,6 +51,7 @@ class Records:
     sigma_delta: np.ndarray
     bunch_length: np.ndarray
     Nb: np.ndarray
+    includes_profile_data : bool = False
 
     def update_at_turn(self, turn: int, parts: xp.Particles, twiss: xt.TwissTable):
         """Automatically update the records at given turn from the xpart.Particles."""
@@ -74,15 +75,50 @@ class Records:
         )
     
     def to_dict(self):
-        return {
+        """Convert data arrays to dictionary, possible also beam profile monitor data"""
+        data = {
             'exn': self.exn,
             'eyn': self.eyn,
             'sigma_delta': self.sigma_delta,
             'bunch_length': self.bunch_length,
-            'Nb' : self.Nb
+            'Nb' : self.Nb,
+            'includes_profile_data' : self.includes_profile_data
         }
-    
+        if self.includes_profile_data:
+            data['monitorH_x_grid'] = self.monitorH_x_grid.
+            data['monitorH_x_intensity'] = self.monitorH_x_intensity
+            data['monitorV_y_grid'] = self.monitorV_y_grid
+            data['monitorV_y_intensity'] = self.monitorV_y_intensity
+            data['nturns_profile_accumulation_interval'] = self.nturns_profile_accumulation_interval
+            data['z_bin_centers'] = self.z_bin_centers
+            data['z_bin_heights'] = self.z_bin_heights
 
+        return data
+
+
+    def append_WS_profile_monitor_data(self,
+                                       monitorH,
+                                       monitorV,
+                                       monitorZ
+                                       ):
+        """
+        If tracking has been done with installed beam profile monitors, append data
+        and save to json file
+        """
+        # Append X and Y WS monitors - convert to lists to save to json        
+        self.monitorH_x_grid = monitorH.x_grid.tolist()
+        self.monitorH_x_intensity = monitorH.x_intensity.tolist()
+        self.monitorV_y_grid = monitorV.y_grid.tolist()
+        self.monitorV_y_intensity = monitorV.y_intensity.tolist()
+
+        ### Append data fron longitudinal monitor
+        self.nturns_profile_accumulation_interval = monitorZ.nturns_profile_accumulation_interval
+        self.z_bin_centers = monitorZ.z_bin_centers.tolist()
+        self.z_bin_heights = monitorZ.z_bin_heights.tolist()
+
+        self.includes_profile_data = True
+
+'''
     def to_json(self, file_path):
         """
         Save the data to a JSON file.
@@ -90,6 +126,16 @@ class Records:
         records_dict = self.to_dict()
         df = pd.DataFrame(records_dict)
         df.to_json('{}tbt.json'.format(file_path))
+'''
+        
+    def to_json(self, file_path):
+        """
+        Save the data to a JSON file.
+        """
+        data = self.to_dict()
+
+        with open(file_path, 'w') as f:  # FIX NAME
+            json.dump(data, f)
 
 
 @dataclass
@@ -350,7 +396,6 @@ class Full_Records:
         self.monitorV_y_grid = monitorV_y_grid.tolist()
         self.monitorV_y_intensity = monitorV_y_intensity.tolist()
 
-        ## ADD Z MONITOR HERE
         self.includes_WS_profile_data = True
 
 
