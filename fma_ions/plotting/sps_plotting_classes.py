@@ -400,6 +400,39 @@ class SPS_Plotting:
         plt.show()
 
 
+    def plot_longitudinal_monitor_data(self,
+                                       monitor,
+                                       output_folder=None,
+                                       ):
+        """
+        Use longitudinal data from tracking to plot beam profile of zeta
+        
+        Parameters:
+        -----------
+        monitor : Longitudinal_Monitor
+            dataclass object with data 
+        output_folder : str
+            path to data. default is 'None', assuming then that data is in the same directory
+        """
+        # Select first and last profiles to plot
+        index_to_plot = [0, -1]
+        plot_str = ['At turn {}'.format(monitor.nturns_profile_accumulation_interval), 
+                    'At turn {}'.format(int(monitor.nturns_profile_accumulation_interval * len(monitor.z_bin_heights[0])))]
+
+        # Plot profile of particles
+        fig, ax = plt.subplots(1, 1, figsize = (8, 6))
+        j = 0
+        for i in index_to_plot:
+            ax.plot(monitor.z_bin_centers, monitor.z_bin_heights[:, i], label=plot_str[j])
+            j += 1
+        ax.set_xlabel('zeta [m]')
+        ax.set_ylabel('Counts')
+        ax.legend()
+        plt.tight_layout()
+        plt.show()
+
+
+
     def load_tbt_data_and_plot(self, include_emittance_measurements=False, x_unit_in_turns=True, show_plot=False, output_folder=None,
                                plot_bunch_length_measurements=False):
         """Load already tracked data and plot"""

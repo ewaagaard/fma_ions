@@ -13,7 +13,7 @@ import xobjects as xo
 from .sequences import PS_sequence_maker, BeamParameters_PS
 from .sequences import SPS_sequence_maker, BeamParameters_SPS, BeamParameters_SPS_Oxygen, BeamParameters_SPS_Proton
 from .fma_ions import FMA
-from .helpers import Records, Zeta_Container, Full_Records, _geom_epsx, _geom_epsy
+from .helpers import Records, Zeta_Container, Longitudinal_Monitor, _geom_epsx, _geom_epsy
 from .tune_ripple import Tune_Ripple_SPS
 from .longitudinal import generate_parabolic_distribution
 from .longitudinal import generate_binomial_distribution_from_PS_extr
@@ -392,8 +392,10 @@ class SPS_Flat_Bottom_Tracker:
         tbt.update_at_turn(0, particles, twiss)
         zetas.update_at_turn(0, particles)
 
-        # Borders for longitudinal histogram
-        zmin_hist, zmax_hist = -1.2*bucket_length, 1.2*bucket_length
+        # Longitudinal monitor - initiate class and define bucket length
+        zeta_monitor = Longitudinal_Monitor.init_monitor(num_z_bins=nbins, n_turns_tot=self.num_turns, 
+                                                         nturns_profile_accumulation_interval=nturns_profile_accumulation_interval)
+        zmin_hist, zmax_hist = -0.6*bucket_length, 0.6*bucket_length
 
         # Make one dictionary for ensemble data
         # and histograms with beam monitors
@@ -412,7 +414,6 @@ class SPS_Flat_Bottom_Tracker:
                                            which_context=which_context, full_data_turn_ind=full_data_ind) # full particle data
         tbt.update_at_turn(0, particles, twiss)
         '''
-        
 
         # Start tracking 
         time00 = time.time()
@@ -447,12 +448,13 @@ class SPS_Flat_Bottom_Tracker:
 
             # Update TBT, and save zetas
             tbt.update_at_turn(turn, particles, twiss)
-            zetas.update_at_turn(turn, particles) 
+            zetas.update_at_turn(turn % nturns_profile_accumulation_interval, particles) 
 
             # Merge all longitudinal coordinates to profile and stack
-            if turn % nturns_profile_accumulation_interval == 0:
+            if (turn+1) % nturns_profile_accumulation_interval == 0:
                 
                 # Generate and stack histogram
+                zeta_monitor.convert_zetas_and_stack_histogram(zetas, num_z_bins=nbins, z_range=(zmin_hist, zmax_hist))
 
                 # Initialize new zeta containers
                 del zetas
@@ -460,7 +462,6 @@ class SPS_Flat_Bottom_Tracker:
                                            which_context=which_context)
                 zetas.update_at_turn(0, particles) # start from turn, but 0 in new dataclass
                 
-
             '''
             # Update ensemble records or full records
             if not save_full_particle_data:
@@ -495,13 +496,13 @@ class SPS_Flat_Bottom_Tracker:
                 seconds = self.num_turns / turns_per_sec # number of seconds we are running for
                 tbt_dict['Seconds'] = np.linspace(0.0, seconds, num=int(self.num_turns))
                 tbt = pd.DataFrame(tbt_dict)
-        '''
 
         # If WS beam profile monitor data has been active
         if install_beam_monitors_at_WS_locations:
             tbt.append_WS_profile_monitor_data(monitorH.x_grid, monitorH.x_intensity, monitorV.y_grid, monitorV.y_intensity)
-            
-        return tbt
+        '''
+
+        return zeta_monitor
 
 
         

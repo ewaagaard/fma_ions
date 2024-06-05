@@ -92,7 +92,7 @@ class Records:
         df.to_json('{}tbt.json'.format(file_path))
 
 
- @dataclass
+@dataclass
 class Zeta_Container:
     """
     Data class to store longitudinal zeta coordinates
@@ -121,25 +121,35 @@ class Zeta_Container:
         )
 
 
- @dataclass
+@dataclass
 class Longitudinal_Monitor:
     """
     Data class to store histogram of longitudinal zeta coordinate 
     """
     z_bin_centers : np.ndarray
     z_bin_heights : np.ndarray
-    z_bin_widths : float
+    n_turns_tot : int 
+    nturns_profile_accumulation_interval : int
     index : int = 0 # index to keep track on where to append
 
     @classmethod
-    def init_monitor(cls, num_z_bins : int, n_turns: int) -> Self:  # noqa: F821
+    def init_monitor(cls, 
+                     num_z_bins : int, 
+                     n_turns_tot: int, 
+                     nturns_profile_accumulation_interval : int) -> Self:  # noqa: F821
         """Initialize dataclass with empty arrays containing zeta bin edges and zeta bin heights for every turn"""
+        n_profiles = int(n_turns_tot / nturns_profile_accumulation_interval)
         return cls(
             z_bin_centers = np.zeros(num_z_bins, dtype=float),
-            z_bin_heights = np.zeros([num_z_bins, n_turns], dtype=float),
+            z_bin_heights = np.zeros([num_z_bins, n_profiles], dtype=float),
+            n_turns_tot = n_turns_tot,
+            nturns_profile_accumulation_interval = nturns_profile_accumulation_interval
         )
 
-    def convert_zetas_and_stack_histogram(self, zetas : Zeta_Container, num_z_bins : int, z_range : tuple):
+    def convert_zetas_and_stack_histogram(self, 
+                                          zetas : Zeta_Container, 
+                                          num_z_bins : int, 
+                                          z_range : tuple):
         # Convert data class of particles to histogram
         z = zetas.zeta.flatten()
         s = zetas.state.flatten()
@@ -155,9 +165,14 @@ class Longitudinal_Monitor:
             self.z_bin_centers = bin_centers
             self.z_bin_widths = bin_widths
 
-        # Append bin heights
-        self.z_bin_heights[:, self.index] = bin_heights
+        # Append bin heights, if index is good
+        if self.index < len(self.z_bin_heights[0]):
+            self.z_bin_heights[:, self.index] = bin_heights
+            print(f'\nFilled in zeta profile number {self.index + 1} out of {len(self.z_bin_heights[0])}')
+        else:
+            print(f'\nIndex {self.index} above pre-specified number of profiles {len(self.z_bin_heights[0])}!\n')
 
+        # Move to next step
         self.index += 1
 
 
