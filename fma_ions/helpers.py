@@ -43,7 +43,8 @@ def _geom_epsy(parts: xp.Particles, twiss: xt.TwissTable) -> float:
 class Records:
     """
     Data class to store numpy.ndarray of results during tracking 
-    - here NORMALIZED emittance is used
+    - normalized emittance is used
+    - beam profile data (transverse wire scanner and longitudinal profile monitor) can be added
     """
     exn: np.ndarray
     eyn: np.ndarray
@@ -90,6 +91,43 @@ class Records:
         df = pd.DataFrame(records_dict)
         df.to_json('{}tbt.json'.format(file_path))
 
+
+ @dataclass
+class Zeta_Container:
+    """
+    Data class to store longitudinal zeta coordinates
+    """
+    zeta: np.ndarray
+    state: np.ndarray
+    which_context : str
+
+    def update_at_turn(self, turn: int, parts: xp.Particles):
+        """Automatically update the records at given turn from the xpart.Particles."""
+        # Depending on context, save individual particle values
+        if self.which_context=='cpu':
+            self.zeta[:, turn] = parts.zeta
+            self.state[:, turn] = parts.state
+        elif self.which_context=='gpu':
+            self.zeta[:, turn] = parts.zeta.get()
+            self.state[:, turn] = parts.state.get()
+
+    @classmethod
+    def init_zeroes(cls, num_part : int, n_turns: int, which_context : str) -> Self:  # noqa: F821
+        """Initialize the dataclass with arrays of zeroes, also with full_data_ind at which turns data is saved"""
+        return cls(
+            zeta=np.zeros([num_part, n_turns], dtype=float),
+            state=np.zeros([num_part, n_turns], dtype=float),
+            which_context=which_context,
+        )
+
+
+ @dataclass
+class Longitudinal_Monitor:
+    """
+    Data class to store histogram of longitudinal zeta coordinate 
+    """
+    def convert_zetas_to_histogram(self, ):
+        pass
 
     
 # Set up a dataclass to store the results - also growth rates 

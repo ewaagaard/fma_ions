@@ -13,7 +13,7 @@ import xobjects as xo
 from .sequences import PS_sequence_maker, BeamParameters_PS
 from .sequences import SPS_sequence_maker, BeamParameters_SPS, BeamParameters_SPS_Oxygen, BeamParameters_SPS_Proton
 from .fma_ions import FMA
-from .helpers import Records, Records_Growth_Rates, Full_Records, _bunch_length, _geom_epsx, _geom_epsy, _sigma_delta
+from .helpers import Records, Zeta_Container, Full_Records, _geom_epsx, _geom_epsy
 from .tune_ripple import Tune_Ripple_SPS
 from .longitudinal import generate_parabolic_distribution
 from .longitudinal import generate_binomial_distribution_from_PS_extr
@@ -30,7 +30,6 @@ import json
 import matplotlib.pyplot as plt
 import scipy.constants as constants
 import time
-
 
 
 @dataclass
@@ -126,7 +125,6 @@ class SPS_Flat_Bottom_Tracker:
 
 
     def track_SPS(self, 
-                  save_tbt_data=True, 
                   ion_type='Pb',
                   which_context='cpu',
                   add_non_linear_magnet_errors=False, 
@@ -157,15 +155,14 @@ class SPS_Flat_Bottom_Tracker:
                   voltage=3.0e6,
                   scale_factor_Qs=None,
                   only_one_zeta=False,
-                  install_beam_monitors_at_WS_locations=True
+                  install_beam_monitors_at_WS_locations=True,
+                  nturns_profile_accumulation_interval = 100
                   ):
         """
         Run full tracking at SPS flat bottom
         
         Parameters:
         ----------
-        save_tbt: bool
-            whether to return turn-by-turn data from tracking
         ion_type : str
             which ion to use: currently available are 'Pb' and 'O'
         which_context : str
@@ -230,10 +227,12 @@ class SPS_Flat_Bottom_Tracker:
             for 'linear_in_zeta' distribution, whether to select only one particle in zeta (penultimate in amplitude) or not
         install_beam_monitors_at_WS_locations : bool
             whether to install beam profile monitors at H and V Wire Scanner locations in SPS, that will record beam profiles
-
+        nturns_profile_accumulation_interval : int
+            turn interval between which to aggregate transverse and longitudinal particles for histogram
+        
         Returns:
         --------
-        None
+        tbt : pd.DataFrame
         """
         # Update vertical tune if changed
         self.qy0 = int(self.qy0) + Qy_frac / 100
@@ -299,11 +298,10 @@ class SPS_Flat_Bottom_Tracker:
         # Create horizontal beam monitor
         if install_beam_monitors_at_WS_locations:
             nbins = 200
-            nturns_profile_accumulation = 100
             monitorH = xt.BeamProfileMonitor(
-                start_at_turn=nturns_profile_accumulation/2, stop_at_turn=self.num_turns,
+                start_at_turn=nturns_profile_accumulation_interval/2, stop_at_turn=self.num_turns,
                 frev=1,
-                sampling_frequency=1/nturns_profile_accumulation,
+                sampling_frequency=1/nturns_profile_accumulation_interval,
                 n=nbins,
                 x_range=0.05,
                 y_range=0.05)
@@ -311,9 +309,9 @@ class SPS_Flat_Bottom_Tracker:
 
             # Create vertical beam monitor
             monitorV = xt.BeamProfileMonitor(
-                start_at_turn=nturns_profile_accumulation/2, stop_at_turn=self.num_turns,
+                start_at_turn=nturns_profile_accumulation_interval/2, stop_at_turn=self.num_turns,
                 frev=1,
-                sampling_frequency=1/nturns_profile_accumulation,
+                sampling_frequency=1/nturns_profile_accumulation_interval,
                 n=nbins,
                 x_range=0.05,
                 y_range=0.05)
@@ -386,6 +384,15 @@ class SPS_Flat_Bottom_Tracker:
             kqf_vals, kqd_vals, _ = ripple.load_k_from_xtrack_matching(dq=dq, plane=ripple_plane)
 
         # Initialize the dataclasses and store the initial values
+        tbt = Records.init_zeroes(self.num_turns)  # only emittances and bunch intensity
+        zetas = Zeta_Container.init_zeroes(len(particles.x), nturns_profile_accumulation_interval, 
+                                           which_context=which_context)
+        tbt.update_at_turn(0, particles, twiss)
+        zetas.update_at_turn(0, particles)
+
+        # Make one dictionary for ensemble data
+        # and histograms with beam monitors
+        '''
         if not save_full_particle_data:
             tbt = Records.init_zeroes(self.num_turns)  # only emittances and bunch intensity
         else:
@@ -399,6 +406,8 @@ class SPS_Flat_Bottom_Tracker:
             tbt = Full_Records.init_zeroes(len(particles.x[particles.state > 0]), len(full_data_ind), 
                                            which_context=which_context, full_data_turn_ind=full_data_ind) # full particle data
         tbt.update_at_turn(0, particles, twiss)
+        '''
+        
 
         # Start tracking 
         time00 = time.time()
@@ -433,7 +442,17 @@ class SPS_Flat_Bottom_Tracker:
 
 
             # update tbt
+            tbt.update_at_turn(turn, particles, twiss)
             # save last 100 turns of zeta, flatten and save to histogram
+            zetas.update_at_turn(turn, particles) 
+
+            # Merge all longitudinal coordinates to profile and stack
+            if turn % nturns_profile_accumulation_interval == 0:
+                
+                # Initialize new zeta containers
+                zetas = Zeta_Container.init_zeroes(len(particles.x), nturns_profile_accumulation_interval, 
+                                           which_context=which_context)
+                
 
             '''
             # Update ensemble records or full records
@@ -459,9 +478,8 @@ class SPS_Flat_Bottom_Tracker:
         if apply_kinetic_IBS_kicks and auto_recompute_ibs_coefficients:
             print('\nNumber of times auto-recomputed growth rates: {}\n'.format(IBS._number_of_coefficients_computations))
                 
-        # Make parquet file from dictionary
-        if save_tbt_data:
-            
+        # Make json file from dictionary
+        '''
             # If not full particle data is saved, return pandas version of  TBT dictionary with particle data
             if not save_full_particle_data:
                 tbt_dict = tbt.to_dict()
@@ -470,13 +488,13 @@ class SPS_Flat_Bottom_Tracker:
                 seconds = self.num_turns / turns_per_sec # number of seconds we are running for
                 tbt_dict['Seconds'] = np.linspace(0.0, seconds, num=int(self.num_turns))
                 tbt = pd.DataFrame(tbt_dict)
+        '''
 
-            else:
-                # If WS beam profile monitor data has been active
-                if install_beam_monitors_at_WS_locations:
-                   tbt.append_WS_profile_monitor_data(monitorH.x_grid, monitorH.x_intensity, monitorV.y_grid, monitorV.y_intensity)
+        # If WS beam profile monitor data has been active
+        if install_beam_monitors_at_WS_locations:
+            tbt.append_WS_profile_monitor_data(monitorH.x_grid, monitorH.x_intensity, monitorV.y_grid, monitorV.y_intensity)
             
-            return tbt
+        return tbt
 
 
         
