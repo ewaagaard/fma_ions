@@ -137,9 +137,9 @@ class SPS_Plotting:
         # Sigma_delta and bunch length
         f2, ax12 = plt.subplots(1, 1, figsize = (8,6))
         ax12.plot(time_units, tbt_dict['sigma_delta'] * 1e3, alpha=0.7, lw=1.5, label='$\sigma_{\delta}$')
-        f2.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
         ax12.set_ylabel(r'$\sigma_{\delta}$')
         ax12.set_xlabel('Turns' if x_unit_in_turns else 'Time [s]')
+        f2.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
         
         f3, ax22 = plt.subplots(1, 1, figsize = (8,6))
         ax22.plot(time_units, tbt_dict['bunch_length'], alpha=0.7, lw=1.5, label='Simulated')
