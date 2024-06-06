@@ -15,7 +15,7 @@ class Submitter:
                    change_to_best_node : bool = True,
                    number_of_turn_string : str = '',
                    copy_plot_scripts_to_output : bool = True,
-                   output_format : str = 'parquet'
+                   output_format : str = 'json'
                    ):
         """Method to submit .py script to HTCondor using CPUs"""
 
@@ -96,7 +96,7 @@ queue'''
                    change_to_best_node : bool = True,
                    number_of_turn_string : str = '',
                    copy_plot_scripts_to_output : bool = True,
-                   output_format : str = 'parquet'
+                   output_format : str = 'json'
                    ):
         """Method to submit .py script to HTCondor with GPUs"""        
 
