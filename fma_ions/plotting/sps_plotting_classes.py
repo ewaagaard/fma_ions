@@ -104,9 +104,9 @@ class SPS_Plotting:
         # Emittances and bunch intensity 
         f, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize = (14,5))
 
-        ax1.plot(time_units, np.array(tbt_dict['exn']) * 1e6, alpha=0.7, lw=1.5, label='Simulated')
-        ax2.plot(time_units, np.array(tbt_dict['eyn']) * 1e6, alpha=0.7, c='orange', lw=1.5, label='Simulated')
-        ax3.plot(time_units, np.array(tbt_dict['Nb']), alpha=0.7, lw=1.5, c='r', label='Bunch intensity')
+        ax1.plot(time_units, tbt_dict['exn'] * 1e6, alpha=0.7, lw=1.5, label='Simulated')
+        ax2.plot(time_units, tbt_dict['eyn'] * 1e6, alpha=0.7, c='orange', lw=1.5, label='Simulated')
+        ax3.plot(time_units, tbt_dict['Nb'], alpha=0.7, lw=1.5, c='r', label='Bunch intensity')
 
         if include_emittance_measurements:
             ax1.errorbar(time_units_x, 1e6 * np.array(full_data['N_avg_emitX']), yerr=1e6 * full_data['N_emitX_error'], 
@@ -115,7 +115,7 @@ class SPS_Plotting:
                        color='darkorange', fmt="o", label="Measured")
             
         # Find min and max emittance values - set window limits 
-        all_emit = np.concatenate((np.array(tbt_dict['exn']), np.array(tbt_dict['eyn'])))
+        all_emit = np.concatenate(tbt_dict['exn'], tbt_dict['eyn'])
         if include_emittance_measurements:
             all_emit = np.concatenate((all_emit, np.array(full_data['N_avg_emitX']), np.array(full_data['N_avg_emitY'])))
         min_emit = 1e6 * np.min(all_emit)
@@ -136,13 +136,13 @@ class SPS_Plotting:
 
         # Sigma_delta and bunch length
         f2, ax12 = plt.subplots(1, 1, figsize = (8,6))
-        ax12.plot(time_units, np.array(tbt_dict['sigma_delta']) * 1e3, alpha=0.7, lw=1.5, label='$\sigma_{\delta}$')
+        ax12.plot(time_units, tbt_dict['sigma_delta'] * 1e3, alpha=0.7, lw=1.5, label='$\sigma_{\delta}$')
         f2.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
         ax12.set_ylabel(r'$\sigma_{\delta}$')
         ax12.set_xlabel('Turns' if x_unit_in_turns else 'Time [s]')
         
         f3, ax22 = plt.subplots(1, 1, figsize = (8,6))
-        ax22.plot(time_units, np.array(tbt_dict['bunch_length']), alpha=0.7, lw=1.5, label='Simulated')
+        ax22.plot(time_units, tbt_dict['bunch_length'], alpha=0.7, lw=1.5, label='Simulated')
         if plot_bunch_length_measurements:
             ax22.plot(ctime, sigma_RMS_Gaussian_in_m, label='Measured RMS Gaussian')
             ax22.plot(ctime, sigma_RMS_Binomial_in_m, label='Measured RMS Binomial')
@@ -349,9 +349,9 @@ class SPS_Plotting:
         if tbt_dict is None:
             tbt_dict = self.load_records_dict_from_json(output_folder=output_folder)
 
-        # If index not provided, select first and last
+        # If index not provided, select second and second-to-last sets of 100 turns
         if index_to_plot is None:
-            index_to_plot = [0, -1]
+            index_to_plot = [1, -2]
             plot_str = ['At turn {}'.format(tbt_dict['nturns_profile_accumulation_interval']), 
                         'At turn {}'.format(int(tbt_dict['nturns_profile_accumulation_interval'] * len(tbt_dict['z_bin_heights'][0])))]
 
@@ -393,8 +393,8 @@ class SPS_Plotting:
         if tbt_dict is None:
             tbt_dict = self.load_records_dict_from_json(output_folder=output_folder)
 
-        # Select first and last profiles to plot
-        index_to_plot = [0, -1]
+        # If index not provided, select second and second-to-last sets of 100 turns
+        index_to_plot = [1, -2]
         plot_str = ['At turn {}'.format(tbt_dict['nturns_profile_accumulation_interval']), 
                     'At turn {}'.format(int(tbt_dict['nturns_profile_accumulation_interval'] * len(tbt_dict['z_bin_heights'][0])))]
 
@@ -402,7 +402,7 @@ class SPS_Plotting:
         fig, ax = plt.subplots(1, 1, figsize = (8, 6))
         j = 0
         for i in index_to_plot:
-            ax.plot(np.array(tbt_dict['z_bin_centers']), np.array(tbt_dict['z_bin_heights'])[:, i], label=plot_str[j])
+            ax.plot(tbt_dict['z_bin_centers'], tbt_dict['z_bin_heights'][:, i], label=plot_str[j])
             j += 1
         ax.set_xlabel('zeta [m]')
         ax.set_ylabel('Counts')
