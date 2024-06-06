@@ -115,7 +115,7 @@ class SPS_Plotting:
                        color='darkorange', fmt="o", label="Measured")
             
         # Find min and max emittance values - set window limits 
-        all_emit = np.concatenate(tbt_dict['exn'], tbt_dict['eyn'])
+        all_emit = np.concatenate((tbt_dict['exn'], tbt_dict['eyn']))
         if include_emittance_measurements:
             all_emit = np.concatenate((all_emit, np.array(full_data['N_avg_emitX']), np.array(full_data['N_avg_emitY'])))
         min_emit = 1e6 * np.min(all_emit)
@@ -341,7 +341,7 @@ class SPS_Plotting:
             dictionary containing turn-by-turn data. If None, will load json file
         output_folder : str
             path to data. default is 'None', assuming then that data is in the same directory
-        index_to_plot : np.ndarray
+        index_to_plot : list
             which profiles in time to plot. If None, then automatically plot first and last
         """
         os.makedirs('output_plots', exist_ok=True)
@@ -352,8 +352,13 @@ class SPS_Plotting:
         # If index not provided, select second and second-to-last sets of 100 turns
         if index_to_plot is None:
             index_to_plot = [1, -2]
-            plot_str = ['At turn {}'.format(tbt_dict['nturns_profile_accumulation_interval']), 
-                        'At turn {}'.format(int(tbt_dict['nturns_profile_accumulation_interval'] * len(tbt_dict['z_bin_heights'][0])))]
+            
+        # Find total number of stacked profiles and turns per profiles
+        stack_index = np.arange(len(tbt_dict['z_bin_heights'][0]))    
+        nturns_per_profile = tbt_dict['nturns_profile_accumulation_interval']
+        
+        plot_str = ['At turn {}'.format(nturns_per_profile * (1 + stack_index[index_to_plot[0]])), 
+                    'At turn {}'.format(nturns_per_profile * (1 + stack_index[index_to_plot[1]]))]
 
         # Plot profile of particles
         fig, ax = plt.subplots(1, 1, figsize = (8, 6))
