@@ -254,7 +254,7 @@ class Longitudinal_Monitor:
         # Append bin heights, if index is good
         if self.index < len(self.z_bin_heights[0]):
             self.z_bin_heights[:, self.index] = bin_heights
-            print(f'\nFilled in zeta profile number {self.index + 1} out of {len(self.z_bin_heights[0])}')
+            #print(f'\nFilled in zeta profile number {self.index + 1} out of {len(self.z_bin_heights[0])}')
         else:
             print(f'\nIndex {self.index} above pre-specified number of profiles {len(self.z_bin_heights[0])}!\n')
 

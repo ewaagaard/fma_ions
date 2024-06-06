@@ -33,7 +33,7 @@ class SPS_Flat_Bottom_Tracker:
     num_part: int = 10_000
     num_turns: int = 1000
     output_folder : str = "output" 
-    turn_print_interval : int = 500
+    turn_print_interval : int = 10_000
     qx0: float = 26.30
     qy0: float = 26.19
     ion_inj_ctime : float = 0.725 # ion injection happens at this time in cycle, important for WS
