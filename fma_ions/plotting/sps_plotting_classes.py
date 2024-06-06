@@ -84,8 +84,7 @@ class SPS_Plotting:
 
         # Convert measured emittances to turns if this unit is used, otherwise keep seconds
         if x_unit_in_turns:
-            turns = np.arange(len(tbt_dict['exn']), dtype=int)             
-            time_units = turns
+            time_units = tbt_dict['Turns']
             print('Set time units to turns')
         else:
             time_units = tbt_dict['Seconds']
@@ -226,15 +225,15 @@ class SPS_Plotting:
 
         # If binomial distribution, find index corresponding to after 30 turns (when distribution has stabilized)
         if distribution_type=='binomial':
-            ii = tbt_dict['turns'] > 30
+            ii = tbt_dict['Turns'] > 30
             print('\nSetting binomial turn index\n')
         else:
-            ii = tbt_dict['turns'] > -1 # select all turns
+            ii = tbt_dict['Turns'] > -1 # select all turns
             print('\nGaussian beam - select all turns\n')
 
         # Convert measured emittances to turns if this unit is used, otherwise keep seconds
         if x_unit_in_turns:         
-            time_units = tbt_dict['turns']
+            time_units = tbt_dict['Turns']
             print('Set time units to turns')
         else:
             time_units = tbt_dict['Seconds']
@@ -306,9 +305,9 @@ class SPS_Plotting:
     
             # Loop over the tbt records classes 
             for i, tbt in enumerate(tbt_array):
-                ax1.plot(tbt_dict['turns'], tbt_dict['exn'] * 1e6, alpha=0.7, lw=1.5, label=string_array[i])
-                ax2.plot(tbt_dict['turns'], tbt_dict['eyn'] * 1e6, alpha=0.7, lw=1.5, label=string_array[i])
-                ax3.plot(tbt_dict['turns'], tbt_dict['Nb'], alpha=0.7, lw=1.5, label=string_array[i])
+                ax1.plot(tbt_dict['Turns'], tbt_dict['exn'] * 1e6, alpha=0.7, lw=1.5, label=string_array[i])
+                ax2.plot(tbt_dict['Turns'], tbt_dict['eyn'] * 1e6, alpha=0.7, lw=1.5, label=string_array[i])
+                ax3.plot(tbt_dict['Turns'], tbt_dict['Nb'], alpha=0.7, lw=1.5, label=string_array[i])
     
             if include_emittance_measurements:
                 ax1.errorbar(time_units_x, 1e6 * np.array(full_data['N_avg_emitX']), yerr=1e6 * full_data['N_emitX_error'], 

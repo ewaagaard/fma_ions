@@ -51,6 +51,7 @@ class Records:
     sigma_delta: np.ndarray
     bunch_length: np.ndarray
     Nb: np.ndarray
+    turns: np.ndarray
     includes_profile_data : bool = False
     includes_seconds_array : bool = False
 
@@ -72,7 +73,8 @@ class Records:
             eyn=np.zeros(n_turns, dtype=float),
             Nb=np.zeros(n_turns, dtype=float),
             sigma_delta=np.zeros(n_turns, dtype=float),
-            bunch_length=np.zeros(n_turns, dtype=float)
+            bunch_length=np.zeros(n_turns, dtype=float),
+            turns=np.arange(n_turns, dtype=int)   
         )
     
 
@@ -114,15 +116,19 @@ class Records:
         self.includes_seconds_array = True if seconds_array is not None else False
 
 
-    def to_dict(self):
-        """Convert data arrays to dictionary, possible also beam profile monitor data"""
+    def to_dict(self, convert_to_numpy=False):
+        """
+        Convert data arrays to dictionary, possible also beam profile monitor data
+        Convert lists to numpy format if desired, but typically not if data is saved to json
+        """
         data = {
             'exn': self.exn.tolist(),
             'eyn': self.eyn.tolist(),
             'sigma_delta': self.sigma_delta.tolist(),
             'bunch_length': self.bunch_length.tolist(),
             'Nb' : self.Nb.tolist(),
-            'includes_profile_data' : self.includes_profile_data
+            'includes_profile_data' : self.includes_profile_data,
+            'Turns': self.turns.tolist()
         }
         if self.includes_profile_data:
             data['monitorH_x_grid'] = self.monitorH_x_grid
@@ -135,6 +141,12 @@ class Records:
         if self.includes_seconds_array:
             data['Seconds'] = self.seconds_array
 
+        # Convert lists to numpy arrays if desired
+        if convert_to_numpy:
+            for key, value in data.items():
+                if isinstance(data[key], list):
+                    data[key] = np.array(data[key])
+                    
         return data
 
 
@@ -149,14 +161,19 @@ class Records:
 
 
     @staticmethod
-    def dict_from_json(file_path):
+    def dict_from_json(file_path, convert_to_numpy=True):
         """
         Load the data from a JSON file and construct a dictionary from data
+        Convert lists in dictionary to numpy format if desired
         """
         with open(file_path, 'r') as f:
             tbt_dict = json.load(f)
 
-        # Convert every list to numpy array directly?
+        # Convert every list to numpy array
+        if convert_to_numpy:
+            for key, value in tbt_dict.items():
+                if isinstance(tbt_dict[key], list):
+                    tbt_dict[key] = np.array(tbt_dict[key])
 
         return tbt_dict
 
