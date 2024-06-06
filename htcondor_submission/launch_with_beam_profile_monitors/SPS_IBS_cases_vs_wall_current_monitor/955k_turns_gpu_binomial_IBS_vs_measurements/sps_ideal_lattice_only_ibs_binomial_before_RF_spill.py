@@ -6,7 +6,7 @@ import fma_ions
 import pandas as pd
 output_dir = './'
 
-n_turns = 10_000 #955_000  # corresponds to 22 s
+n_turns = 955_000  # corresponds to 22 s
 num_part = 10_000
 
 # Instantiate beam parameters, custom made to compare with 2016 measurements
