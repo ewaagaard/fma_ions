@@ -380,15 +380,18 @@ class SPS_Flat_Bottom_Tracker:
 
         # Initialize the dataclasses and store the initial values
         tbt = Records.init_zeroes(self.num_turns)  # only emittances and bunch intensity
-        zetas = Zeta_Container.init_zeroes(len(particles.x), nturns_profile_accumulation_interval, 
-                                           which_context=which_context)
         tbt.update_at_turn(0, particles, twiss)
-        zetas.update_at_turn(0, particles)
-
-        # Longitudinal monitor - initiate class and define bucket length
-        zeta_monitor = Longitudinal_Monitor.init_monitor(num_z_bins=nbins, n_turns_tot=self.num_turns, 
-                                                         nturns_profile_accumulation_interval=nturns_profile_accumulation_interval)
-        zmin_hist, zmax_hist = -0.55*bucket_length, 0.55*bucket_length
+        
+        # Install longitudinal beam profile monitor if desired
+        if install_beam_monitors:
+            zetas = Zeta_Container.init_zeroes(len(particles.x), nturns_profile_accumulation_interval, 
+                                               which_context=which_context)
+            zetas.update_at_turn(0, particles)
+    
+            # Longitudinal monitor - initiate class and define bucket length
+            zeta_monitor = Longitudinal_Monitor.init_monitor(num_z_bins=nbins, n_turns_tot=self.num_turns, 
+                                                             nturns_profile_accumulation_interval=nturns_profile_accumulation_interval)
+            zmin_hist, zmax_hist = -0.55*bucket_length, 0.55*bucket_length
 
         # Start tracking 
         time00 = time.time()
@@ -423,10 +426,11 @@ class SPS_Flat_Bottom_Tracker:
 
             # Update TBT, and save zetas
             tbt.update_at_turn(turn, particles, twiss)
-            zetas.update_at_turn(turn % nturns_profile_accumulation_interval, particles) 
+            if install_beam_monitors:
+                zetas.update_at_turn(turn % nturns_profile_accumulation_interval, particles) 
 
             # Merge all longitudinal coordinates to profile and stack
-            if (turn+1) % nturns_profile_accumulation_interval == 0:
+            if (turn+1) % nturns_profile_accumulation_interval == 0 and install_beam_monitors:
                 
                 # Generate and stack histogram
                 zeta_monitor.convert_zetas_and_stack_histogram(zetas, num_z_bins=nbins, z_range=(zmin_hist, zmax_hist))
