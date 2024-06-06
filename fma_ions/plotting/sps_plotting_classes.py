@@ -221,23 +221,23 @@ class SPS_Plotting:
         tbt_array = []
         for output_folder in output_str_array:
             self.output_folder = output_folder
-            tbt = self.load_tbt_data(output_folder)
-            tbt_array.append(tbt)
+            tbt_dict = self.load_records_dict_from_json(output_folder=output_folder)
+            tbt_array.append(tbt_dict)
 
         # If binomial distribution, find index corresponding to after 30 turns (when distribution has stabilized)
         if distribution_type=='binomial':
-            ii = tbt['turns'] > 30
+            ii = tbt_dict['turns'] > 30
             print('\nSetting binomial turn index\n')
         else:
-            ii = tbt['turns'] > -1 # select all turns
+            ii = tbt_dict['turns'] > -1 # select all turns
             print('\nGaussian beam - select all turns\n')
 
         # Convert measured emittances to turns if this unit is used, otherwise keep seconds
         if x_unit_in_turns:         
-            time_units = tbt['turns']
+            time_units = tbt_dict['turns']
             print('Set time units to turns')
         else:
-            time_units = tbt['Seconds']
+            time_units = tbt_dict['Seconds']
             print('Set time units to seconds')
 
         # Load emittance measurements
@@ -267,9 +267,9 @@ class SPS_Plotting:
             
             # Loop over the tbt records classes 
             for i, tbt in enumerate(tbt_array):
-                ax1.plot(time_units, tbt.exn * 1e6, alpha=0.7, lw=1.5, label=string_array[i])
-                ax2.plot(time_units, tbt.eyn * 1e6, alpha=0.7, lw=1.5, label=string_array[i])
-                ax3.plot(time_units[ii], tbt.Nb[ii], alpha=0.7, lw=2.5, label=string_array[i])
+                ax1.plot(time_units, tbt_dict['exn'] * 1e6, alpha=0.7, lw=1.5, label=string_array[i])
+                ax2.plot(time_units, tbt_dict['eyn'] * 1e6, alpha=0.7, lw=1.5, label=string_array[i])
+                ax3.plot(time_units[ii], tbt_dict['Nb'][ii], alpha=0.7, lw=2.5, label=string_array[i])
                 
             # Include wire scanner data - subtract ion injection cycle time
             if include_emittance_measurements:
@@ -299,7 +299,6 @@ class SPS_Plotting:
             f.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
             f.savefig('main_plots/result_multiple_trackings_compact.png', dpi=250)
             plt.show()
-                #ax3.plot(tbt.turns, tbt.Nb, alpha=0.7, lw=1.5, label=string_array[i])
             
         else:
             # Emittances and bunch intensity 
@@ -307,9 +306,9 @@ class SPS_Plotting:
     
             # Loop over the tbt records classes 
             for i, tbt in enumerate(tbt_array):
-                ax1.plot(tbt.turns, tbt.exn * 1e6, alpha=0.7, lw=1.5, label=string_array[i])
-                ax2.plot(tbt.turns, tbt.eyn * 1e6, alpha=0.7, lw=1.5, label=string_array[i])
-                ax3.plot(tbt.turns, tbt.Nb, alpha=0.7, lw=1.5, label=string_array[i])
+                ax1.plot(tbt_dict['turns'], tbt_dict['exn'] * 1e6, alpha=0.7, lw=1.5, label=string_array[i])
+                ax2.plot(tbt_dict['turns'], tbt_dict['eyn'] * 1e6, alpha=0.7, lw=1.5, label=string_array[i])
+                ax3.plot(tbt_dict['turns'], tbt_dict['Nb'], alpha=0.7, lw=1.5, label=string_array[i])
     
             if include_emittance_measurements:
                 ax1.errorbar(time_units_x, 1e6 * np.array(full_data['N_avg_emitX']), yerr=1e6 * full_data['N_emitX_error'], 
