@@ -10,10 +10,9 @@ import xpart as xp
 import xfields as xf
 import xobjects as xo
 
-from .sequences import PS_sequence_maker, BeamParameters_PS
 from .sequences import SPS_sequence_maker, BeamParameters_SPS, BeamParameters_SPS_Oxygen, BeamParameters_SPS_Proton
 from .fma_ions import FMA
-from .helpers import Records, Zeta_Container, Longitudinal_Monitor, _geom_epsx, _geom_epsy
+from .helpers import Records, Zeta_Container, Longitudinal_Monitor, _geom_epsx, _geom_epsy, Records_Growth_Rates
 from .tune_ripple import Tune_Ripple_SPS
 from .longitudinal import generate_parabolic_distribution
 from .longitudinal import generate_binomial_distribution_from_PS_extr
@@ -22,13 +21,7 @@ from xibs.inputs import BeamParameters, OpticsParameters
 from xibs.kicks import KineticKickIBS
 from xibs.analytical import NagaitsevIBS
 
-from pathlib import Path
-
-import pandas as pd
-import os
-import json
 import matplotlib.pyplot as plt
-import scipy.constants as constants
 import time
 
 
