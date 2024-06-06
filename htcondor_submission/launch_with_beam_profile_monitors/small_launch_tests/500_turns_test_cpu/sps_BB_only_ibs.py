@@ -21,4 +21,4 @@ Qy_frac = 25 # old fractional tune
 sps = fma_ions.SPS_Flat_Bottom_Tracker(num_turns=n_turns, num_part=num_part)
 tbt = sps.track_SPS(which_context='cpu', Qy_frac=Qy_frac, beamParams=beamParams, install_SC_on_line=False, beta_beat=0.1, 
                     add_non_linear_magnet_errors=True, apply_kinetic_IBS_kicks=True, ibs_step = 5000)
-tbt.to_json(f'{output_dir}/tbt.json')
+tbt.to_json(output_dir)
