@@ -342,7 +342,7 @@ class SPS_Plotting:
         output_folder : str
             path to data. default is 'None', assuming then that data is in the same directory
         index_to_plot : list
-            which profiles in time to plot. If None, then automatically plot first and last
+            which profiles in time to plot. If None, then automatically plot second and second-last profile
         """
         os.makedirs('output_plots', exist_ok=True)
 
@@ -384,6 +384,7 @@ class SPS_Plotting:
     def plot_longitudinal_monitor_data(self,
                                        tbt_dict=None,
                                        output_folder=None,
+                                       index_to_plot=None
                                        ):
         """
         Use longitudinal data from tracking to plot beam profile of zeta
@@ -394,14 +395,22 @@ class SPS_Plotting:
             dictionary containing turn-by-turn data. If None, will load json file
         output_folder : str
             path to data. default is 'None', assuming then that data is in the same directory
+        index_to_plot : list
+            which profiles in time to plot. If None, then automatically plot second and second-last profile
         """
         if tbt_dict is None:
             tbt_dict = self.load_records_dict_from_json(output_folder=output_folder)
 
         # If index not provided, select second and second-to-last sets of 100 turns
-        index_to_plot = [1, -2]
-        plot_str = ['At turn {}'.format(tbt_dict['nturns_profile_accumulation_interval']), 
-                    'At turn {}'.format(int(tbt_dict['nturns_profile_accumulation_interval'] * len(tbt_dict['z_bin_heights'][0])))]
+        if index_to_plot is None:
+            index_to_plot = [1, -2]
+            
+        # Find total number of stacked profiles and turns per profiles
+        stack_index = np.arange(len(tbt_dict['z_bin_heights'][0]))    
+        nturns_per_profile = tbt_dict['nturns_profile_accumulation_interval']
+        
+        plot_str = ['At turn {}'.format(nturns_per_profile * (1 + stack_index[index_to_plot[0]])), 
+                    'At turn {}'.format(nturns_per_profile * (1 + stack_index[index_to_plot[1]]))]
 
         # Plot profile of particles
         fig, ax = plt.subplots(1, 1, figsize = (8, 6))
@@ -409,7 +418,7 @@ class SPS_Plotting:
         for i in index_to_plot:
             ax.plot(tbt_dict['z_bin_centers'], tbt_dict['z_bin_heights'][:, i], label=plot_str[j])
             j += 1
-        ax.set_xlabel('zeta [m]')
+        ax.set_xlabel('$\zeta$ [m]')
         ax.set_ylabel('Counts')
         ax.legend()
         plt.tight_layout()
