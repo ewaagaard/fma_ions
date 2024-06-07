@@ -225,7 +225,8 @@ class SPS_Flat_Bottom_Tracker:
 
         Returns:
         --------
-        tbt : pd.DataFrame
+        tbt : Records
+            dataclass containing ensemble quantities and beam profile monitor data
         """
         # Update vertical tune if changed
         self.qy0 = int(self.qy0) + Qy_frac / 100

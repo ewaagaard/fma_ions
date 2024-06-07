@@ -150,10 +150,13 @@ class Records:
         return data
 
 
-    def to_json(self, file_path):
+    def to_json(self, file_path=None):
         """
         Save the data to a JSON file.
         """
+        if file_path is None:
+            file_path = './'
+
         data = self.to_dict()
 
         with open('{}tbt.json'.format(file_path), 'w') as f:
