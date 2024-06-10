@@ -9,6 +9,7 @@ tracking_has_been_done = False
 
 n_turns = 400
 num_part = 5000
+index_to_plot = None
 
 # Instantiate beam parameters, custom made to compare with 2016 measurements
 beamParams = fma_ions.BeamParameters_SPS()
@@ -27,5 +28,5 @@ if not tracking_has_been_done:
 
 
 sps_plot = fma_ions.SPS_Plotting()
-sps_plot.plot_longitudinal_monitor_data(inj_profile_is_after_RF_spill=False, also_compare_with_profile_data=True)
+sps_plot.plot_longitudinal_monitor_data(inj_profile_is_after_RF_spill=False, also_compare_with_profile_data=True, index_to_plot=index_to_plot)
 sps_plot.plot_tracking_data()
