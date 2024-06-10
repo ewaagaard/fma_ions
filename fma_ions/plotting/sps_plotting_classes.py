@@ -357,28 +357,41 @@ class SPS_Plotting:
         stack_index = np.arange(len(tbt_dict['z_bin_heights'][0]))    
         nturns_per_profile = tbt_dict['nturns_profile_accumulation_interval']
         
-        plot_str = ['At turn {}'.format(nturns_per_profile * (1 + stack_index[index_to_plot[0]])), 
-                    'At turn {}'.format(nturns_per_profile * (1 + stack_index[index_to_plot[1]]))]
+        # Show time stamp if seconds are available
+        if 'Seconds' in tbt_dict:
+            turns_per_s = tbt_dict['Turns'][-1] / tbt_dict['Seconds'][-1]
+            plot_str=  ['At time = {:.2f} s'.format(nturns_per_profile * (1 + stack_index[index_to_plot[0]]) / turns_per_s), 
+                        'At time = {:.2f} s'.format(nturns_per_profile * (1 + stack_index[index_to_plot[1]]) / turns_per_s)]
+        else:
+            plot_str = ['At turn {}'.format(nturns_per_profile * (1 + stack_index[index_to_plot[0]])), 
+                        'At turn {}'.format(nturns_per_profile * (1 + stack_index[index_to_plot[1]]))]
 
         # Plot profile of particles
         fig, ax = plt.subplots(1, 1, figsize = (8, 6))
         for j, i in enumerate(index_to_plot):
-            ax.plot(tbt_dict['monitorH_x_grid'], tbt_dict['monitorH_x_intensity'][i], label=plot_str[j])
+            # Normalize bin heights
+            x_bin_heights_sorted = np.array(sorted(tbt_dict['monitorH_x_intensity'][i], reverse=True))
+            x_height_max_avg = np.mean(x_bin_heights_sorted[:10]) # take average of top ten values
+            ax.plot(tbt_dict['monitorH_x_grid'], tbt_dict['monitorH_x_intensity'][i] / x_height_max_avg, label=plot_str[j])
         ax.set_xlabel('x [m]')
-        ax.set_ylabel('Counts')
-        ax.legend()
+        ax.set_ylabel('Normalized counts')
+        ax.legend(loc='upper left', fontsize=14)
         plt.tight_layout()
         fig.savefig('output_plots/SPS_X_Beam_Profile_WS.png', dpi=250)
 
         # Plot profile of particles
         fig2, ax2 = plt.subplots(1, 1, figsize = (8, 6))
         for j, i in enumerate(index_to_plot):
-            ax2.plot(tbt_dict['monitorV_y_grid'], tbt_dict['monitorV_y_intensity'][i], label=plot_str[j])
-        ax2.set_ylabel('Counts')
+            # Normalize bin heights
+            y_bin_heights_sorted = np.array(sorted(tbt_dict['monitorV_y_intensity'][i], reverse=True))
+            y_height_max_avg = np.mean(y_bin_heights_sorted[:10]) # take average of top ten values
+            ax2.plot(tbt_dict['monitorV_y_grid'], tbt_dict['monitorV_y_intensity'][i] / y_height_max_avg, label=plot_str[j])
+        ax2.set_ylabel('Normalized counts')
         ax2.set_xlabel('y [m]')
-        ax2.legend()
+        ax2.legend(loc='upper left', fontsize=14)
         plt.tight_layout()
         fig2.savefig('output_plots/SPS_Y_Beam_Profile_WS.png', dpi=250)
+        plt.show()
 
 
     def plot_longitudinal_monitor_data(self,
@@ -409,7 +422,7 @@ class SPS_Plotting:
         stack_index = np.arange(len(tbt_dict['z_bin_heights'][0]))    
         nturns_per_profile = tbt_dict['nturns_profile_accumulation_interval']
         
-        # Show time stamp if
+        # Show time stamp if seconds are available
         if 'Seconds' in tbt_dict:
             turns_per_s = tbt_dict['Turns'][-1] / tbt_dict['Seconds'][-1]
             plot_str=  ['At time = {:.2f} s'.format(nturns_per_profile * (1 + stack_index[index_to_plot[0]]) / turns_per_s), 
@@ -433,6 +446,7 @@ class SPS_Plotting:
         ax.legend(loc='upper left', fontsize=14)
         plt.tight_layout()
         fig.savefig('output_plots/SPS_Zeta_Beam_Profile_WS.png', dpi=250)
+        plt.show()
 
 
     def load_tbt_data_and_plot(self, include_emittance_measurements=False, x_unit_in_turns=True, show_plot=False, output_folder=None,
