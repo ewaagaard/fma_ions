@@ -1,7 +1,7 @@
 """
 Check tune shift p beam in Q26 for SPS, find emittances to get tune shift similar to O beam
-Use sequence generate from
-https://gitlab.cern.ch/elwaagaa/xsuite-sps-ps-sequence-benchmarker/-/blob/master/SPS_sequence/SPS_2021_sequence_generator_Protons.py
+Construct objective function, then use minimizer
+
 """
 import fma_ions
 import injector_model
@@ -9,6 +9,7 @@ import numpy as np
 import json
 import xtrack as xt
 import matplotlib.pyplot as plt
+from scipy.optimize import minimize
 
 plt.rcParams.update(
     {
@@ -38,8 +39,7 @@ print(line.particle_ref.show())
 # Update beam parameters to proton parameters
 beamParams = fma_ions.BeamParameters_SPS()
 beamParams.Nb = 1e11 
-beamParams.exn = 2.5e-6 # starting value
-beamParams.eyn = 2.5e-6
+en0 = [1.0e-6, 1.0e-6] # starting guess for emittances value
 beamParams.sigma_z = 0.22
 beamParams.delta = 1e-3
 print(beamParams)
@@ -52,16 +52,28 @@ r0 = line.particle_ref.get_classical_particle_radius0()
 print('Classical particle radius p: {}'.format(r0))
 
 # Create function to get tune shiifts - assume round beams
-def get_tune_shifts_from_emittance(norm_emitt):
+def get_tune_shifts_from_emittance(en):
+    """
+    Function to return tune shifts from a given set of emittances
+
+    Parameters
+    ----------
+    en : list
+        array with normalized emittances exn, eyn
+
+    Returns
+    -------
+    dQx, dQy : float
+        tune shift in each plane
+    """
     
     # Update emittances
-    beamParams.exn = norm_emitt
-    beamParams.eyn = norm_emitt
+    beamParams.exn = en[0]
+    beamParams.eyn = en[1]
 
     twiss_xtrack_interpolated, sigma_x, sigma_y = sc.interpolate_Twiss_table(twissTableXsuite=twiss, 
                                                                                 particle_ref=line.particle_ref,
                                                                                 line_length=line.get_length(), beamParams=beamParams)
-
     # Space charge perveance
     K_sc = (2 * r0 * beamParams.Nb) / (np.sqrt(2*np.pi) * beamParams.sigma_z * beta**2 * gamma**3)
 
@@ -69,28 +81,28 @@ def get_tune_shifts_from_emittance(norm_emitt):
     integrand_x = twiss_xtrack_interpolated['betx'] / (sigma_x * (sigma_x + sigma_y))  
     integrand_y = twiss_xtrack_interpolated['bety'] / (sigma_y * (sigma_x + sigma_y)) 
 
-    dQx0 = - K_sc / (4 * np.pi) * np.trapz(integrand_x, x = twiss_xtrack_interpolated['s'])
-    dQy0 = - K_sc / (4 * np.pi) * np.trapz(integrand_y, x = twiss_xtrack_interpolated['s'])
-    print('SC tune shift: dQx = {:.5f}, dQy = {:.5f}'.format(dQx0, dQy0))
+    dQx = - K_sc / (4 * np.pi) * np.trapz(integrand_x, x = twiss_xtrack_interpolated['s'])
+    dQy = - K_sc / (4 * np.pi) * np.trapz(integrand_y, x = twiss_xtrack_interpolated['s'])
+    print('SC tune shift: dQx = {:.5f}, dQy = {:.5f} for exn = {:.2e}, eyn = {:.2e}'.format(dQx, dQy, en[0], en[1]))
 
-    return dQx0, dQy0
+    return dQx, dQy
 
-# Initiate vectors and iterate function over values
-emitt_array = np.linspace(0.1e-6, 2e-6, num=25)
-dQx = np.zeros(len(emitt_array))
-dQy = np.zeros(len(emitt_array))
 
-for i, emitt in enumerate(emitt_array):
-    dQx[i], dQy[i] = get_tune_shifts_from_emittance(emitt)
+def objective_func(en):
 
-# Plot the results
-fig, ax = plt.subplots(1, 1, figsize=(8,6))
-ax.plot(emitt_array, dQx, label=r'$dQ_{{x}}$')
-ax.plot(emitt_array, dQy, label=r'$dQ_{{y}}$')
-ax.axhline(y=dQx_O, ls='--', c='g', label=r'Oxygen $dQ_{{x}}$')
-ax.axhline(y=dQy_O, ls='--', c='violet', label=r'Oxygen $dQ_{{y}}$')
-ax.set_ylabel('Tune shift')
-ax.set_xlabel(r'$\varepsilon^{{n}}_{{x,y}}$ [m rad]')
-ax.legend()
-fig.savefig('p_tune_shifts_over_emittances.png', dpi=250)
-plt.show()
+    # Find tune shifts from emittances
+    dQx, dQy = get_tune_shifts_from_emittance(en)
+    
+    # Define objective function to minimize square of difference to desired tune shift
+    cost = (dQx - dQx_O)**2 + (dQy - dQy_O)**2    
+    
+    return cost
+
+# Minimize cost function to find emittances corresponding to correct tune shifts
+result = minimize(objective_func, en0,
+                  method='nelder-mead', tol=1e-5, options={'maxiter':100})
+
+print('\nFinal result: exn = {:.3e}, eyn = {:.3e}'.format(result.x[0], result.x[1]))
+en_final = [result.x[0], result.x[1]]
+dQx_f, dQy_f = get_tune_shifts_from_emittance(en_final)
+print('with tune shifts dQx, dQy = {:4f}, {:.4f}'.format(dQx_f, dQy_f))
