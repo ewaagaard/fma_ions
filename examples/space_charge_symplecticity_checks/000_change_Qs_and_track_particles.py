@@ -9,6 +9,7 @@ import xobjects as xo
 import xfields as xf
 import matplotlib.pyplot as plt
 
+run_with_longitudinal_sc_kick = True
 
 def change_synchrotron_tune_by_factor(A, line, sigma_z, Nb):
     """
@@ -49,7 +50,7 @@ def change_synchrotron_tune_by_factor(A, line, sigma_z, Nb):
 
 # Initialize chosen context, number of turns, particles and space charge interactions
 context = xo.ContextCpu(omp_num_threads='auto')
-num_turns = 100
+num_turns = 10_000
 number_of_particles = 5
 num_spacecharge_interactions = 1080
 scale_factor_Qs = 2.0  # by how many times to scale the nominal synchrotron tune
@@ -89,6 +90,13 @@ xf.install_spacecharge_frozen(line = line,
                    num_spacecharge_interactions = num_spacecharge_interactions)
 
 line.build_tracker(_context = context)
+
+# Add longitudinal Z kick for SC if desired
+if run_with_longitudinal_sc_kick:
+    tt = line.get_table()
+    tt_sc = tt.rows[tt.element_type=='SpaceChargeBiGaussian']
+    for nn in tt_sc.name:
+        line[nn].z_kick_num_integ_per_sigma = 5
 
 # Start dictionary
 zeta_vals = np.zeros([len(particles.zeta), num_turns])
