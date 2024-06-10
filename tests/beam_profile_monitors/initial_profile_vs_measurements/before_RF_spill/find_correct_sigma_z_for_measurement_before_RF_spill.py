@@ -7,15 +7,16 @@ output_dir = './'
 
 tracking_has_been_done = False
 
-n_turns = 2000
-num_part = 5_000
+n_turns = 400
+num_part = 5000
 
 # Instantiate beam parameters, custom made to compare with 2016 measurements
 beamParams = fma_ions.BeamParameters_SPS()
 beamParams.Nb = 3.536e8 # loss factor from first turn observed with wall current monitor, before RF spill
 beamParams.exn = 1.3e-6 # in m
 beamParams.eyn = 0.8e-6 # in m
-beamParams.sigma_z_binomial = 0.31 # test slightly higher than default 0.285
+beamParams.sigma_z_binomial = 0.33 # test slightly higher than default 0.285
+beamParams.m = 5.3 # meausred for binomial after SPS injection
 Qy_frac = 25 # old fractional tune
 
 if not tracking_has_been_done:
