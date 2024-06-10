@@ -20,17 +20,17 @@ from ..helpers import Records, Records_Growth_Rates, Full_Records, _bunch_length
 
 
 # Load default emittance measurement data from 2023_10_16
-emittance_data_path = Path(__file__).resolve().parent.joinpath('../data/emittance_data/full_WS_data_SPS_2023_10_16.json').absolute()
-Nb_data_path = Path(__file__).resolve().parent.joinpath('../data/emittance_data/Nb_processed_SPS_2023_10_16.json').absolute()
+emittance_data_path = Path(__file__).resolve().parent.joinpath('../../data/emittance_data/full_WS_data_SPS_2023_10_16.json').absolute()
+Nb_data_path = Path(__file__).resolve().parent.joinpath('../../data/emittance_data/Nb_processed_SPS_2023_10_16.json').absolute()
 
 # Load Pb longitudinal profile measured at PS extraction and SPS injection
-longitudinal_data_path = Path(__file__).resolve().parent.joinpath('../data/longitudinal_profile_data/SPS_inj_longitudinal_data.npy').absolute()
-longitudinal_data_path_after_RF_spill = Path(__file__).resolve().parent.joinpath('../data/longitudinal_profile_data/SPS_inj_longitudinal_data_AFTER_RF_SPILL.npy').absolute()
+longitudinal_data_path = Path(__file__).resolve().parent.joinpath('../../data/longitudinal_profile_data/SPS_inj_longitudinal_data.npy').absolute()
+longitudinal_data_path_after_RF_spill = Path(__file__).resolve().parent.joinpath('../../data/longitudinal_profile_data/SPS_inj_longitudinal_data_AFTER_RF_SPILL.npy').absolute()
 
 # Load bunch length data from fitting, choose whether to load data where right tail is cut or not
 cut_right_tail_from_fitting_for_bunch_length = True
 cut_str = '_cut_right_tail' if cut_right_tail_from_fitting_for_bunch_length else ''
-bunch_length_data_path = Path(__file__).resolve().parent.joinpath('../data/longitudinal_profile_data/SPS_inj_bunch_length_data{}.npy'.format(cut_str)).absolute()
+bunch_length_data_path = Path(__file__).resolve().parent.joinpath('../../data/longitudinal_profile_data/SPS_inj_bunch_length_data{}.npy'.format(cut_str)).absolute()
 
 @dataclass
 class SPS_Plotting:
@@ -51,9 +51,9 @@ class SPS_Plotting:
                            tbt_dict=None, 
                            output_folder=None,
                            include_emittance_measurements=False,
-                           show_plot=False,
                            x_unit_in_turns=True,
-                           plot_bunch_length_measurements=False):
+                           plot_bunch_length_measurements=True,
+                           also_plot_sigma_delta=False):
         """
         Generates emittance plots from turn-by-turn (TBT) data class from simulations,
         compare with emittance measurements (default 2023-10-16) if desired.
@@ -65,13 +65,15 @@ class SPS_Plotting:
             path to data. default is 'None', assuming then that data is in the same directory
         include_emittance_measurements : bool
             whether to include measured emittance or not
-        show_plot : bool
-            whether to run "plt.show()" in addtion
         x_units_in_turns : bool
             if True, x axis units will be turn, otherwise in seconds
         plot_bunch_length_measurements : bool
             whether to include bunch length measurements from SPS wall current monitor from 2016 studies by Hannes and Tomas
+        also_plot_sigma_delta : bool
+            whether also to plot sigma_delta
         """
+        os.makedirs('output_plots', exist_ok=True)
+        
         if tbt_dict is None:
             tbt_dict = self.load_records_dict_from_json(output_folder=output_folder)
 
@@ -133,13 +135,16 @@ class SPS_Plotting:
         ax1.set_ylim(min_emit-0.08, max_emit+0.1)
         ax2.set_ylim(min_emit-0.08, max_emit+0.1)
         f.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
-
+        f.savefig('output_plots/epsilon_Nb.png', dpi=250)
+        
         # Sigma_delta and bunch length
-        f2, ax12 = plt.subplots(1, 1, figsize = (8,6))
-        ax12.plot(time_units, tbt_dict['sigma_delta'] * 1e3, alpha=0.7, lw=1.5, label='$\sigma_{\delta}$')
-        ax12.set_ylabel(r'$\sigma_{\delta}$')
-        ax12.set_xlabel('Turns' if x_unit_in_turns else 'Time [s]')
-        f2.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+        if also_plot_sigma_delta:
+            f2, ax12 = plt.subplots(1, 1, figsize = (8,6))
+            ax12.plot(time_units, tbt_dict['sigma_delta'] * 1e3, alpha=0.7, lw=1.5, label='$\sigma_{\delta}$')
+            ax12.set_ylabel(r'$\sigma_{\delta}$')
+            ax12.set_xlabel('Turns' if x_unit_in_turns else 'Time [s]')
+            f2.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+            f2.savefig('output_plots/sigma_delta.png', dpi=250)
         
         f3, ax22 = plt.subplots(1, 1, figsize = (8,6))
         ax22.plot(time_units, tbt_dict['bunch_length'], alpha=0.7, lw=1.5, label='Simulated')
@@ -150,16 +155,9 @@ class SPS_Plotting:
         ax22.set_xlabel('Turns' if x_unit_in_turns else 'Time [s]')
         ax22.legend()
         f3.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
-
-        # Save figures
-        os.makedirs('output_plots', exist_ok=True)
-        f.savefig('output_plots/epsilon_Nb.png', dpi=250)
-        f2.savefig('output_plots/sigma_delta.png', dpi=250)
         f3.savefig('output_plots/sigma.png', dpi=250)
 
-        if show_plot:
-            plt.show()
-        plt.close()
+        plt.show()
 
 
     def plot_multiple_sets_of_tracking_data(self, 
@@ -371,7 +369,7 @@ class SPS_Plotting:
         for j, i in enumerate(index_to_plot):
             # Normalize bin heights
             x_bin_heights_sorted = np.array(sorted(tbt_dict['monitorH_x_intensity'][i], reverse=True))
-            x_height_max_avg = np.mean(x_bin_heights_sorted[:10]) # take average of top ten values
+            x_height_max_avg = np.mean(x_bin_heights_sorted[:5]) # take average of top 5 values
             ax.plot(tbt_dict['monitorH_x_grid'], tbt_dict['monitorH_x_intensity'][i] / x_height_max_avg, label=plot_str[j])
         ax.set_xlabel('x [m]')
         ax.set_ylabel('Normalized counts')
@@ -397,7 +395,9 @@ class SPS_Plotting:
     def plot_longitudinal_monitor_data(self,
                                        tbt_dict=None,
                                        output_folder=None,
-                                       index_to_plot=None
+                                       index_to_plot=None,
+                                       also_compare_with_profile_data=True,
+                                       inj_profile_is_after_RF_spill=True
                                        ):
         """
         Use longitudinal data from tracking to plot beam profile of zeta
@@ -410,6 +410,10 @@ class SPS_Plotting:
             path to data. default is 'None', assuming then that data is in the same directory
         index_to_plot : list
             which profiles in time to plot. If None, then automatically plot second and second-last profile
+        also_compare_with_profile_data : bool
+            whether to include profile measurements
+        inj_profile_is_after_RF_spill : bool
+            whether SPS injection profile is after the initial spill out of the RF bucket
         """
         if tbt_dict is None:
             tbt_dict = self.load_records_dict_from_json(output_folder=output_folder)
@@ -425,28 +429,79 @@ class SPS_Plotting:
         # Show time stamp if seconds are available
         if 'Seconds' in tbt_dict:
             turns_per_s = tbt_dict['Turns'][-1] / tbt_dict['Seconds'][-1]
-            plot_str=  ['At time = {:.2f} s'.format(nturns_per_profile * (1 + stack_index[index_to_plot[0]]) / turns_per_s), 
+            plot_str =  ['At time = {:.2f} s'.format(nturns_per_profile * (1 + stack_index[index_to_plot[0]]) / turns_per_s), 
                         'At time = {:.2f} s'.format(nturns_per_profile * (1 + stack_index[index_to_plot[1]]) / turns_per_s)]
         else:
             plot_str = ['At turn {}'.format(nturns_per_profile * (1 + stack_index[index_to_plot[0]])), 
                         'At turn {}'.format(nturns_per_profile * (1 + stack_index[index_to_plot[1]]))]
 
-        # Plot profile of particles
-        fig, ax = plt.subplots(1, 1, figsize = (8, 6))
+        #### First plot initial and final simulated profile
+        fig0, ax0 = plt.subplots(1, 1, figsize = (8, 6))
         j = 0
+        z_heights_avg = []
         for i in index_to_plot:
             # Normalize bin heights
             z_bin_heights_sorted = np.array(sorted(tbt_dict['z_bin_heights'][:, i], reverse=True))
-            z_height_max_avg = np.mean(z_bin_heights_sorted[:10]) # take average of top ten values
-
-            ax.plot(tbt_dict['z_bin_centers'], tbt_dict['z_bin_heights'][:, i] / z_height_max_avg, label=plot_str[j])
+            z_height_max_avg = np.mean(z_bin_heights_sorted[:5]) # take average of top 5 values
+            z_heights_avg.append(z_height_max_avg)
+            ax0.plot(tbt_dict['z_bin_centers'], tbt_dict['z_bin_heights'][:, i] / z_height_max_avg, label=plot_str[j])
             j += 1
-        ax.set_xlabel('$\zeta$ [m]')
-        ax.set_ylabel('Normalized counts')
-        ax.legend(loc='upper left', fontsize=14)
+        ax0.set_xlabel('$\zeta$ [m]')
+        ax0.set_ylabel('Normalized counts')
+        ax0.legend(loc='upper left', fontsize=14)
         plt.tight_layout()
-        fig.savefig('output_plots/SPS_Zeta_Beam_Profile_WS.png', dpi=250)
+        fig0.savefig('output_plots/SPS_Zeta_Beam_Profile_WS.png', dpi=250)
+        
+        #### Also generate plots comparing with profile measurements
+        if also_compare_with_profile_data:
+            # Load data, also after the RF spill
+            zeta_SPS_inj, zeta_SPS_final, zeta_PS_BSM, data_SPS_inj, data_SPS_final, data_PS_BSM = self.load_longitudinal_profile_data()
+            zeta_SPS_inj_after_RF_spill, data_SPS_inj_after_RF_spill = self.load_longitudinal_profile_after_SPS_injection_RF_spill()
+    
+            # Plot longitudinal phase space, initial and final state
+            fig, ax = plt.subplots(2, 1, figsize = (8, 10), sharex=True)
+            
+            #### Simulated initial distribution
+            ax[0].plot(tbt_dict['z_bin_centers'], tbt_dict['z_bin_heights'][:, index_to_plot[0]] / z_heights_avg[0], 
+                       alpha=0.8, color='darkturquoise', label='Simulated inital')
+            
+            ### Measured injection profile, after or before initial RF spill
+            if inj_profile_is_after_RF_spill:
+                ax[0].plot(zeta_SPS_inj_after_RF_spill, data_SPS_inj_after_RF_spill, label='SPS wall current\nmonitor data\nafter RF spill')  
+            else:
+                ax[0].plot(zeta_SPS_inj, data_SPS_inj, label='SPS wall current\nmonitor data at inj')  
+                ax[0].plot(zeta_PS_BSM, data_PS_BSM, label='PS BSM data \nat extraction')
+                
+            #### Simulated final distribution
+            ax[1].plot(tbt_dict['z_bin_centers'], tbt_dict['z_bin_heights'][:, index_to_plot[1]] / z_heights_avg[1], 
+                      alpha=0.8, color='lime', label='Simulated final')
+            
+            #### Measured final distribution
+            ax[1].plot(zeta_SPS_final, data_SPS_final, color='darkgreen', label='SPS wall current\nmonitor data\n(at ~22 s)')
+            
+            ax[0].legend(loc='upper right', fontsize=13)
+            ax[1].legend(loc='upper right', fontsize=13)
+            
+            # Adjust axis limits and plot turn
+            ax[0].set_xlim(-0.85, 0.85)
+            ax[1].set_xlim(-0.85, 0.85)
+            
+            ax[0].text(0.02, 0.91, plot_str[0], fontsize=15, transform=ax[0].transAxes)
+            ax[1].text(0.02, 0.91, plot_str[1], fontsize=15, transform=ax[1].transAxes)
+            #ax[1].text(0.02, 0.85, 'Time = {:.2f} s'.format(full_data_turns_seconds_index[ind_final]), fontsize=12, transform=ax[1].transAxes)
+                
+            ax[1].set_xlabel(r'$\zeta$ [m]')
+            ax[1].set_ylabel('Counts')
+            ax[0].set_ylabel('Normalized count')
+            ax[1].set_ylabel('Normalized count')
+            plt.tight_layout()
+            
+            if inj_profile_is_after_RF_spill:
+                fig.savefig('output_plots/SPS_Pb_longitudinal_profiles_vs_data_after_RF_spill.png', dpi=250)
+            else:
+                fig.savefig('output_plots/SPS_Pb_longitudinal_profiles_vs_data.png', dpi=250)
         plt.show()
+
 
 
     def load_tbt_data_and_plot(self, include_emittance_measurements=False, x_unit_in_turns=True, show_plot=False, output_folder=None,
