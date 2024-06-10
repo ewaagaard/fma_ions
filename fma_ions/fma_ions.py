@@ -96,7 +96,8 @@ class FMA:
                                 optimize_for_tracking=True,
                                 context=None,
                                 distribution_type='gaussian',
-                                pic_solver = 'FFTSolver2p5D'):
+                                pic_solver = 'FFTSolver2p5D',
+                                add_Z_kick_for_SC=True):
         """
         Install frozen Space Charge (SC) and generate particles with provided Xsuite line and beam parameters
         
@@ -116,6 +117,8 @@ class FMA:
             'gaussian' or 'parabolic' or 'binomial' or 'linear_in_zeta': particle distribution for tracking
         pic_solver : str
             Choose solver between `FFTSolver2p5DAveraged` and `FFTSolver2p5D`
+        add_Z_kick_for_SC : bool
+            whether to install longitudinal kick for frozen space charge, otherwise risks of being non-symplectic
         
         Returns:
         -------
@@ -188,6 +191,13 @@ class FMA:
         # Build tracker for line
         line.build_tracker(_context = context)
         #twiss_xtrack_with_sc = line.twiss()  # --> better to do Twiss before installing SC, if enough SC interactions
+
+        # Install longitudinal kick for frozen and quasi-frozen
+        if add_Z_kick_for_SC and (mode != 'PIC'):
+            tt = line.get_table()
+            tt_sc = tt.rows[tt.element_type=='SpaceChargeBiGaussian']
+            for nn in tt_sc.name:
+                line[nn].z_kick_num_integ_per_sigma = 5
 
         # Find integer tunes from Twiss - BEFORE installing space charge
         self._Qx_int = int(twiss_xtrack['qx'])
