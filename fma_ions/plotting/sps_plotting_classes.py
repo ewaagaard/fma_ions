@@ -415,6 +415,8 @@ class SPS_Plotting:
         inj_profile_is_after_RF_spill : bool
             whether SPS injection profile is after the initial spill out of the RF bucket
         """
+        os.makedirs('output_plots', exist_ok=True)
+        
         if tbt_dict is None:
             tbt_dict = self.load_records_dict_from_json(output_folder=output_folder)
 

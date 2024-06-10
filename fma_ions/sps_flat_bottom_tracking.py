@@ -140,7 +140,6 @@ class SPS_Flat_Bottom_Tracker:
                   ripple_freq=50,
                   engine=None,
                   save_full_particle_data=False,
-                  full_particle_data_interval=None,
                   pretrack_particles_and_update_sc_for_binomial=False,
                   plane_for_beta_beat='Y',
                   num_spacecharge_interactions=1080,
@@ -201,8 +200,6 @@ class SPS_Flat_Bottom_Tracker:
             if Gaussian distribution, which single RF harmonic matcher engine to use. None, 'pyheadtail' or 'single-rf-harmonic'.
         save_full_particle_data : bool
             whether to save all particle phase space data (default False), else only ensemble properties
-        full_particle_data_interval : int
-            starting from turn 1, interval between which to save full particle data. Default 'None' will save only first or last turn
         pretrack_particles_and_update_sc_for_binomial : bool
             whether to "pre-track" particles for 50 turns if binomial distribution with particles outside RF bucket is generated, 
             then updating space charge to new distribution
