@@ -13,7 +13,7 @@ beamParams = fma_ions.BeamParameters_SPS()
 beamParams.Nb = 3.536e8 * 0.95  # loss factor from first turn observed with wall current monitor
 beamParams.exn = 1.3e-6 # in m
 beamParams.eyn = 0.8e-6 # in m
-beamParams.sigma_z_binomial = 0.215 # what we measure after initial losses out of the RF bucket
+beamParams.sigma_z_binomial = 0.225 # what we measure after initial losses out of the RF bucket
 beamParams.m = 2.8 # meausred for binomial after SPS injection
 Qy_frac = 25 # old fractional tune
 
