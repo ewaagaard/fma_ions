@@ -254,9 +254,9 @@ class SPS_Flat_Bottom_Tracker:
 
         # Get SPS Pb line - select ion or proton
         if ion_type=='Pb' or ion_type=='proton':
-            sps = SPS_sequence_maker(ion_type=ion_type, proton_optics=self.proton_optics)
+            sps = SPS_sequence_maker(ion_type=ion_type, proton_optics=self.proton_optics, qx0=self.qx0, qy0=self.qy0)
         elif ion_type=='O':
-            sps = SPS_sequence_maker(ion_type='O', Q_PS=4., Q_SPS=8., m_ion=15.9949) 
+            sps = SPS_sequence_maker(ion_type='O', Q_PS=4., Q_SPS=8., m_ion=15.9949, proton_optics=self.proton_optics, qx0=self.qx0, qy0=self.qy0) 
         else:
             raise ValueError('Only Pb and O ions implemented so far!')
             
