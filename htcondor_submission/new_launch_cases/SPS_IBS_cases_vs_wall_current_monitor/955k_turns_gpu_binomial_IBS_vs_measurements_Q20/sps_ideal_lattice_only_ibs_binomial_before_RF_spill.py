@@ -14,10 +14,9 @@ beamParams = fma_ions.BeamParameters_SPS()
 beamParams.Nb = 3.536e8  # loss factor from first turn observed with wall current monitor, before RF spill
 beamParams.exn = 1.3e-6 # in m
 beamParams.eyn = 0.8e-6 # in m
-Qy_frac = 25 # old fractional tune
 
 # Test default tracking with space charge on CPU context - then test plotting
 sps = fma_ions.SPS_Flat_Bottom_Tracker(num_turns=n_turns, num_part=num_part, qx0=20.3, qy0=20.25, proton_optics='q20')
-tbt = sps.track_SPS(which_context='gpu', Qy_frac=Qy_frac, beamParams=beamParams, install_SC_on_line=False, apply_kinetic_IBS_kicks=True, 
+tbt = sps.track_SPS(which_context='gpu', beamParams=beamParams, install_SC_on_line=False, apply_kinetic_IBS_kicks=True, 
                     ibs_step = 5000, distribution_type='binomial')
 tbt.to_json(output_dir)

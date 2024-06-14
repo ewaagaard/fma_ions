@@ -8,11 +8,14 @@ import pathlib
 # Find path of script being run
 dir_path = pathlib.Path(__file__).parent.absolute()
 script_names = ['sps_BB_only_ibs_binomial.py', 'sps_ideal_lattice_only_ibs_binomial.py', 'sps_BB_only_ibs_binomial_before_RF_spill.py',
-                'sps_ideal_lattice_only_ibs_binomial_before_RF_spill.py']
+                'sps_ideal_lattice_only_ibs_binomial_before_RF_spill.py', 'sps_ideal_lattice_sc_binomial.py',
+                'sps_BB_sc_binomial.py', 'sps_BB_sc_ibs_binomial.py']
 folder_names = ['sps_BB_only_ibs_binomial', 'sps_ideal_lattice_only_ibs_binomial', 'sps_BB_only_ibs_binomial_before_RF_spill',
-                'sps_ideal_lattice_only_ibs_binomial_before_RF_spill']
+                'sps_ideal_lattice_only_ibs_binomial_before_RF_spill', 'sps_ideal_lattice_sc_binomial',
+                'sps_BB_sc_binomial', 'sps_BB_sc_ibs_binomial']
 string_array = ['IBS with BB, binomial', 'IBS with ideal lattice, binomial', 'IBS with BB before RF spill, binomial', 
-                'IBS with ideal lattice before RF spill, binomial']    
+                'IBS with ideal lattice before RF spill, binomial', ' Space charge ideal lattice, binomial',
+                'Space charge with BB, binomial', 'Space charge + IBS with BB, binomial']    
 
 # Instantiate the submitter class and launch the two jobs
 sub = fma_ions.Submitter() 
