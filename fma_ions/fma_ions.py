@@ -199,6 +199,8 @@ class FMA:
             for nn in tt_sc.name:
                 line[nn].z_kick_num_integ_per_sigma = 5
 
+            print('\nInstalled longitudinal SC kicks')
+
         # Find integer tunes from Twiss - BEFORE installing space charge
         self._Qx_int = int(twiss_xtrack['qx'])
         self._Qy_int = int(twiss_xtrack['qy'])

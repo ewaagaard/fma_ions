@@ -32,6 +32,22 @@ cut_right_tail_from_fitting_for_bunch_length = True
 cut_str = '_cut_right_tail' if cut_right_tail_from_fitting_for_bunch_length else ''
 bunch_length_data_path = Path(__file__).resolve().parent.joinpath('../../data/longitudinal_profile_data/SPS_inj_bunch_length_data{}.npy'.format(cut_str)).absolute()
 
+# Load bunch intensity data from 2016 MD
+DCBCT_and_WCM_data_path = Path(__file__).resolve().parent.joinpath('../../data/intensity_data/SPS_WCM_and_DCBCT_data.npy')
+
+plt.rcParams.update(
+    {
+        "font.family": "serif",
+        "font.size": 20,
+        "axes.titlesize": 20,
+        "axes.labelsize": 18,
+        "xtick.labelsize": 18,
+        "ytick.labelsize": 18,
+        "legend.fontsize": 15,
+        "figure.titlesize": 20,
+    }
+)
+
 @dataclass
 class SPS_Plotting:
     
@@ -53,7 +69,10 @@ class SPS_Plotting:
                            include_emittance_measurements=False,
                            x_unit_in_turns=True,
                            plot_bunch_length_measurements=True,
-                           also_plot_sigma_delta=False):
+                           also_plot_sigma_delta=False,
+                           also_plot_WCM_Nb_data=True,
+                           also_plot_DCBCT_Nb_data=False,
+                           adjusting_factor_Nb_for_initial_drop=0.95):
         """
         Generates emittance plots from turn-by-turn (TBT) data class from simulations,
         compare with emittance measurements (default 2023-10-16) if desired.
@@ -71,6 +90,13 @@ class SPS_Plotting:
             whether to include bunch length measurements from SPS wall current monitor from 2016 studies by Hannes and Tomas
         also_plot_sigma_delta : bool
             whether also to plot sigma_delta
+        also_plot_WCM_Nb_data : bool
+            whether to also plot Wall current monitor data
+        also_plot_DCBCT_Nb_data : bool
+            whether to also plot DCBCT data
+        adjusting_factor_Nb_for_initial_drop : float
+            factor by which to multiply WCM data (normalized) times the simulated intensity. A factor 1.0 means that simulations
+            started without considering initial RF spill, 0.95 means that the beam parameters were adjusted to after the spill
         """
         os.makedirs('output_plots', exist_ok=True)
         
@@ -92,7 +118,7 @@ class SPS_Plotting:
             time_units = tbt_dict['Seconds']
             print('Set time units to seconds')
 
-        # Load emittance measurements
+        # Load emittance and intensity measurements
         if include_emittance_measurements:
             if x_unit_in_turns:
                 sps = SPS_sequence_maker()
@@ -103,19 +129,35 @@ class SPS_Plotting:
             time_units_x = (turns_per_sec * full_data['Ctime_X']) if x_unit_in_turns else full_data['Ctime_X']
             time_units_y = (turns_per_sec * full_data['Ctime_Y']) if x_unit_in_turns else full_data['Ctime_Y']
             
+
+        # Load BCT and Wall Current Monitor (WCM) data
+        with open(DCBCT_and_WCM_data_path, 'rb') as f:
+            time_WCM = np.load(f)
+            time_BCT = np.load(f)
+            Nb_WCM = np.load(f, allow_pickle=True)
+            Nb_BCT_normalized = np.load(f, allow_pickle=True)
+
+        time_units_WCM = (turns_per_sec * time_WCM) if x_unit_in_turns else time_WCM
+        time_units_DCBCT = (turns_per_sec * time_BCT) if x_unit_in_turns else time_BCT
+
         # Emittances and bunch intensity 
         f, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize = (14,5))
-
         ax1.plot(time_units, tbt_dict['exn'] * 1e6, alpha=0.7, lw=1.5, label='Simulated')
         ax2.plot(time_units, tbt_dict['eyn'] * 1e6, alpha=0.7, c='orange', lw=1.5, label='Simulated')
-        ax3.plot(time_units, tbt_dict['Nb'], alpha=0.7, lw=1.5, c='r', label='Bunch intensity')
-
         if include_emittance_measurements:
             ax1.errorbar(time_units_x, 1e6 * np.array(full_data['N_avg_emitX']), yerr=1e6 * full_data['N_emitX_error'], 
                        color='blue', fmt="o", label="Measured")
             ax2.errorbar(time_units_y, 1e6 * np.array(full_data['N_avg_emitY']), yerr=1e6 * full_data['N_emitY_error'], 
                        color='darkorange', fmt="o", label="Measured")
             
+        # Plot bunch intensities, also with mme
+        ax3.plot(time_units, tbt_dict['Nb'], alpha=0.7, lw=2.2, c='goldenrod', label='Simulated bunch intensity')
+        if also_plot_DCBCT_Nb_data:
+            ax3.plot(time_units_DCBCT, Nb_BCT_normalized, label='DC-BCT', alpha=0.8, color='b')
+        if also_plot_WCM_Nb_data:
+            ax3.plot(time_units_WCM, Nb_WCM / adjusting_factor_Nb_for_initial_drop * tbt_dict['Nb'][0],  alpha=0.8,
+                      label='Wall Current Monitor', color='r')
+
         # Find min and max emittance values - set window limits 
         all_emit = np.concatenate((tbt_dict['exn'], tbt_dict['eyn']))
         if include_emittance_measurements:
@@ -128,10 +170,11 @@ class SPS_Plotting:
         ax3.set_xlabel('Turns' if   x_unit_in_turns else 'Time [s]')
         ax1.set_ylabel(r'$\varepsilon_{x}^{n}$ [$\mu$m]')
         ax2.set_ylabel(r'$\varepsilon_{y}^{n}$ [$\mu$m]')
-        ax3.set_ylabel(r'$N_{b}$')
+        ax3.set_ylabel(r'Ions per bunch $N_{b}$')
         ax3.set_xlabel('Turns' if x_unit_in_turns else 'Time [s]')
         ax1.legend()
         ax2.legend()
+        ax3.legend(fontsize=13.5, loc='lower left')
         ax1.set_ylim(min_emit-0.08, max_emit+0.1)
         ax2.set_ylim(min_emit-0.08, max_emit+0.1)
         f.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
@@ -146,11 +189,12 @@ class SPS_Plotting:
             f2.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
             f2.savefig('output_plots/sigma_delta.png', dpi=250)
         
+        # Bunch length
         f3, ax22 = plt.subplots(1, 1, figsize = (8,6))
-        ax22.plot(time_units, tbt_dict['bunch_length'], alpha=0.7, lw=1.5, label='Simulated')
+        ax22.plot(time_units, tbt_dict['bunch_length'], color='turquoise', alpha=0.7, lw=1.5, label='Simulated')
         if plot_bunch_length_measurements:
-            ax22.plot(ctime, sigma_RMS_Gaussian_in_m, label='Measured RMS Gaussian')
-            ax22.plot(ctime, sigma_RMS_Binomial_in_m, label='Measured RMS Binomial')
+            ax22.plot(ctime, sigma_RMS_Gaussian_in_m, color='royalblue', label='Measured RMS Gaussian')
+            ax22.plot(ctime, sigma_RMS_Binomial_in_m, color='darkorange', label='Measured RMS Binomial')
         ax22.set_ylabel(r'$\sigma_{z}$ [m]')
         ax22.set_xlabel('Turns' if x_unit_in_turns else 'Time [s]')
         ax22.legend()
