@@ -16,7 +16,7 @@ import xobjects as xo
 from ..sequences import SPS_sequence_maker, BeamParameters_SPS, BeamParameters_SPS_Oxygen, BeamParameters_SPS_Proton
 from ..longitudinal import generate_parabolic_distribution
 from ..longitudinal import generate_binomial_distribution_from_PS_extr
-from ..helpers import Records, Records_Growth_Rates, Full_Records, _bunch_length, _geom_epsx, _geom_epsy, _sigma_delta
+from ..helpers_and_functions import Records, Records_Growth_Rates, Full_Records, _bunch_length, _geom_epsx, _geom_epsy, _sigma_delta
 
 
 # Load default emittance measurement data from 2023_10_16

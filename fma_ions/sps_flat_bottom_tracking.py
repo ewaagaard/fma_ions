@@ -13,7 +13,7 @@ import xobjects as xo
 from .sequences import SPS_sequence_maker, BeamParameters_SPS,  BeamParameters_SPS_Oxygen, BeamParameters_SPS_Proton
 from .sequences import BeamParameters_SPS_Binomial_2016, BeamParameters_SPS_Binomial_2016_before_RF_Spill
 from .fma_ions import FMA
-from .helpers import Records, Zeta_Container, Longitudinal_Monitor, _geom_epsx, _geom_epsy, Records_Growth_Rates
+from .helpers_and_functions import Records, Zeta_Container, Longitudinal_Monitor, _geom_epsx, _geom_epsy, Records_Growth_Rates
 from .tune_ripple import Tune_Ripple_SPS
 from .longitudinal import generate_parabolic_distribution
 from .longitudinal import generate_binomial_distribution_from_PS_extr
@@ -103,7 +103,7 @@ class SPS_Flat_Bottom_Tracker:
                 beamParams = BeamParameters_SPS_Binomial_2016() if use_binomial_dist_after_RF_spill else BeamParameters_SPS_Binomial_2016_before_RF_Spill
             
             # Also calculate SPS separatrix for plotting
-            print('\nCreating binomial with sigma_z = {:.3f} m'.format(beamParams.sigma_z_binomial))
+            print('\nCreating binomial with sigma_z = {:.3f} m, and m={}'.format(beamParams.sigma_z, beamParams.m))
             particles, self._zeta_separatrix, self._delta_separatrix = generate_binomial_distribution_from_PS_extr(num_particles=self.num_part,
                                                                     nemitt_x=beamParams.exn, nemitt_y=beamParams.eyn,
                                                                     sigma_z=beamParams.sigma_z, total_intensity_particles=beamParams.Nb,
