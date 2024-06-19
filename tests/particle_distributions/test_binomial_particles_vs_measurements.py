@@ -38,12 +38,12 @@ fig = plt.figure(figsize = (8, 7.5))
 gs = fig.add_gridspec(2, hspace=0, height_ratios= [1, 1])
 ax = gs.subplots(sharex=True, sharey=False)
 
-ax[0].bar(bin_centers, bin_heights, width=bin_widths, color='blue', label='Simulated particles')
-ax[0].plot(zeta_SPS_inj, data_SPS_inj, color='orange', marker='v', alpha=0.7,
+ax[0].bar(bin_centers, bin_heights, width=bin_widths, color='cyan', label='Simulated particles')
+ax[0].plot(zeta_SPS_inj, data_SPS_inj, color='blue', marker='v', alpha=0.7,
            ms=5.8, linestyle='None', label='SPS WCM\n2016 data')  
 
-ax[1].bar(bin_centers2, bin_heights2, width=bin_widths2, color='blue', label='Simulated particles')
-ax[1].plot(zeta_SPS_inj_after_RF_spill, data_SPS_inj_after_RF_spill, color='orange', alpha=0.8,
+ax[1].bar(bin_centers2, bin_heights2, width=bin_widths2, color='cyan', label='Simulated particles')
+ax[1].plot(zeta_SPS_inj_after_RF_spill, data_SPS_inj_after_RF_spill, color='blue', alpha=0.8,
            marker='v', ms=5.8, linestyle='None', label='SPS WCM\n2016 data') 
 
 ax[0].legend(loc='upper left', fontsize=12)
