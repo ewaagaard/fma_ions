@@ -47,9 +47,9 @@ class BeamParameters_SPS_Binomial_2016_before_RF_Spill:
     before initial RF spill
     """
     Nb:  float = 3.536e8  # injected bunch intensity measured with Wall Current Monitor (WCM)
-    sigma_z: float = 0.283 # RMS bunch length of binomial, measured before RF spill
-    m : float = 5.6 # binomial parameter to determine tail of parabolic distribution
-    q : float = 0.804 # q-Gaussian parameter
+    sigma_z: float = 0.268 # RMS bunch length of binomial, measured before RF spill
+    m : float = 4.65 # binomial parameter to determine tail of parabolic distribution
+    q : float = 0.752 # q-Gaussian parameter
     exn: float = 1.3e-6
     eyn: float = 0.9e-6
 

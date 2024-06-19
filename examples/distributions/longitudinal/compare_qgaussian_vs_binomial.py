@@ -21,7 +21,7 @@ zeta_SPS_inj, zeta_SPS_final, zeta_PS_BSM, data_SPS_inj, data_SPS_final, data_PS
 zeta_SPS_inj_after_RF_spill, data_SPS_inj_after_RF_spill = sps_plot.load_longitudinal_profile_after_SPS_injection_RF_spill()
 
 # First cut data approprietly, to avoid the artificial ringing
-ind_cut_1 = np.where((zeta_SPS_inj > -1.0) & (zeta_SPS_inj < 0.35))
+ind_cut_1 = np.where((zeta_SPS_inj > -1.0) & (zeta_SPS_inj < 0.5))
 zeta_SPS_inj_cut = zeta_SPS_inj[ind_cut_1]
 data_SPS_inj_cut = data_SPS_inj[ind_cut_1]
 
@@ -92,5 +92,6 @@ ax[1].set_ylabel('Amplitude [a.u.]')
 ax[0].text(0.6, 0.91, 'At injection, before RF spill', fontsize=13, transform=ax[0].transAxes)
 ax[1].text(0.6, 0.91, 'At injection, after RF spill', fontsize=13, transform=ax[1].transAxes)
 fig.tight_layout()
+fig.savefig('SPS_longitudinal_profile_before_vs_after_RF_spill.png', dpi=250)
 plt.show()
 
