@@ -5,6 +5,7 @@ import numpy as np
 from scipy.special import gamma as Gamma
 from scipy.optimize import curve_fit
 from scipy.signal import savgol_filter
+import scipy.integrate as integrate
 
 class Fit_Functions:
     """
@@ -108,17 +109,57 @@ class Fit_Functions:
             poptq = np.nan * np.ones(len(p0))
             
         return poptq
+
+    def get_sigma_RMS_from_qGaussian_fit(self, poptq):
+        """
+        Calculate RMS bunch length sigma_z from Q-Gaussian fits
+
+        Parameters
+        ----------
+        popt_Q : np.ndarray
+            array of fit parameters from fit_Q_Gaussian    
+        
+        Returns
+        -------
+        rms_bunch_length : float
+        """
+        q =  poptq[1]
+        beta = poptq[2]
+        return 1./np.sqrt(beta*(5.-3.*q))
     
 
     def Binomial(self, x, A, m, x_max, x0, offset):
         """Binomial phase space distribution"""
         #x_max = np.sqrt(sigma)
-        return A * (1 - ((x-x0)/x_max)**2)**(m-0.5) + offset
+        return A * np.abs((1 - ((x-x0)/x_max)**2))**(m-0.5) + offset
     
     def fit_Binomial(self, x_data, y_data, p0=None):
         
         if p0 is None:
-            p0 = [1.0, 5.3, 3.0, 0.0, 0.0]
+            p0 = [1.0, 3.5, 0.8, 0.0, 0.0]
         
         popt_B, _ = curve_fit(self.Binomial, x_data, y_data, p0)
         return popt_B
+    
+    def get_sigma_RMS_from_binomial_fit(self, popt_B):
+        """
+        Calculate RMS bunch length sigma_z from binomial fits
+
+        Parameters
+        ----------
+        popt_B : np.ndarray
+            array of fit parameters from fit_binomial    
+        
+        Returns
+        -------
+        rms_bunch_length : float
+        """
+        m = popt_B[1] 
+        x_max =  popt_B[2]
+        tau_max = 1.0 # starting value, will be adjusted. Used as benchmarking value with RMS factor for parabola
+        lambda_dist = lambda tau, tau_max: (1 - (tau/tau_max)**2)**(m-0.5) # zeroth moment of binomial
+        binomial_2nd = lambda tau, tau_max: (1 - (tau/tau_max)**2)**(m-0.5)*tau**2
+        RMS_binomial = np.sqrt(integrate.quad(binomial_2nd, -1, 1, args=(tau_max))[0] / integrate.quad(lambda_dist, -1, 1, args=(tau_max))[0])
+        factor_binomial = tau_max / RMS_binomial # 3.37639 calculated in "cernbox\PhD\Background_Reading\Ion_parameters_and_beam_profiles\distribution_testsy"
+        rms_bunch_length = x_max / factor_binomial
+        return rms_bunch_length

@@ -18,37 +18,56 @@ zeta_SPS_inj, zeta_SPS_final, zeta_PS_BSM, data_SPS_inj, data_SPS_final, data_PS
 zeta_SPS_inj_after_RF_spill, data_SPS_inj_after_RF_spill = sps_plot.load_longitudinal_profile_after_SPS_injection_RF_spill()
 
 # First cut data approprietly, to avoid the artificial ringing
-ind_cut_1 = np.where((zeta_SPS_inj > -0.75) & (zeta_SPS_inj < 0.35))
+ind_cut_1 = np.where((zeta_SPS_inj > -1.0) & (zeta_SPS_inj < 0.35))
 zeta_SPS_inj_cut = zeta_SPS_inj[ind_cut_1]
 data_SPS_inj_cut = data_SPS_inj[ind_cut_1]
 
-ind_cut_2 = np.where((zeta_SPS_inj_after_RF_spill > -0.65) & (zeta_SPS_inj_after_RF_spill < 0.3))
+ind_cut_2 = np.where((zeta_SPS_inj_after_RF_spill > -0.6) & (zeta_SPS_inj_after_RF_spill < 0.35))
 zeta_SPS_inj_after_RF_spill_cut = zeta_SPS_inj_after_RF_spill[ind_cut_2]
 data_SPS_inj_after_RF_spill_cut = data_SPS_inj_after_RF_spill[ind_cut_2]
 
 # Fit binomial and q-Gaussian to before and after RF spill at injection
 popt_Q_before_spill = fits.fit_Q_Gaussian(zeta_SPS_inj_cut, data_SPS_inj_cut)
+sigma_RMS_Q_before_spill = fits.get_sigma_RMS_from_qGaussian_fit(popt_Q_before_spill)
 popt_B_before_spill = fits.fit_Binomial(zeta_SPS_inj_cut, data_SPS_inj_cut)
+sigma_RMS_B_before_spill = fits.get_sigma_RMS_from_binomial_fit(popt_B_before_spill)
+print('\nBefore RF spill')
+print('Q-Gaussian: q={:.3f}, sigma_RMS = {:.3f}'.format(popt_Q_before_spill[1], sigma_RMS_Q_before_spill))
+print('Binomial: m={:.3f}, sigma_RMS = {:.3f}\n'.format(popt_B_before_spill[1], sigma_RMS_B_before_spill))
 
 popt_Q_after_spill = fits.fit_Q_Gaussian(zeta_SPS_inj_after_RF_spill_cut, data_SPS_inj_after_RF_spill_cut)
+sigma_RMS_Q_after_spill = fits.get_sigma_RMS_from_qGaussian_fit(popt_Q_after_spill)
 popt_B_after_spill = fits.fit_Binomial(zeta_SPS_inj_after_RF_spill_cut, data_SPS_inj_after_RF_spill_cut)
+sigma_RMS_B_after_spill = fits.get_sigma_RMS_from_binomial_fit(popt_B_after_spill)
+print('\nAfter RF spill')
+print('Q-Gaussian: q={:.3f}, sigma_RMS = {:.3f}'.format(popt_Q_after_spill[1], sigma_RMS_Q_after_spill))
+print('Binomial: m={:.3f}, sigma_RMS = {:.3f}\n'.format(popt_B_after_spill[1], sigma_RMS_B_after_spill))
+
+
+
 
 # Plot longitudinal phase space, initial and final state
-fig, ax = plt.subplots(2, 1, figsize = (8, 10), sharex=True)
-ax[0].plot(zeta_SPS_inj, data_SPS_inj, label='SPS wall current\nmonitor data\nbefore RF spill')  
-ax[0].plot(zeta_PS_BSM, data_PS_BSM, label='PS BSM data \nat extraction')
-ax[0].plot(zeta_SPS_inj_cut, fits.Q_Gaussian(data_SPS_inj_cut, *popt_Q_before_spill), label='Q-Gaussian fit')  
-ax[0].plot(zeta_SPS_inj_cut, fits.Binomial(data_SPS_inj_cut, *popt_B_before_spill), label='Binomial fit')  
-ax[1].plot(zeta_SPS_inj_after_RF_spill, data_SPS_inj_after_RF_spill, label='SPS wall current\nmonitor data\nafter RF spill')  
-ax[0].legend(loc='upper right', fontsize=13)
-ax[1].legend(loc='upper right', fontsize=13)
+fig = plt.figure(figsize = (8, 7.5))
+gs = fig.add_gridspec(2, hspace=0, height_ratios= [1, 1])
+ax = gs.subplots(sharex=True, sharey=False)
 
-# Adjust axis limits and plot turn
-ax[0].set_xlim(-0.85, 0.85)
-ax[1].set_xlim(-0.85, 0.85)
+ax[0].plot(zeta_SPS_inj, data_SPS_inj, color='blue', marker='v', ms=5.0, linestyle='None', label='SPS WCM data\nbefore RF spill')  
+ax[0].plot(zeta_PS_BSM, data_PS_BSM, color='k', markerfacecolor='magenta', marker='*', ms=9.8, linestyle='None', alpha=0.8, label='PS BSM data \nat extraction')
+ax[0].plot(zeta_SPS_inj_cut, fits.Q_Gaussian(zeta_SPS_inj_cut, *popt_Q_before_spill), color='lime', lw=2.8, label='Q-Gaussian fit')  
+ax[0].plot(zeta_SPS_inj_cut, fits.Binomial(zeta_SPS_inj_cut, *popt_B_before_spill), color='red', ls='--', lw=2.8, label='Binomial fit')  
+
+ax[1].plot(zeta_SPS_inj_after_RF_spill, data_SPS_inj_after_RF_spill, color='blue', marker='v', ms=5.0, linestyle='None', label='SPS WCM data\nafter RF spill') 
+ax[1].plot(zeta_SPS_inj_after_RF_spill_cut, fits.Q_Gaussian(zeta_SPS_inj_after_RF_spill_cut, *popt_Q_after_spill), color='lime', lw=2.8, label='Q-Gaussian fit')  
+ax[1].plot(zeta_SPS_inj_after_RF_spill_cut, fits.Binomial(zeta_SPS_inj_after_RF_spill_cut, *popt_B_after_spill), color='red', ls='--', lw=2.8, label='Binomial fit')   
+
+ax[0].legend(loc='upper right', fontsize=12)
+ax[1].legend(loc='upper right', fontsize=12)
+ax[0].set_xlim(-0.95, 0.95)
+ax[1].set_xlim(-0.95, 0.95)
 ax[1].set_xlabel(r'$\zeta$ [m]')
 ax[0].set_ylabel('Normalized count')
 ax[1].set_ylabel('Normalized count')
+fig.tight_layout()
 plt.show()
 
 '''
