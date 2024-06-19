@@ -16,3 +16,5 @@ from .longitudinal import generate_binomial_distribution
 from .longitudinal import generate_binomial_distribution_from_PS_extr
 
 from .plotting import SPS_Plotting
+
+from .helpers_and_functions import Fit_Functions
