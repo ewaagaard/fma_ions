@@ -4,10 +4,13 @@ Script to compare longitudinal Q-gaussian distribution vs binomial, to ensure co
 import fma_ions
 import numpy as np
 from xfields import LongitudinalProfileQGaussian
-from xpart.longitudinal import generate_longitudinal_coordinates
 import matplotlib.pyplot as plt
-from scipy.special import gamma as Gamma
+import scipy.constants as constants
 
+also_plot_long_profile = False
+x_axis_in_time_units = True
+gamma = 7.33
+beta = np.sqrt(1 - 1/gamma**2)
 
 # Fit binomial and Q-Gaussian to data
 fits = fma_ions.Fit_Functions()
@@ -44,6 +47,18 @@ print('Q-Gaussian: q={:.3f}, sigma_RMS = {:.3f}'.format(popt_Q_after_spill[1], s
 print('Binomial: m={:.3f}, sigma_RMS = {:.3f}\n'.format(popt_B_after_spill[1], sigma_RMS_B_after_spill))
 
 
+# Generate Q-Gaussian longitudinal profile in xfields
+z0 = 0.0
+npart = int(1e4)
+z = np.linspace(-.75, .75, npart)
+
+lprofile0 = LongitudinalProfileQGaussian(
+        number_of_particles=npart,
+        sigma_z=sigma_RMS_Q_after_spill,
+        z0=z0,
+        q_parameter=popt_Q_after_spill[1])
+lden0 = lprofile0.line_density(z)
+lden0_normalized = lden0 / max(lden0)
 
 
 # Plot longitudinal phase space, initial and final state
@@ -51,21 +66,26 @@ fig = plt.figure(figsize = (8, 7.5))
 gs = fig.add_gridspec(2, hspace=0, height_ratios= [1, 1])
 ax = gs.subplots(sharex=True, sharey=False)
 
-ax[0].plot(zeta_SPS_inj, data_SPS_inj, color='blue', marker='v', ms=5.8, linestyle='None', label='SPS WCM\n2016 data')  
-ax[0].plot(zeta_PS_BSM, data_PS_BSM, color='k', markerfacecolor='gold', marker='*', ms=11.8, linestyle='None', alpha=0.8, label='PS BSM data \n2023, at extr.')
-ax[0].plot(zeta_SPS_inj_cut, fits.Q_Gaussian(zeta_SPS_inj_cut, *popt_Q_before_spill), color='lime', lw=2.8, label='Q-Gaussian fit')  
-ax[0].plot(zeta_SPS_inj_cut, fits.Binomial(zeta_SPS_inj_cut, *popt_B_before_spill), color='red', ls='--', lw=2.8, label='Binomial fit')  
+# Convert length units to time in ns if desired
+unit_factor = 1e-9 * constants.c * beta if x_axis_in_time_units else 1.
 
+ax[0].plot(zeta_SPS_inj / unit_factor, data_SPS_inj, color='blue', marker='v', ms=5.8, linestyle='None', label='SPS WCM\n2016 data')  
+ax[0].plot(zeta_PS_BSM / unit_factor, data_PS_BSM, color='k', markerfacecolor='gold', marker='*', ms=11.8, linestyle='None', alpha=0.8, label='PS BSM data \n2023, at extr.')
+ax[0].plot(zeta_SPS_inj_cut / unit_factor, fits.Q_Gaussian(zeta_SPS_inj_cut, *popt_Q_before_spill), color='lime', lw=2.8, label='Q-Gaussian fit')  
+ax[0].plot(zeta_SPS_inj_cut /unit_factor, fits.Binomial(zeta_SPS_inj_cut, *popt_B_before_spill), color='red', ls='--', lw=2.8, label='Binomial fit')  
 
-ax[1].plot(zeta_SPS_inj_after_RF_spill, data_SPS_inj_after_RF_spill, color='blue', marker='v', ms=5.8, linestyle='None', label='SPS WCM\n2016 data') 
-ax[1].plot(zeta_SPS_inj_after_RF_spill_cut, fits.Q_Gaussian(zeta_SPS_inj_after_RF_spill_cut, *popt_Q_after_spill), color='lime', lw=2.8, label='Q-Gaussian fit')  
-ax[1].plot(zeta_SPS_inj_after_RF_spill_cut, fits.Binomial(zeta_SPS_inj_after_RF_spill_cut, *popt_B_after_spill), color='red', ls='--', lw=2.8, label='Binomial fit')   
+ax[1].plot(zeta_SPS_inj_after_RF_spill / unit_factor, data_SPS_inj_after_RF_spill, color='blue', marker='v', ms=5.8, linestyle='None', label='SPS WCM\n2016 data') 
+ax[1].plot(zeta_SPS_inj_after_RF_spill_cut / unit_factor, fits.Q_Gaussian(zeta_SPS_inj_after_RF_spill_cut, *popt_Q_after_spill), color='lime', lw=2.8, label='Q-Gaussian fit')  
+ax[1].plot(zeta_SPS_inj_after_RF_spill_cut / unit_factor, fits.Binomial(zeta_SPS_inj_after_RF_spill_cut, *popt_B_after_spill), color='red', ls='--', lw=2.8, label='Binomial fit')   
+if also_plot_long_profile:
+    ax[1].plot(z / unit_factor, lden0_normalized, color='orange', alpha=0.6, label='xfields Q-Gaussian q={:.1f}'.format(popt_Q_after_spill[1]))
 
 ax[0].legend(loc='upper left', fontsize=12)
 ax[1].legend(loc='upper left', fontsize=12)
-ax[0].set_xlim(-0.95, 0.95)
-ax[1].set_xlim(-0.95, 0.95)
-ax[1].set_xlabel(r'$\zeta$ [m]')
+xlim = 3. if x_axis_in_time_units else 0.95 
+ax[0].set_xlim(-xlim, xlim)
+ax[1].set_xlim(-xlim, xlim)
+ax[1].set_xlabel('Time [ns]' if x_axis_in_time_units else r'$\zeta$ [m]')
 ax[0].set_ylabel('Amplitude [a.u.]')
 ax[1].set_ylabel('Amplitude [a.u.]')
 
@@ -74,49 +94,3 @@ ax[1].text(0.6, 0.91, 'At injection, after RF spill', fontsize=13, transform=ax[
 fig.tight_layout()
 plt.show()
 
-'''
-
-
-# Longitudinal example parameters
-z0 = 0.0
-sigma_z = 0.225
-npart = int(1e6)
-m = 5.3
-z = np.linspace(-.75, .75, npart)
-
-# Generate Gaussian profile
-lprofile0 = LongitudinalProfileQGaussian(
-        number_of_particles=npart,
-        sigma_z=sigma_z,
-        z0=z0,
-        q_parameter=1.0)
-lden0 = lprofile0.line_density(z)
-lden0_normalized = lden0 / max(lden0)
-
-# Generate longitudinal Q-Gaussian
-qq = 0.8
-lprofile = LongitudinalProfileQGaussian(
-        number_of_particles=npart,
-        sigma_z=sigma_z,
-        z0=z0,
-        q_parameter=qq)
-lden = lprofile.line_density(z)
-lden_normalized = lden / max(lden)
-
-# Parameters for binomial
-A = 1.0
-x_max = 0.75
-z_binomial = np.linspace(-x_max, x_max, npart)
-x0 = 0.0
-args = (A, m, x_max, x0)
-
-# Generate figure of longitudinal data
-fig, ax = plt.subplots(1, 1, figsize=(8,6))
-ax.plot(z, lden0_normalized, label='Gaussian')
-ax.plot(z, lden_normalized, label='Q-Gaussian q={:.1f}'.format(qq))
-ax.plot(z_binomial, Binomial(z_binomial, *args), ls='--', color='lime', lw=2, label='Binomial m={:.1f}'.format(m))
-
-ax.set_xlabel('Zeta [m]')
-ax.legend(loc='lower right')
-plt.show()
-'''
