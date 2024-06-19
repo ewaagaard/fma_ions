@@ -51,22 +51,26 @@ fig = plt.figure(figsize = (8, 7.5))
 gs = fig.add_gridspec(2, hspace=0, height_ratios= [1, 1])
 ax = gs.subplots(sharex=True, sharey=False)
 
-ax[0].plot(zeta_SPS_inj, data_SPS_inj, color='blue', marker='v', ms=5.0, linestyle='None', label='SPS WCM data\nbefore RF spill')  
-ax[0].plot(zeta_PS_BSM, data_PS_BSM, color='k', markerfacecolor='magenta', marker='*', ms=9.8, linestyle='None', alpha=0.8, label='PS BSM data \nat extraction')
+ax[0].plot(zeta_SPS_inj, data_SPS_inj, color='blue', marker='v', ms=5.8, linestyle='None', label='SPS WCM\n2016 data')  
+ax[0].plot(zeta_PS_BSM, data_PS_BSM, color='k', markerfacecolor='gold', marker='*', ms=11.8, linestyle='None', alpha=0.8, label='PS BSM data \n2023, at extr.')
 ax[0].plot(zeta_SPS_inj_cut, fits.Q_Gaussian(zeta_SPS_inj_cut, *popt_Q_before_spill), color='lime', lw=2.8, label='Q-Gaussian fit')  
 ax[0].plot(zeta_SPS_inj_cut, fits.Binomial(zeta_SPS_inj_cut, *popt_B_before_spill), color='red', ls='--', lw=2.8, label='Binomial fit')  
 
-ax[1].plot(zeta_SPS_inj_after_RF_spill, data_SPS_inj_after_RF_spill, color='blue', marker='v', ms=5.0, linestyle='None', label='SPS WCM data\nafter RF spill') 
+
+ax[1].plot(zeta_SPS_inj_after_RF_spill, data_SPS_inj_after_RF_spill, color='blue', marker='v', ms=5.8, linestyle='None', label='SPS WCM\n2016 data') 
 ax[1].plot(zeta_SPS_inj_after_RF_spill_cut, fits.Q_Gaussian(zeta_SPS_inj_after_RF_spill_cut, *popt_Q_after_spill), color='lime', lw=2.8, label='Q-Gaussian fit')  
 ax[1].plot(zeta_SPS_inj_after_RF_spill_cut, fits.Binomial(zeta_SPS_inj_after_RF_spill_cut, *popt_B_after_spill), color='red', ls='--', lw=2.8, label='Binomial fit')   
 
-ax[0].legend(loc='upper right', fontsize=12)
-ax[1].legend(loc='upper right', fontsize=12)
+ax[0].legend(loc='upper left', fontsize=12)
+ax[1].legend(loc='upper left', fontsize=12)
 ax[0].set_xlim(-0.95, 0.95)
 ax[1].set_xlim(-0.95, 0.95)
 ax[1].set_xlabel(r'$\zeta$ [m]')
-ax[0].set_ylabel('Normalized count')
-ax[1].set_ylabel('Normalized count')
+ax[0].set_ylabel('Amplitude [a.u.]')
+ax[1].set_ylabel('Amplitude [a.u.]')
+
+ax[0].text(0.6, 0.91, 'At injection, before RF spill', fontsize=13, transform=ax[0].transAxes)
+ax[1].text(0.6, 0.91, 'At injection, after RF spill', fontsize=13, transform=ax[1].transAxes)
 fig.tight_layout()
 plt.show()
 

@@ -14,18 +14,45 @@ class Fit_Functions:
     def __init__(self):
         pass
     
-    ########### FIT FUNCTION - GAUSSIAN ###########
     def Gaussian(self, x, A, mean, sigma, offset):
-        """Gaussian fit of the data """
+        """
+        Gaussian, or normal distribution
+        
+        Parameters
+        ----------
+        x : np.ndarray
+        A : float
+            normalization coefficient
+        mean : float
+            offset
+        sigma : float
+            first moment
+        offset : float
+            baseline
+
+        Returns
+        -------
+        Gaussian function values
+        """
         return A * np.exp(-(x - mean)**2 / (2 * sigma**2)) + offset
     
     
     def fit_Gaussian(self, x_data, y_data, p0 = None):
         """ 
-        Fit Gaussian to given X and Y data (numpy arrays)
+        Fit Gaussian to given X and Y data
         Custom guess p0 can be provided, otherwise generate guess
         
-        Returns: parameters popt
+        Parameters
+        ----------
+        x_data : np.ndarray
+        y_data : np.ndarray
+        p0 : list
+            initial guess
+        
+        Returns
+        -------
+        popt : list
+            fitted coefficients
         """
         
         # if starting guess not given, provide some qualified guess from data
@@ -46,9 +73,11 @@ class Fit_Functions:
             
         return popt
     
-    ########### FIT FUNCTION - Q-GAUSSIAN ###########
+    
     def _Cq(self, q, margin=5e-4):
         """
+        Normalization coefficient for Q-Gaussian
+        
         Normalizing constant from Eq. (2.2) in https://link.springer.com/article/10.1007/s00032-008-0087-y
         with a small margin around 1.0 for numerical stability
         """
@@ -63,9 +92,11 @@ class Fit_Functions:
         else:
             return Cq
     
+    
     def _eq(self, x, q):
-        """ Q-exponential function
-            Available at https://link.springer.com/article/10.1007/s00032-008-0087-y
+        """ 
+        Q-exponential function
+        Available at https://link.springer.com/article/10.1007/s00032-008-0087-y
         """
         eq = np.zeros(len(x))
         for i, xx in enumerate(x):
@@ -80,6 +111,8 @@ class Fit_Functions:
     
     def Q_Gaussian(self, x, mu, q, beta, A, C):
         """
+        Q-Gaussian function
+        
         Returns Q-Gaussian from Eq. (2.1) in (Umarov, Tsallis, Steinberg, 2008) 
         available at https://link.springer.com/article/10.1007/s00032-008-0087-y
         """
@@ -92,15 +125,22 @@ class Fit_Functions:
         Fits Q-Gaussian to x- and y-data (numpy arrays)
         Parameters: q0 (starting guess)
         
-        Returns fitted parameters poptq and fit errors poptqe
+        Parameters
+        ----------
+        x_data : np.ndarray
+        y_data : np.ndarray
+        q0 : float
+            initial guess for q-values
+        
+        Returns
+        -------
+        popt : list
+            fitted coefficients
         """
     
         # Test Gaussian fit for the first guess
         popt = self.fit_Gaussian(x_data, y_data) # gives A, mu, sigma, offset
         p0 = [popt[1], q0, 1/popt[2]**2/(5-3*q0), 2*popt[0], popt[3]] # mu, q, beta, A, offset
-    
-        #min_bounds = (-np.inf, -np.inf, 0.0, -np.inf, -np.inf,-np.inf)
-        #max_bounds = (np.inf, 3.0, np.inf, np.inf, np.inf, np.inf)
     
         try:
             poptq, pcovq = curve_fit(self.Q_Gaussian, x_data, y_data, p0)
@@ -109,6 +149,7 @@ class Fit_Functions:
             poptq = np.nan * np.ones(len(p0))
             
         return poptq
+
 
     def get_sigma_RMS_from_qGaussian_fit(self, poptq):
         """
@@ -129,17 +170,51 @@ class Fit_Functions:
     
 
     def Binomial(self, x, A, m, x_max, x0, offset):
-        """Binomial phase space distribution"""
-        #x_max = np.sqrt(sigma)
+        """
+        Binomial distribution
+        
+        Parameters
+        ----------
+        x : np.ndarray
+        A : float
+            normalization coefficient
+        m : float
+            binomial coefficient
+        sigma : x_max
+            defines limits for evaluation
+        offset : float
+            baseline
+
+        Returns
+        -------
+        Binomial function values
+        """
         return A * np.abs((1 - ((x-x0)/x_max)**2))**(m-0.5) + offset
     
+    
     def fit_Binomial(self, x_data, y_data, p0=None):
+        """
+        Fits binomial to x- and y-data (numpy arrays)
+        Parameters: p0 (starting guess)
         
+        Parameters
+        ----------
+        x_data : np.ndarray
+        y_data : np.ndarray
+        q0 : list
+            initial guess of parameters
+        
+        Returns
+        -------
+        popt : list
+            fitted coefficients
+        """
         if p0 is None:
             p0 = [1.0, 3.5, 0.8, 0.0, 0.0]
         
         popt_B, _ = curve_fit(self.Binomial, x_data, y_data, p0)
         return popt_B
+    
     
     def get_sigma_RMS_from_binomial_fit(self, popt_B):
         """
