@@ -1,6 +1,8 @@
 from .fma_ions import FMA
 
-from .sequences import SPS_sequence_maker, BeamParameters_SPS, BeamParameters_SPS_Oxygen, BeamParameters_SPS_Proton
+from .sequences import SPS_sequence_maker
+from .sequences import BeamParameters_SPS, BeamParameters_SPS_Binomial_2016, BeamParameters_SPS_Binomial_2016_before_RF_Spill, BeamParameters_SPS_Oxygen, BeamParameters_SPS_Proton
+
 from .sequences import PS_sequence_maker, BeamParameters_PS
 from .sequences import LEIR_sequence_maker, BeamParameters_LEIR
 

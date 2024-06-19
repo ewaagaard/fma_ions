@@ -97,7 +97,8 @@ class FMA:
                                 context=None,
                                 distribution_type='gaussian',
                                 pic_solver = 'FFTSolver2p5D',
-                                add_Z_kick_for_SC=True):
+                                add_Z_kick_for_SC=True,
+                                use_binomial_dist_after_RF_spill=True):
         """
         Install frozen Space Charge (SC) and generate particles with provided Xsuite line and beam parameters
         
@@ -119,6 +120,8 @@ class FMA:
             Choose solver between `FFTSolver2p5DAveraged` and `FFTSolver2p5D`
         add_Z_kick_for_SC : bool
             whether to install longitudinal kick for frozen space charge, otherwise risks of being non-symplectic
+        use_binomial_dist_after_RF_spill : bool
+            for binomial distributions, whether to use measured parameters after initial spill out of RF bucket (or before)
         
         Returns:
         -------
@@ -137,21 +140,21 @@ class FMA:
         twiss_xtrack = line.twiss()
 
         print('\nInstalling space charge on line...')
+        
         # Initialize longitudinal profile for beams 
         if distribution_type=='gaussian' or distribution_type=='linear_in_zeta':
-            sigma_z_RMS = beamParams.sigma_z
             q_val = 1.0
             print('\nGaussian longitudinal SC profile')
         elif distribution_type=='binomial':
-            sigma_z_RMS = beamParams.sigma_z_binomial
-            q_val = 0.8
-            print('\nBinomial longitudinal SC profile')
+            q_val = beamParams.q
+            print('\nBinomial longitudinal SC profile, using parameters after spill: {}, and q = {}'.format(use_binomial_dist_after_RF_spill, 
+                                                                                                            beamParams.q))
         elif distribution_type=='parabolic':
             raise ValueError('Parabolic not yet implemented for frozen!')
         
         lprofile = xf.LongitudinalProfileQGaussian(
                 number_of_particles = beamParams.Nb,
-                sigma_z = sigma_z_RMS,
+                sigma_z = beamParams.sigma_z,
                 z0=0.,
                 q_parameter=q_val)
 
@@ -165,7 +168,7 @@ class FMA:
                            particle_ref = line.particle_ref,
                            longitudinal_profile = lprofile,
                            nemitt_x = beamParams.exn, nemitt_y = beamParams.eyn,
-                           sigma_z = sigma_z_RMS,
+                           sigma_z = beamParams.sigma_z,
                            num_spacecharge_interactions = self.num_spacecharge_interactions)
         
         # Select mode - frozen is default

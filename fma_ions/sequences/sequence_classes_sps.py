@@ -24,12 +24,34 @@ class BeamParameters_SPS:
     """Data Container for SPS Pb default beam parameters"""
     Nb:  float = 2.46e8 # measured 2.46e8 ions per bunch on 2023-10-16
     sigma_z: float = 0.225 # in m, is the old value (close to Isabelle's and  Hannes'), but then bucket is too full if Gaussian longitudinal. 0.19 also used
-    sigma_z_binomial: float = 0.33 # RMS bunch length of binomial, default value to match data - previous value 0.285
-    m : float = 5.3 # binomial parameter to determine tail of parabolic distribution
     exn: float = 1.1e-6
     eyn: float = 0.9e-6
-    Qx_int: float = 26.
-    Qy_int: float = 26.
+
+@dataclass
+class BeamParameters_SPS_Binomial_2016:
+    """
+    Data Container for SPS Pb longitudinally binomial beam parameters, from 2016 measurements,
+    after initial spill out of RF bucket has happened
+    """
+    Nb: float = 3.536e8 * 0.95 # injected intensity, after initial spill out of RF bucket
+    sigma_z: float = 0.208 # RMS bunch length of binomial, after initial spill out of RF bucket
+    m : float = 2.65 # binomial parameter to determine tail of parabolic distribution, after initial spill out of RF bucket
+    q : float = 0.528 # q-Gaussian parameter after RF spill
+    exn: float = 1.3e-6
+    eyn: float = 0.9e-6
+
+@dataclass
+class BeamParameters_SPS_Binomial_2016_before_RF_Spill:
+    """
+    Data Container for SPS Pb longitudinally binomial beam parameters, from 2016 measurements, 
+    before initial RF spill
+    """
+    Nb:  float = 3.536e8  # injected bunch intensity measured with Wall Current Monitor (WCM)
+    sigma_z: float = 0.283 # RMS bunch length of binomial, measured before RF spill
+    m : float = 5.6 # binomial parameter to determine tail of parabolic distribution
+    q : float = 0.804 # q-Gaussian parameter
+    exn: float = 1.3e-6
+    eyn: float = 0.9e-6
 
 @dataclass
 class BeamParameters_SPS_Oxygen:
@@ -40,8 +62,6 @@ class BeamParameters_SPS_Oxygen:
     m : float = 5.3 # binomial parameter to determine tail of parabolic distribution
     exn: float = 1.3e-6
     eyn: float = 0.9e-6
-    Qx_int: float = 26.
-    Qy_int: float = 26.
 
 @dataclass
 class BeamParameters_SPS_Proton:
@@ -51,8 +71,6 @@ class BeamParameters_SPS_Proton:
     sigma_z_binomial: float = 0.285 # RMS bunch length of binomial, default value to match data
     exn: float = 0.65e-6 # to get same tune spread as Pb, 2.5e-6 is old test values for round proton beams
     eyn: float = 0.65e-6
-    Qx_int: float = 26.
-    Qy_int: float = 26.
 
 @dataclass
 class SPS_sequence_maker:

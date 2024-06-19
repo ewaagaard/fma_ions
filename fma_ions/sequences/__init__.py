@@ -1,3 +1,4 @@
-from .sequence_classes_sps import SPS_sequence_maker, BeamParameters_SPS, BeamParameters_SPS_Oxygen, BeamParameters_SPS_Proton
+from .sequence_classes_sps import SPS_sequence_maker
+from .sequence_classes_sps import BeamParameters_SPS, BeamParameters_SPS_Binomial_2016, BeamParameters_SPS_Binomial_2016_before_RF_Spill, BeamParameters_SPS_Oxygen, BeamParameters_SPS_Proton
 from .sequence_classes_ps import PS_sequence_maker, BeamParameters_PS
 from .sequence_classes_leir import LEIR_sequence_maker, BeamParameters_LEIR

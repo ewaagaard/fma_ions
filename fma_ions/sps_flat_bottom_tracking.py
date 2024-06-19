@@ -10,7 +10,8 @@ import xpart as xp
 import xfields as xf
 import xobjects as xo
 
-from .sequences import SPS_sequence_maker, BeamParameters_SPS, BeamParameters_SPS_Oxygen, BeamParameters_SPS_Proton
+from .sequences import SPS_sequence_maker, BeamParameters_SPS,  BeamParameters_SPS_Oxygen, BeamParameters_SPS_Proton
+from .sequences import BeamParameters_SPS_Binomial_2016, BeamParameters_SPS_Binomial_2016_before_RF_Spill
 from .fma_ions import FMA
 from .helpers import Records, Zeta_Container, Longitudinal_Monitor, _geom_epsx, _geom_epsy, Records_Growth_Rates
 from .tune_ripple import Tune_Ripple_SPS
@@ -44,7 +45,7 @@ class SPS_Flat_Bottom_Tracker:
                            context : xo.context, 
                            distribution_type='gaussian', 
                            beamParams=None,
-                           engine=None, 
+                           use_binomial_dist_after_RF_spill=True,
                            num_particles_linear_in_zeta=5, 
                            xy_norm_default=0.1,
                            scale_factor_Qs=None,
@@ -54,8 +55,14 @@ class SPS_Flat_Bottom_Tracker:
 
         Parameters:
         -----------
+        line: xt.Line
+        context : xo.context
         distribution_type : str
             'gaussian', 'parabolic', 'binomial' or 'linear_in_zeta'
+        beamParams : dataclass
+            container of exn, eyn, Nb and sigma_z. Default 'None' will load nominal SPS beam parameters 
+        use_binomial_dist_after_RF_spill : bool
+            for binomial distributions, whether to use measured parameters after initial spill out of RF bucket (or before)
         num_particles_linear_in_zeta : int
             number of equally spaced macroparticles linear in zeta
         xy_norm_default : float
@@ -66,10 +73,9 @@ class SPS_Flat_Bottom_Tracker:
         only_one_zeta : bool
             for 'linear_in_zeta' distribution, whether to select only one particle in zeta (penultimate in amplitude) or not
         """
-        if beamParams is None:
-            beamParams = BeamParameters_SPS
-
         if distribution_type=='gaussian':
+            if beamParams is None:
+                beamParams = BeamParameters_SPS()
             particles = xp.generate_matched_gaussian_bunch(_context=context,
                 num_particles=self.num_part, 
                 total_intensity_particles=beamParams.Nb,
@@ -77,10 +83,12 @@ class SPS_Flat_Bottom_Tracker:
                 nemitt_y=beamParams.eyn, 
                 sigma_z= beamParams.sigma_z,
                 particle_ref=line.particle_ref, 
-                line=line,
-                engine=engine)
+                line=line)
             print('\nGaussian distribution generated.')
+        
         elif distribution_type=='parabolic':
+            if beamParams is None:
+                beamParams = BeamParameters_SPS()
             particles = generate_parabolic_distribution(
                 num_particles=self.num_part, 
                 total_intensity_particles=beamParams.Nb,
@@ -89,14 +97,19 @@ class SPS_Flat_Bottom_Tracker:
                 sigma_z= beamParams.sigma_z,
                 line=line, _context=context)
             print('\nParabolic distribution generated.')
+        
         elif distribution_type=='binomial':
+            if beamParams is None:
+                beamParams = BeamParameters_SPS_Binomial_2016() if use_binomial_dist_after_RF_spill else BeamParameters_SPS_Binomial_2016_before_RF_Spill
+            
             # Also calculate SPS separatrix for plotting
             print('\nCreating binomial with sigma_z = {:.3f} m'.format(beamParams.sigma_z_binomial))
             particles, self._zeta_separatrix, self._delta_separatrix = generate_binomial_distribution_from_PS_extr(num_particles=self.num_part,
                                                                     nemitt_x=beamParams.exn, nemitt_y=beamParams.eyn,
-                                                                    sigma_z=beamParams.sigma_z_binomial, total_intensity_particles=beamParams.Nb,
+                                                                    sigma_z=beamParams.sigma_z, total_intensity_particles=beamParams.Nb,
                                                                     line=line, m=beamParams.m, return_separatrix_coord=True)
-            print('\nBinomial distribution generated.')
+            print('\nBinomial distribution with sigma={:.3f} m and m={:.3f} generated.\n'.format(beamParams.sigma_z, beamParams.m))
+        
         elif distribution_type=='linear_in_zeta':
             
             # Find suitable zeta range - make linear spacing between close to center of RF bucket and to separatrix
@@ -129,7 +142,6 @@ class SPS_Flat_Bottom_Tracker:
                   distribution_type='gaussian',
                   apply_kinetic_IBS_kicks=False,
                   harmonic_nb = 4653,
-                  auto_recompute_coefficients_percent=5,
                   ibs_step = 5000,
                   Qy_frac: int = 19,
                   print_lost_particle_state=True,
@@ -138,9 +150,7 @@ class SPS_Flat_Bottom_Tracker:
                   ripple_plane='both',
                   dq=0.01,
                   ripple_freq=50,
-                  engine=None,
-                  save_full_particle_data=False,
-                  pretrack_particles_and_update_sc_for_binomial=False,
+                  use_binomial_dist_after_RF_spill=True,
                   plane_for_beta_beat='Y',
                   num_spacecharge_interactions=1080,
                   voltage=3.0e6,
@@ -179,8 +189,6 @@ class SPS_Flat_Bottom_Tracker:
             whether to apply kinetic kicks from xibs 
         harmonic_nb : int
             harmonic used for SPS RF system
-        auto_recompute_coefficients_percent : float
-            relative emittance change after which to recompute 
         ibs_step : int
             Turn interval at which to recalculate IBS growth rates
         Qy_frac : int
@@ -196,13 +204,8 @@ class SPS_Flat_Bottom_Tracker:
             amplitude for tune ripple, if applied
         ripple_freq : float
             ripple frequency in Hz
-        engine : str
-            if Gaussian distribution, which single RF harmonic matcher engine to use. None, 'pyheadtail' or 'single-rf-harmonic'.
-        save_full_particle_data : bool
-            whether to save all particle phase space data (default False), else only ensemble properties
-        pretrack_particles_and_update_sc_for_binomial : bool
-            whether to "pre-track" particles for 50 turns if binomial distribution with particles outside RF bucket is generated, 
-            then updating space charge to new distribution
+        use_binomial_dist_after_RF_spill : bool
+            for binomial distributions, whether to use measured parameters after initial spill out of RF bucket (or before)
         plane_for_beta_beat : str
             plane in which beta-beat exists: 'X', 'Y' (default) or 'both'
         num_spacecharge_interactions : int
@@ -237,8 +240,8 @@ class SPS_Flat_Bottom_Tracker:
             if ion_type=='proton':
                 beamParams = BeamParameters_SPS_Proton()
                 harmonic_nb = 4620 # update harmonic number
-            if distribution_type == 'binomial' and pretrack_particles_and_update_sc_for_binomial:
-                beamParams.Nb = beamParams.Nb / 0.9108 # assume 8% of particles are lost outside of PS bucket, have to compensate for comparison
+            if distribution_type == 'binomial':
+                beamParams = BeamParameters_SPS_Binomial_2016() if use_binomial_dist_after_RF_spill else BeamParameters_SPS_Binomial_2016_before_RF_Spill
         print('Beam parameters:', beamParams)
 
         # Select relevant context
@@ -293,8 +296,8 @@ class SPS_Flat_Bottom_Tracker:
                 frev=1,
                 sampling_frequency=1/nturns_profile_accumulation_interval,
                 n=nbins,
-                x_range=0.05,
-                y_range=0.05)
+                x_range=0.04,
+                y_range=0.04)
             line.insert_element(index='bwsrc.51637', element=monitorH, name='monitorH')
 
             # Create vertical beam monitor
@@ -303,8 +306,8 @@ class SPS_Flat_Bottom_Tracker:
                 frev=1,
                 sampling_frequency=1/nturns_profile_accumulation_interval,
                 n=nbins,
-                x_range=0.05,
-                y_range=0.05)
+                x_range=0.04,
+                y_range=0.04)
             line.insert_element(index='bwsrc.41677', element=monitorV, name='monitorV')
         
         line.build_tracker(_context=context)
@@ -312,8 +315,8 @@ class SPS_Flat_Bottom_Tracker:
 
         # Generate particles object to track    
         particles = self.generate_particles(line=line, context=context, distribution_type=distribution_type,
-                                            beamParams=beamParams, engine=engine, scale_factor_Qs=scale_factor_Qs,
-                                            only_one_zeta=only_one_zeta)
+                                            beamParams=beamParams, scale_factor_Qs=scale_factor_Qs,
+                                            only_one_zeta=only_one_zeta, use_binomial_dist_after_RF_spill=use_binomial_dist_after_RF_spill)
         particles.reorganize()
 
 
@@ -329,39 +332,14 @@ class SPS_Flat_Bottom_Tracker:
         # Install SC and build tracker - optimize line if line variables for tune ripple not needed
         if install_SC_on_line:
             fma_sps = FMA(num_spacecharge_interactions=num_spacecharge_interactions)
-            line = fma_sps.install_SC_and_get_line(line=line, beamParams=beamParams, mode=SC_mode, optimize_for_tracking=(not add_tune_ripple), 
-                                                   distribution_type=distribution_type, context=context)
+            line = fma_sps.install_SC_and_get_line(line=line,
+                                                   beamParams=beamParams, 
+                                                   mode=SC_mode, 
+                                                   optimize_for_tracking=(not add_tune_ripple), 
+                                                   distribution_type=distribution_type, 
+                                                   context=context)
             print('Installed space charge on line\n')
             
-        # If distribution is binimial, pre-track particles and removed killed ones, and update SC parameters
-        if distribution_type=='binomial' and pretrack_particles_and_update_sc_for_binomial:
-            
-            # First tracking particles for 50 turns, remove all outside RF bucket
-            print('\nStart pre-tracking of binomial...')
-            for turn in range(1, 50):
-                line.track(particles, num_turns=1)
-            print('Finished pre-tracking: most common lost code: "-{}" for {} particles out of {} lost in total'.format(np.bincount(np.abs(particles.state[particles.state <= 0])).argmax(),
-                                                                                                  np.max(np.bincount(np.abs(particles.state[particles.state <= 0]))),
-                                                                                                  len(particles.state[particles.state <= 0])))
-            particles.hide_lost_particles() # remove lost particles
-            
-            # Re-install space charge
-            if install_SC_on_line:
-                # Build a line without spacecharge (recycling the track kernel)
-                line = line.filter_elements(exclude_types_starting_with='SpaceCh')
-                
-                # Re-install space charge, but with new parameters
-                beamParams_updated = beamParams # copy old beam parameters
-                beamParams_updated.sigma_z_binomial = np.std(particles.zeta[particles.state > 0])  # update Binomial RMS bunch length
-                beamParams_updated.Nb = particles.weight[particles.state > 0][0]*len(particles.x[particles.state > 0])
-                beamParams_updated.exn = np.float64(_geom_epsx(particles, twiss) * particles.beta0[0] * particles.gamma0[0])
-                beamParams_updated.eyn = np.float64(_geom_epsy(particles, twiss) * particles.beta0[0] * particles.gamma0[0])
-                
-                # Install space charge and build tracker
-                line = fma_sps.install_SC_and_get_line(line, beamParams_updated, mode=SC_mode, optimize_for_tracking=(not add_tune_ripple), 
-                                                       distribution_type=distribution_type, context=context)
-                print('Re-built space charge with updated binomial beam parameters: {}'.format(beamParams_updated))
-
         # Add tune ripple
         if add_tune_ripple:
             turns_per_sec = 1/twiss['T_rev0']
