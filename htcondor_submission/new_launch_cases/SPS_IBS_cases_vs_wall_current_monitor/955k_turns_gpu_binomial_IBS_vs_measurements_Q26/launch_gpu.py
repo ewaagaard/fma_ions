@@ -8,7 +8,7 @@ import pathlib
 # Find path of script being run
 dir_path = pathlib.Path(__file__).parent.absolute()
 script_names = ['sps_ideal_lattice_binomial.py', 'sps_ideal_lattice_sc_binomial.py', 'sps_ideal_lattice_only_ibs_binomial.py',
-                'sps_BB_binomial.py', 'sps_BB_sc_binomial.py', 'sps_BB_only_ibs_binomial.py', 'sps_BB_sc_ibs_binomial.py'
+                'sps_BB_binomial.py', 'sps_BB_sc_binomial.py', 'sps_BB_only_ibs_binomial.py', 'sps_BB_sc_ibs_binomial.py',
                 'sps_ideal_lattice_only_ibs_binomial_before_RF_spill.py', 'sps_BB_only_ibs_binomial_before_RF_spill.py',
                 'sps_BB_sc_ibs_binomial_before_RF_spill.py']
 folder_names = ['sps_ideal_lattice_binomial', 'sps_ideal_lattice_sc_binomial', 'sps_ideal_lattice_only_ibs_binomial',
