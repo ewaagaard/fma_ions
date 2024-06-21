@@ -8,10 +8,8 @@ output_dir = './'
 n_turns = 2_000_000
 num_part = 10_000
 
-# Instantiate beam parameters, custom made to compare with 2016 measurements
-beamParams = fma_ions.BeamParameters_SPS()
 
 # Test default tracking with space charge on CPU context - then test plotting
 sps = fma_ions.SPS_Flat_Bottom_Tracker(num_turns=n_turns, num_part=num_part)
-tbt = sps.track_SPS(ion_type='O', which_context='gpu', beamParams=beamParams, install_SC_on_line=False, apply_kinetic_IBS_kicks=True)
+tbt = sps.track_SPS(ion_type='O', which_context='gpu', install_SC_on_line=False, apply_kinetic_IBS_kicks=True)
 tbt.to_json(output_dir)
