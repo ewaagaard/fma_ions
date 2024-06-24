@@ -210,11 +210,11 @@ class SPS_Plotting:
                                             string_array, 
                                             compact_mode=False,
                                             include_emittance_measurements=False, 
-                                            x_unit_in_turns=True,
+                                            plot_bunch_length_measurements=True,
+                                            x_unit_in_turns=False,
                                             bbox_to_anchor_position=(0.0, 1.3),
                                             labelsize = 20,
                                             ylim=None, ax_for_legend=2,
-                                            distribution_type='gaussian',
                                             legend_font_size=11.5):
         """
         If multiple runs with turn-by-turn (tbt) data has been made, provide list with Records class objects and list
@@ -230,6 +230,8 @@ class SPS_Plotting:
             whether to slim plot in more compact format 
         include_emittance_measurements : bool
             whether to include measured emittance or not
+        plot_bunch_length_measurements : bool
+            whether to include bunch length measurements from SPS wall current monitor from 2016 studies by Hannes and Tomas
         x_units_in_turns : bool
             if True, x axis units will be turn, otherwise in seconds
         bbox_to_anchor_position : tuple
@@ -240,8 +242,6 @@ class SPS_Plotting:
             lower and upper bounds for emittance plots, if None (default), automatic limits are set
         ax_for_legend : int
             which axis to use to place legend, either 1 or 2 (default is 2)
-        distribution_type : str
-            'gaussian' or 'parabolic' or 'binomial': particle distribution for tracking
         legend_font_size : int
             labelsize for legend
         """
@@ -340,9 +340,9 @@ class SPS_Plotting:
     
             # Loop over the tbt records classes 
             for i, tbt_dict in enumerate(tbt_array):
-                ax1.plot(tbt_dict['Turns'], tbt_dict['exn'] * 1e6, alpha=0.7, lw=1.5, label=string_array[i])
-                ax2.plot(tbt_dict['Turns'], tbt_dict['eyn'] * 1e6, alpha=0.7, lw=1.5, label=string_array[i])
-                ax3.plot(tbt_dict['Turns'], tbt_dict['Nb'], alpha=0.7, lw=1.5, label=string_array[i])
+                ax1.plot(time_units, tbt_dict['exn'] * 1e6, alpha=0.7, lw=1.5, label=string_array[i])
+                ax2.plot(time_units, tbt_dict['eyn'] * 1e6, alpha=0.7, lw=1.5, label=string_array[i])
+                ax3.plot(time_units, tbt_dict['Nb'], alpha=0.7, lw=1.5, label=string_array[i])
     
             if include_emittance_measurements:
                 ax1.errorbar(time_units_x, 1e6 * np.array(full_data['N_avg_emitX']), yerr=1e6 * full_data['N_emitX_error'], 
@@ -350,15 +350,33 @@ class SPS_Plotting:
                 ax2.errorbar(time_units_y, 1e6 * np.array(full_data['N_avg_emitY']), yerr=1e6 * full_data['N_emitY_error'], 
                            color='darkorange', fmt="o", label="Measured")
     
-            ax1.set_xlabel('Turns')
-            ax2.set_xlabel('Turns')
-            ax3.set_xlabel('Turns')
+            ax1.set_xlabel('Turns' if x_unit_in_turns else 'Time [s]')
+            ax2.set_xlabel('Turns' if x_unit_in_turns else 'Time [s]')
+            ax3.set_xlabel('Turns' if x_unit_in_turns else 'Time [s]')
             ax1.set_ylabel(r'$\varepsilon_{x}^{n}$ [$\mu$m]')
             ax2.set_ylabel(r'$\varepsilon_{y}^{n}$ [$\mu$m]')
             ax3.set_ylabel(r'$N_{b}$')
-            ax1.legend(fontsize=10)
+            ax1.legend(fontsize=10, loc='upper left')
             f.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
             f.savefig('main_plots/result_multiple_trackings.png', dpi=250)
+            
+            
+            # Bunch length
+            f3, ax22 = plt.subplots(1, 1, figsize = (8,6))
+            for i, tbt_dict in enumerate(tbt_array):
+                ax22.plot(time_units, tbt_dict['bunch_length'],  alpha=0.7, lw=1.5, label=string_array[i])
+
+            if plot_bunch_length_measurements:
+                # Load bunch length data
+                _, _, sigma_RMS_Gaussian_in_m, sigma_RMS_Binomial_in_m, ctime = self.load_bunch_length_data()
+                #ax22.plot(ctime, sigma_RMS_Gaussian_in_m, color='royalblue', ls='-.', label='Measured $\sigma$ Gaussian')
+                ax22.plot(ctime, sigma_RMS_Binomial_in_m, marker='*', color='turquoise', alpha=0.7, ls='None', label='Measured RMS Binomial')
+            ax22.set_ylabel(r'$\sigma_{z}$ [m]')
+            ax22.set_xlabel('Turns' if x_unit_in_turns else 'Time [s]')
+            ax22.legend(fontsize=10, loc='upper left')
+            f3.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+            f3.savefig('main_plots/sigma_multiple_trackings.png', dpi=250)
+            
             plt.show()
 
 
