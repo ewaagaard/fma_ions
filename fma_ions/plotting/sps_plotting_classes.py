@@ -17,6 +17,7 @@ from ..sequences import SPS_sequence_maker, BeamParameters_SPS, BeamParameters_S
 from ..longitudinal import generate_parabolic_distribution
 from ..longitudinal import generate_binomial_distribution_from_PS_extr
 from ..helpers_and_functions import Records, Records_Growth_Rates, Full_Records, _bunch_length, _geom_epsx, _geom_epsy, _sigma_delta
+from ..helpers_and_functions import Fit_Functions
 
 
 # Load default emittance measurement data from 2023_10_16
@@ -203,6 +204,84 @@ class SPS_Plotting:
         f3.savefig('output_plots/sigma.png', dpi=250)
 
         plt.show()
+
+
+    def fit_bunch_lengths_to_data(self, 
+                                  tbt_dict=None,
+                                  output_folder=None,
+                                  distribution='binomial',
+                                  show_final_profile=False):
+        """
+        Fit and extract beam parameters from simulated data, for a given
+        distribution type.
+
+        Parameters
+        ----------
+        tbt_dict : dict
+            dictionary containing the TBT data. If None, loads json file.
+        output_folder : str
+            path to data. default is 'None', assuming then that data is in the same directory
+        distribution : str
+            distribution type of beam. The default is 'binomial'.
+        show_final_profile : bool
+            whether to plot final profile fit vs measurements
+
+        Returns
+        -------
+
+        """
+       
+        if tbt_dict is None:
+            tbt_dict = self.load_records_dict_from_json(output_folder=output_folder)
+
+        # Find total number of stacked profiles and turns per profiles
+        n_profiles = len(tbt_dict['z_bin_heights'][0]) 
+        nturns_per_profile = tbt_dict['nturns_profile_accumulation_interval']
+        sigmas = np.zeros(n_profiles)
+        m = np.zeros(n_profiles)
+        
+        # Show time stamp if seconds are available
+        #turns_per_s = tbt_dict['Turns'][-1] / tbt_dict['Seconds'][-1]
+
+
+        # Initiate fit function
+        fits = Fit_Functions()
+
+        # Fit binomials to 
+        for i in range(n_profiles):
+
+            z_bin_heights_sorted = np.array(sorted(tbt_dict['z_bin_heights'][:, i], reverse=True))
+            z_height_max_avg = np.mean(z_bin_heights_sorted[:5]) # take average of top 5 values
+            xdata, ydata = tbt_dict['z_bin_centers'], tbt_dict['z_bin_heights'][:, i] / z_height_max_avg
+            
+            if distribution=='binomial':
+                popt_B = fits.fit_Binomial(xdata, ydata)
+                sigmas[i] = fits.get_sigma_RMS_from_binomial_fit(popt_B)
+                m[i] = popt_B[1]
+                print('Profile {}: binomial fit m={:.3f}, sigma_RMS = {:.3f}\n'.format(i, m[i], sigmas[i]))
+            elif distribution=='gaussian':
+                popt_G = fits.fit_Gaussian(xdata, ydata)
+                sigmas[i] = popt_G[2]
+                print('Gaussian: sigma_RMS = {:.3f} m'.format(popt_G[2]))
+            else:
+                raise ValueError('Only binomial or gaussian distributions implemented')
+            
+
+        #### First final profile vs fit
+        if show_final_profile:
+            fig0, ax0 = plt.subplots(1, 1, figsize = (8, 6))
+            ax0.plot(xdata, ydata, label='Fit')
+            if distribution=='binomial':
+                ax0.plot(xdata, fits.Binomial(xdata, *popt_B), color='red', ls='--', lw=2.8, label='Binomial fit')
+            elif distribution=='gaussian':
+                ax0.plot(xdata, fits.Gaussian(xdata, *popt_G), color='red', ls='--', lw=2.8, label='Gaussian fit')
+            ax0.set_xlabel('$\zeta$ [m]')
+            ax0.set_ylabel('Normalized counts')
+            ax0.legend(loc='upper left', fontsize=14)
+            plt.tight_layout()
+            
+        return #time and RMS sigma#
+
 
 
     def plot_multiple_sets_of_tracking_data(self, 
