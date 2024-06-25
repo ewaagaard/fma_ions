@@ -71,7 +71,7 @@ class Fit_Functions:
         except (RuntimeError, ValueError):
             popt = np.infty * np.ones(len(initial_guess))
             
-        return popt
+        return popt, pcov
     
     
     def _Cq(self, q, margin=5e-4):
@@ -139,16 +139,15 @@ class Fit_Functions:
         """
     
         # Test Gaussian fit for the first guess
-        popt = self.fit_Gaussian(x_data, y_data) # gives A, mu, sigma, offset
+        popt, _ = self.fit_Gaussian(x_data, y_data) # gives A, mu, sigma, offset
         p0 = [popt[1], q0, 1/popt[2]**2/(5-3*q0), 2*popt[0], popt[3]] # mu, q, beta, A, offset
     
         try:
             poptq, pcovq = curve_fit(self.Q_Gaussian, x_data, y_data, p0)
-            poptqe = np.sqrt(np.diag(pcovq))
         except (RuntimeError, ValueError):
             poptq = np.nan * np.ones(len(p0))
             
-        return poptq
+        return poptq, pcovq
 
 
     def get_sigma_RMS_from_qGaussian_fit(self, poptq):
@@ -180,8 +179,8 @@ class Fit_Functions:
             normalization coefficient
         m : float
             binomial coefficient
-        sigma : x_max
-            defines limits for evaluation
+        x_max : float
+        x0 : float
         offset : float
             baseline
 
@@ -212,11 +211,11 @@ class Fit_Functions:
         if p0 is None:
             p0 = [1.0, 3.5, 0.8, 0.0, 0.0]
         
-        popt_B, _ = curve_fit(self.Binomial, x_data, y_data, p0)
-        return popt_B
+        popt_B, pcov_B = curve_fit(self.Binomial, x_data, y_data, p0)
+        return popt_B, pcov_B
     
     
-    def get_sigma_RMS_from_binomial_fit(self, popt_B):
+    def get_sigma_RMS_from_binomial_fit(self, popt_B, pcov_B):
         """
         Calculate RMS bunch length sigma_z from binomial fits
 
@@ -224,11 +223,15 @@ class Fit_Functions:
         ----------
         popt_B : np.ndarray
             array of fit parameters from fit_binomial    
-        
+        pcov_B : np.ndarray
+            covarance matrix from fit_binomial    
+
         Returns
         -------
         rms_bunch_length : float
         """
+        
+        # Calculate RMS value
         m = popt_B[1] 
         x_max =  popt_B[2]
         tau_max = 1.0 # starting value, will be adjusted. Used as benchmarking value with RMS factor for parabola
@@ -237,4 +240,15 @@ class Fit_Functions:
         RMS_binomial = np.sqrt(integrate.quad(binomial_2nd, -1, 1, args=(tau_max))[0] / integrate.quad(lambda_dist, -1, 1, args=(tau_max))[0])
         factor_binomial = tau_max / RMS_binomial # 3.37639 calculated in "cernbox\PhD\Background_Reading\Ion_parameters_and_beam_profiles\distribution_testsy"
         rms_bunch_length = x_max / factor_binomial
-        return rms_bunch_length
+        
+        #### Calculate error in RMS value
+        A, m, x_max, x0 =  popt_B[0], popt_B[1], popt_B[2], popt_B[3]
+        delta_x_max = np.sqrt(np.diag(pcov_B))[2]  # from fitting error
+        
+        # First define the partial derivative of f(x) with respect to x_max as a lambda function
+        df_dxmax = lambda x: A * (m - 0.5) * np.abs(1 - ((x - x0) / x_max)**2)**(m - 1.5) * (-2 * (x - x0)**2 / x_max**3)
+        integrand = lambda x: 2 * self.Binomial(x, *popt_B) * df_dxmax(x) * delta_x_max # Calculate the integrand for delta M2
+        delta_M2, _ = integrate.quad(integrand, -1, 1) # Perform the integration to calculate delta M2
+        dRMS = delta_M2 / (2 * rms_bunch_length)
+        
+        return rms_bunch_length, dRMS 

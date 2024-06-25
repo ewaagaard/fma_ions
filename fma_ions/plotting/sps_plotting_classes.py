@@ -71,10 +71,12 @@ class SPS_Plotting:
                            include_emittance_measurements=False,
                            x_unit_in_turns=True,
                            plot_bunch_length_measurements=True,
+                           distribution_type='binomial',
+                           plot_fitted_RMS_bunch_length=True,
                            also_plot_sigma_delta=False,
                            also_plot_WCM_Nb_data=True,
                            also_plot_DCBCT_Nb_data=False,
-                           adjusting_factor_Nb_for_initial_drop=0.95):
+                           adjusting_factor_Nb_for_initial_drop=0.95,):
         """
         Generates emittance plots from turn-by-turn (TBT) data class from simulations,
         compare with emittance measurements (default 2023-10-16) if desired.
@@ -89,7 +91,11 @@ class SPS_Plotting:
         x_units_in_turns : bool
             if True, x axis units will be turn, otherwise in seconds
         plot_bunch_length_measurements : bool
-            whether to include bunch length measurements from SPS wall current monitor from 2016 studies by Hannes and Tomas
+            whether to include bunch length measurements from SPS wall current monitor from 2016 studies by Hannes and Tomas0
+        distribution_type : str
+            either 'gaussian' or 'binomial'
+        plot_fitted_RMS_bunch_length : bool
+            whether to fit probability density function of distriubtion type and calculate RMS bunch length
         also_plot_sigma_delta : bool
             whether also to plot sigma_delta
         also_plot_WCM_Nb_data : bool
@@ -191,15 +197,36 @@ class SPS_Plotting:
             f2.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
             f2.savefig('output_plots/sigma_delta.png', dpi=250)
         
-        # Bunch length
+        # Bunch length            
         f3, ax22 = plt.subplots(1, 1, figsize = (8,6))
-        ax22.plot(time_units, tbt_dict['bunch_length'], color='turquoise', alpha=0.7, lw=1.5, label='Simulated')
+        ax22.plot(time_units, tbt_dict['bunch_length'], color='turquoise', alpha=0.7, lw=1.5, label='STD($\zeta$) of simulated particles')
+        if plot_fitted_RMS_bunch_length:
+            turn_array, time_array, sigmas, sigmas_error, m, m_error = self.fit_bunch_lengths_to_data(tbt_dict=tbt_dict, distribution=distribution_type)
+            ax22.plot(turn_array if x_unit_in_turns else time_array, sigmas, color='blue', ls='--', 
+                      label='RMS of fitted {} for simulated profiles'.format(distribution_type))
         if plot_bunch_length_measurements:
-            ax22.plot(ctime, sigma_RMS_Gaussian_in_m, color='royalblue', label='Measured RMS Gaussian')
-            ax22.plot(ctime, sigma_RMS_Binomial_in_m, color='darkorange', label='Measured RMS Binomial')
+            if distribution_type=='gaussian':
+                ax22.plot(ctime, sigma_RMS_Gaussian_in_m, color='royalblue', label='RMS of fitted Gaussian for measured profiles')
+            elif distribution_type=='binomial':
+                ax22.plot(ctime, sigma_RMS_Binomial_in_m, color='darkorange', alpha=0.95, label='RMS of fitted binomial for measured profiles')
         ax22.set_ylabel(r'$\sigma_{z}$ [m]')
         ax22.set_xlabel('Turns' if x_unit_in_turns else 'Time [s]')
         ax22.legend()
+        
+        # Insert extra box with fitted m-value of profiles - plot every 10th value
+        ax23 = ax22.inset_axes([0.7,0.5,0.25,0.25])
+        if plot_fitted_RMS_bunch_length:
+            n_interval = 100
+            ax23.errorbar(turn_array[::n_interval] if x_unit_in_turns else time_array[::n_interval], m[::n_interval], yerr=m_error[::n_interval], 
+                          color='green', alpha=0.55, markerfacecolor='lime', 
+                          ls='None', marker='o', ms=5.1, label='Fitted {} m of simulated profiles'.format(distribution_type))
+        ax23.tick_params(axis="both", labelsize=12)
+        ax23.set_ylim(min(m)-0.2, max(m)+0.2)
+        ax23.tick_params(colors='green', axis='y')
+        ax23.set_ylabel('Fitted $m$-value', fontsize=13.5, color='green')
+        ax23.set_xlabel('Time [s]', fontsize=13.5)
+        ax23.set_yscale('log')
+        
         f3.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
         f3.savefig('output_plots/sigma.png', dpi=250)
 
@@ -228,6 +255,9 @@ class SPS_Plotting:
 
         Returns
         -------
+        turn_array, time_array, sigmas, m : np.ndarray
+            arrays containing turns and time, corresponding to fitted RMS bunch length sigma and m value
+            for gaussian profiles, m will only contain zeros
 
         """
        
@@ -239,10 +269,13 @@ class SPS_Plotting:
         nturns_per_profile = tbt_dict['nturns_profile_accumulation_interval']
         sigmas = np.zeros(n_profiles)
         m = np.zeros(n_profiles)
+        sigmas_error = np.zeros(n_profiles)
+        m_error = np.zeros(n_profiles)
         
-        # Show time stamp if seconds are available
-        #turns_per_s = tbt_dict['Turns'][-1] / tbt_dict['Seconds'][-1]
-
+        # Create time array with
+        turns_per_s = tbt_dict['Turns'][-1] / tbt_dict['Seconds'][-1]
+        turn_array = np.arange(0, tbt_dict['Turns'][-1], step=nturns_per_profile)
+        time_array = turn_array.copy() / turns_per_s
 
         # Initiate fit function
         fits = Fit_Functions()
@@ -255,10 +288,12 @@ class SPS_Plotting:
             xdata, ydata = tbt_dict['z_bin_centers'], tbt_dict['z_bin_heights'][:, i] / z_height_max_avg
             
             if distribution=='binomial':
-                popt_B = fits.fit_Binomial(xdata, ydata)
-                sigmas[i] = fits.get_sigma_RMS_from_binomial_fit(popt_B)
+                popt_B, pcov_B = fits.fit_Binomial(xdata, ydata)
+                sigmas[i], sigmas_error[i] = fits.get_sigma_RMS_from_binomial_fit(popt_B, pcov_B)
                 m[i] = popt_B[1]
-                print('Profile {}: binomial fit m={:.3f}, sigma_RMS = {:.3f}\n'.format(i, m[i], sigmas[i]))
+                m_error[i] = np.sqrt(np.diag(pcov_B))[1]
+                print('Profile {}: binomial fit m={:.3f} +/- {:.2f}, sigma_RMS = {:.3f} +/- {:.2f}\n'.format(i, m[i], m_error[i], 
+                                                                                                             sigmas[i],sigmas_error[i]))
             elif distribution=='gaussian':
                 popt_G = fits.fit_Gaussian(xdata, ydata)
                 sigmas[i] = popt_G[2]
@@ -279,8 +314,11 @@ class SPS_Plotting:
             ax0.set_ylabel('Normalized counts')
             ax0.legend(loc='upper left', fontsize=14)
             plt.tight_layout()
+            plt.show()
             
-        return #time and RMS sigma#
+
+        return turn_array, time_array, sigmas, sigmas_error, m, m_error
+
 
 
 
