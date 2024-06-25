@@ -21,36 +21,37 @@ zeta_SPS_inj, zeta_SPS_final, zeta_PS_BSM, data_SPS_inj, data_SPS_final, data_PS
 zeta_SPS_inj_after_RF_spill, data_SPS_inj_after_RF_spill = sps_plot.load_longitudinal_profile_after_SPS_injection_RF_spill()
 
 # First cut data approprietly, to avoid the artificial ringing
-ind_cut_1 = np.where((zeta_SPS_inj > -1.0) & (zeta_SPS_inj < 1.0))
+ind_cut_1 = np.where((zeta_SPS_inj > -.9) & (zeta_SPS_inj < .45))
 zeta_SPS_inj_cut = zeta_SPS_inj[ind_cut_1]
 data_SPS_inj_cut = data_SPS_inj[ind_cut_1]
 
-#ind_cut_2 = np.where((zeta_SPS_inj_after_RF_spill > -0.6) & (zeta_SPS_inj_after_RF_spill < 0.35))
-ind_cut_2 = np.where((zeta_SPS_inj_after_RF_spill > -0.9) & (zeta_SPS_inj_after_RF_spill < 0.9))
+ind_cut_2 = np.where((zeta_SPS_inj_after_RF_spill > -0.6) & (zeta_SPS_inj_after_RF_spill < 0.35))
+#ind_cut_2 = np.where((zeta_SPS_inj_after_RF_spill > -0.9) & (zeta_SPS_inj_after_RF_spill < 0.9))
 zeta_SPS_inj_after_RF_spill_cut = zeta_SPS_inj_after_RF_spill[ind_cut_2]
 data_SPS_inj_after_RF_spill_cut = data_SPS_inj_after_RF_spill[ind_cut_2]
 
 # Also get coordinates with cut
-ind_cut_2_plot = np.where((zeta_SPS_inj_after_RF_spill > -0.8) & (zeta_SPS_inj_after_RF_spill < 0.38))
+ind_cut_2_plot = np.where((zeta_SPS_inj_after_RF_spill > -0.6) & (zeta_SPS_inj_after_RF_spill < 0.38))
 zeta_SPS_inj_after_RF_spill_cut_plot = zeta_SPS_inj_after_RF_spill[ind_cut_2_plot]
 data_SPS_inj_after_RF_spill_cut_plot = data_SPS_inj_after_RF_spill[ind_cut_2_plot]
 
 # Fit binomial and q-Gaussian to before and after RF spill at injection
-popt_Q_before_spill = fits.fit_Q_Gaussian(zeta_SPS_inj_cut, data_SPS_inj_cut)
+popt_Q_before_spill, pcov_Q_before_spill = fits.fit_Q_Gaussian(zeta_SPS_inj_cut, data_SPS_inj_cut)
 sigma_RMS_Q_before_spill = fits.get_sigma_RMS_from_qGaussian_fit(popt_Q_before_spill)
-popt_B_before_spill = fits.fit_Binomial(zeta_SPS_inj_cut, data_SPS_inj_cut)
-sigma_RMS_B_before_spill = fits.get_sigma_RMS_from_binomial_fit(popt_B_before_spill)
+popt_B_before_spill, pcov_B_before_spill = fits.fit_Binomial(zeta_SPS_inj_cut, data_SPS_inj_cut)
+sigma_RMS_B_before_spill, error_sigma_RMS_B_before_spill = fits.get_sigma_RMS_from_binomial_fit(popt_B_before_spill, pcov_B_before_spill)
 print('\nBefore RF spill')
-print('Q-Gaussian: q={:.3f}, sigma_RMS = {:.3f}'.format(popt_Q_before_spill[1], sigma_RMS_Q_before_spill))
+print('Q-Gaussian: q={:.3f} +/- {:.3f}, sigma_RMS = {:.3f}'.format(popt_Q_before_spill[1], np.sqrt(np.diag(pcov_Q_before_spill))[1], 
+                                                                   sigma_RMS_Q_before_spill))
 print('Binomial: m={:.3f}, sigma_RMS = {:.3f}\n'.format(popt_B_before_spill[1], sigma_RMS_B_before_spill))
 
-popt_G_after_spill = fits.fit_Gaussian(zeta_SPS_inj_after_RF_spill_cut, data_SPS_inj_after_RF_spill_cut)
-popt_Q_after_spill = fits.fit_Q_Gaussian(zeta_SPS_inj_after_RF_spill_cut, data_SPS_inj_after_RF_spill_cut)
+popt_G_after_spill, pcov_G_after_spill = fits.fit_Gaussian(zeta_SPS_inj_after_RF_spill_cut, data_SPS_inj_after_RF_spill_cut)
+popt_Q_after_spill, pcov_Q_after_spill = fits.fit_Q_Gaussian(zeta_SPS_inj_after_RF_spill_cut, data_SPS_inj_after_RF_spill_cut)
 sigma_RMS_Q_after_spill = fits.get_sigma_RMS_from_qGaussian_fit(popt_Q_after_spill)
-popt_B_after_spill = fits.fit_Binomial(zeta_SPS_inj_after_RF_spill_cut, data_SPS_inj_after_RF_spill_cut)
-sigma_RMS_B_after_spill = fits.get_sigma_RMS_from_binomial_fit(popt_B_after_spill)
+popt_B_after_spill, pcov_B_after_spill = fits.fit_Binomial(zeta_SPS_inj_after_RF_spill_cut, data_SPS_inj_after_RF_spill_cut)
+sigma_RMS_B_after_spill, error_sigma_RMS_B_after_spill = fits.get_sigma_RMS_from_binomial_fit(popt_B_after_spill, pcov_B_after_spill)
 print('\nAfter RF spill')
-print('Gaussian: sigma_RMS = {:.3f} m'.format(popt_G_after_spill[2]))
+print('Gaussian: sigma_RMS = {:.3f} +/- {:.3f} m'.format(popt_G_after_spill[2],  np.sqrt(np.diag(pcov_G_after_spill))[2]))
 print('Q-Gaussian: q={:.3f}, sigma_RMS = {:.3f} m'.format(popt_Q_after_spill[1], sigma_RMS_Q_after_spill))
 print('Binomial: m={:.3f}, sigma_RMS = {:.3f} m\n'.format(popt_B_after_spill[1], sigma_RMS_B_after_spill))
 
@@ -79,13 +80,13 @@ unit_factor = 1e-9 * constants.c * beta if x_axis_in_time_units else 1.
 
 ax[0].plot(zeta_SPS_inj / unit_factor, data_SPS_inj, color='blue', marker='v', ms=5.8, linestyle='None', label='SPS WCM\n2016 data')  
 ax[0].plot(zeta_PS_BSM / unit_factor, data_PS_BSM, color='k', markerfacecolor='gold', marker='*', ms=14.8, linestyle='None', alpha=0.8, label='PS BSM data \n2023, at extr.')
-ax[0].plot(zeta_SPS_inj_after_RF_spill_cut_plot / unit_factor, fits.Q_Gaussian(zeta_SPS_inj_after_RF_spill_cut_plot, *popt_Q_before_spill), color='lime', lw=2.8, label='Q-Gaussian fit')  
-ax[0].plot(zeta_SPS_inj_after_RF_spill_cut_plot /unit_factor, fits.Binomial(zeta_SPS_inj_after_RF_spill_cut_plot, *popt_B_before_spill), color='red', ls='--', lw=2.8, label='Binomial fit')  
+ax[0].plot(zeta_SPS_inj_cut / unit_factor, fits.Q_Gaussian(zeta_SPS_inj_cut, *popt_Q_before_spill), color='lime', lw=2.8, label='Q-Gaussian fit')  
+ax[0].plot(zeta_SPS_inj_cut /unit_factor, fits.Binomial(zeta_SPS_inj_cut, *popt_B_before_spill), color='red', ls='--', lw=2.8, label='Binomial fit')  
 
 ax[1].plot(zeta_SPS_inj_after_RF_spill / unit_factor, data_SPS_inj_after_RF_spill, color='blue', marker='v', ms=5.8, linestyle='None', label='SPS WCM\n2016 data')  
 ax[1].plot(zeta_SPS_inj_after_RF_spill_cut_plot / unit_factor, fits.Q_Gaussian(zeta_SPS_inj_after_RF_spill_cut_plot, *popt_Q_after_spill), color='lime', lw=2.8, label='Q-Gaussian fit')  
 ax[1].plot(zeta_SPS_inj_after_RF_spill_cut_plot / unit_factor, fits.Binomial(zeta_SPS_inj_after_RF_spill_cut_plot, *popt_B_after_spill), color='red', ls='--', lw=2.8, label='Binomial fit')  
-ax[1].plot(zeta_SPS_inj_after_RF_spill_cut_plot / unit_factor, fits.Gaussian(zeta_SPS_inj_after_RF_spill_cut_plot, *popt_G_after_spill), color='orange', alpha=0.75, lw=2.8, label='Gaussian fit')  
+#ax[1].plot(zeta_SPS_inj_after_RF_spill_cut_plot / unit_factor, fits.Gaussian(zeta_SPS_inj_after_RF_spill_cut_plot, *popt_G_after_spill), color='orange', alpha=0.75, lw=2.8, label='Gaussian fit')  
 if also_plot_long_profile:
     ax[1].plot(z / unit_factor, lden0_normalized, color='orange', alpha=0.6, label='xfields Q-Gaussian q={:.1f}'.format(popt_Q_after_spill[1]))
 
