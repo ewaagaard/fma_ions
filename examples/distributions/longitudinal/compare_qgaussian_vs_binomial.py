@@ -21,7 +21,7 @@ zeta_SPS_inj, zeta_SPS_final, zeta_PS_BSM, data_SPS_inj, data_SPS_final, data_PS
 zeta_SPS_inj_after_RF_spill, data_SPS_inj_after_RF_spill = sps_plot.load_longitudinal_profile_after_SPS_injection_RF_spill()
 
 # First cut data approprietly, to avoid the artificial ringing
-ind_cut_1 = np.where((zeta_SPS_inj > -.9) & (zeta_SPS_inj < .45))
+ind_cut_1 = np.where((zeta_SPS_inj > -.85) & (zeta_SPS_inj < .37))
 zeta_SPS_inj_cut = zeta_SPS_inj[ind_cut_1]
 data_SPS_inj_cut = data_SPS_inj[ind_cut_1]
 
@@ -31,7 +31,7 @@ zeta_SPS_inj_after_RF_spill_cut = zeta_SPS_inj_after_RF_spill[ind_cut_2]
 data_SPS_inj_after_RF_spill_cut = data_SPS_inj_after_RF_spill[ind_cut_2]
 
 # Also get coordinates with cut
-ind_cut_2_plot = np.where((zeta_SPS_inj_after_RF_spill > -0.6) & (zeta_SPS_inj_after_RF_spill < 0.38))
+ind_cut_2_plot = np.where((zeta_SPS_inj_after_RF_spill > -0.6) & (zeta_SPS_inj_after_RF_spill < 0.35))
 zeta_SPS_inj_after_RF_spill_cut_plot = zeta_SPS_inj_after_RF_spill[ind_cut_2_plot]
 data_SPS_inj_after_RF_spill_cut_plot = data_SPS_inj_after_RF_spill[ind_cut_2_plot]
 
