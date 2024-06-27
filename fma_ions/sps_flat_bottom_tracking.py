@@ -4,6 +4,7 @@ Class container for methods to track xpart particle objects at flat bottom
 - choose context (GPU, CPU) and additional effects: SC, IBS, tune ripples
 """
 from dataclasses import dataclass
+import os
 import numpy as np
 import xtrack as xt
 import xpart as xp
@@ -440,7 +441,7 @@ class SPS_Flat_Bottom_Tracker:
                                                       add_non_linear_magnet_errors=False, 
                                                       beta_beat=None, 
                                                       beamParams=None,
-                                                      ibs_step : int = 50,
+                                                      ibs_step : int = 200,
                                                       context = None,
                                                       show_plot=False,
                                                       print_lost_particle_state=True,
@@ -481,6 +482,8 @@ class SPS_Flat_Bottom_Tracker:
         return_data : bool
             whether to return dataframes of analytical data or not
         """
+        os.makedirs('output_plots', exist_ok=True)
+        
         # Update vertical tune if changed
         self.qy0 = int(self.qy0) + Qy_frac / 100
         
@@ -644,7 +647,7 @@ class SPS_Flat_Bottom_Tracker:
         fig.align_ylabels((axs["epsx"], axs["sigd"]))
         fig.align_ylabels((axs["epsy"], axs["bl"]))
         plt.tight_layout()
-        fig.savefig('output_data_and_plots_{}/analytical_vs_kinetic_emittance{}.png'.format(which_context, extra_plot_string), dpi=250)
+        fig.savefig('output_plots/analytical_vs_kinetic_emittance{}.png'.format(extra_plot_string), dpi=250)
 
 
         ############# GROWTH RATES #############
@@ -665,9 +668,26 @@ class SPS_Flat_Bottom_Tracker:
         ax3.set_xlabel('Turns')
         ax1.legend(fontsize=10)
         plt.tight_layout()
-        f.savefig('output_data_and_plots_{}/analytical_vs_kinetic_growth_rates{}.png'.format(which_context, extra_plot_string), dpi=250)
+        f.savefig('output_plots/analytical_vs_kinetic_growth_rates{}.png'.format(extra_plot_string), dpi=250)
 
-        
+
+        ############# GROWTH RATES --> same plot #############
+        f2, ax = plt.subplots(1, 1, figsize = (8,6))
+
+        ax.plot(turns, kicked_tbt.Tx, color='blue', label='Kinetic $T_{x}$')
+        ax.plot(turns, analytical_tbt.Tx, ls='--', color='turquoise', alpha=0.7, lw=1.5, label='Analytical Nagaitsev $T_{x}$')
+        ax.plot(turns, kicked_tbt.Ty, color='orange', alpha=0.9, label='Kinetic $T_{y}$')
+        ax.plot(turns, analytical_tbt.Ty, color='red', ls='--', alpha=0.7, lw=1.5, label='Analytical Nagaitsev $T_{y}$')
+        ax.plot(turns, kicked_tbt.Tz, color='green', alpha=0.9, label='Kinetic $T_{z}$')
+        ax.plot(turns, analytical_tbt.Tz, alpha=0.7, color='lime', ls='--', lw=1.5, label='Analytical Nagaitsev $T_{z}$')
+
+        ax.set_ylabel(r'$T_{x, y ,z}$')
+        ax.set_xlabel('Turns')
+        ax.legend(fontsize=10)
+        plt.tight_layout()
+        f2.savefig('output_plots/combined_analytical_vs_kinetic_growth_rates{}.png'.format(extra_plot_string), dpi=250)        
+
+
         # Plot longitudinal phase space if desired
         if plot_longitudinal_phase_space:
             fig3, ax3 = plt.subplots(1, 1, figsize = (10,5))
@@ -680,7 +700,7 @@ class SPS_Flat_Bottom_Tracker:
             ax3.set_xlabel(r'$\zeta$ [m]')
             ax3.set_ylabel(r'$\delta$ [1e-3]')
             plt.tight_layout()
-            fig3.savefig('output_data_and_plots_{}/SPS_Pb_ions_longitudinal_bucket_{}turns{}.png'.format(which_context, self.num_turns, extra_plot_string), dpi=250)
+            fig3.savefig('output_plots/SPS_Pb_ions_longitudinal_bucket_{}turns{}.png'.format(self.num_turns, extra_plot_string), dpi=250)
 
         if show_plot:
             plt.show()
