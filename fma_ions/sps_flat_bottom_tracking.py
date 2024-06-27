@@ -445,7 +445,7 @@ class SPS_Flat_Bottom_Tracker:
                                                       context = None,
                                                       show_plot=False,
                                                       print_lost_particle_state=True,
-                                                      install_longitudinal_rect=False,
+                                                      install_longitudinal_rect=True,
                                                       plot_longitudinal_phase_space=True,
                                                       harmonic_nb = 4653,
                                                       extra_plot_string='',

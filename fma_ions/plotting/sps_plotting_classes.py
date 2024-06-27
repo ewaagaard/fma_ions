@@ -331,9 +331,9 @@ class SPS_Plotting:
                                             plot_bunch_length_measurements=True,
                                             x_unit_in_turns=False,
                                             bbox_to_anchor_position=(0.0, 1.3),
-                                            labelsize = 16,
+                                            labelsize = 15.8,
                                             ylim=None, 
-                                            legend_font_size=11.5,
+                                            legend_font_size=11.4,
                                             extra_str='',
                                             also_plot_WCM_Nb_data=True,
                                             adjusting_factor_Nb_for_initial_drop=0.95,
@@ -379,10 +379,10 @@ class SPS_Plotting:
             {
                 "font.family": "serif",
                 "font.size": 16,
-                "axes.titlesize": 18,
+                "axes.titlesize": 16,
                 "axes.labelsize": labelsize,
-                "xtick.labelsize": 13,
-                "ytick.labelsize": 13,
+                "xtick.labelsize": 14,
+                "ytick.labelsize": 14,
                 "legend.fontsize": legend_font_size,
                 "figure.titlesize": 18,
             }
@@ -437,7 +437,7 @@ class SPS_Plotting:
             #gs = f.add_gridspec(3, hspace=0, height_ratios= [1, 2, 2])
             #(ax3, ax2, ax1) = gs.subplots(sharex=True, sharey=False)
 
-            f, axs = plt.subplots(2, 2, figsize = (8,6), sharex=True)
+            f, axs = plt.subplots(2, 2, figsize = (7,5), sharex=True)
 
             # Plot measurements, if desired                
             if include_emittance_measurements:
@@ -464,8 +464,8 @@ class SPS_Plotting:
             
             if also_plot_WCM_Nb_data:
                 axs[1, 0].plot(time_units_WCM, Nb_WCM / adjusting_factor_Nb_for_initial_drop * tbt_dict['Nb'][0], ls='--', alpha=0.8,
-                          label='Wall Current Monitor', color='r')
-                axs[1, 0].legend(fontsize=legend_font_size, loc='upper right')
+                          label='Wall Current\nMonitor', color='r')
+                axs[1, 0].legend(fontsize=legend_font_size, loc='lower left')
             
             # Bunch length
             for i, tbt_dict in enumerate(tbt_array):
@@ -478,7 +478,7 @@ class SPS_Plotting:
             # Load binomial bunch length data and plot
             if plot_bunch_length_measurements:
                 _, _, sigma_RMS_Gaussian_in_m, sigma_RMS_Binomial_in_m, ctime = self.load_bunch_length_data()
-                axs[1, 1].plot(ctime, sigma_RMS_Binomial_in_m, color='orangered', alpha=0.95, ls='--', label='Measured binomial')
+                axs[1, 1].plot(ctime, sigma_RMS_Binomial_in_m, color='orangered', alpha=0.95, ls='--', label='Measured\nbinomial')
                 
             # Fix labels and only make top visible
             plt.setp(axs[0, 0].get_xticklabels(), visible=False)
