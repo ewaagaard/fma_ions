@@ -76,12 +76,13 @@ gs = fig.add_gridspec(2, hspace=0, height_ratios= [1, 1])
 ax = gs.subplots(sharex=True, sharey=False)
 
 # Convert length units to time in ns if desired
-unit_factor = 1e-9 * constants.c * beta if x_axis_in_time_units else 1.
+adjust_PS_time_constant = 0.045  # to align horizontal axes correctly
+unit_factor = (1e-9 * constants.c) * beta if x_axis_in_time_units else 1.
 
 ax[0].plot(zeta_SPS_inj / unit_factor, data_SPS_inj, color='blue', marker='v', ms=5.8, linestyle='None', label='SPS WCM\n2016 data')  
-ax[0].plot(zeta_PS_BSM / unit_factor, data_PS_BSM, color='k', markerfacecolor='gold', marker='*', ms=14.8, linestyle='None', alpha=0.8, label='PS BSM data \n2023, at extr.')
-ax[0].plot(zeta_SPS_inj_cut / unit_factor, fits.Q_Gaussian(zeta_SPS_inj_cut, *popt_Q_before_spill), color='lime', lw=2.8, label='Q-Gaussian fit')  
-ax[0].plot(zeta_SPS_inj_cut /unit_factor, fits.Binomial(zeta_SPS_inj_cut, *popt_B_before_spill), color='red', ls='--', lw=2.8, label='Binomial fit')  
+ax[0].plot(zeta_PS_BSM / unit_factor + adjust_PS_time_constant, data_PS_BSM, color='k', markerfacecolor='gold', marker='*', ms=14.8, linestyle='None', alpha=0.95, label='PS BSM data \n2023, at extr.')
+#ax[0].plot(zeta_SPS_inj_cut / unit_factor, fits.Q_Gaussian(zeta_SPS_inj_cut, *popt_Q_before_spill), color='lime', lw=2.8, label='Q-Gaussian fit')  
+#ax[0].plot(zeta_SPS_inj_cut /unit_factor, fits.Binomial(zeta_SPS_inj_cut, *popt_B_before_spill), color='red', ls='--', lw=2.8, label='Binomial fit')  
 
 ax[1].plot(zeta_SPS_inj_after_RF_spill / unit_factor, data_SPS_inj_after_RF_spill, color='blue', marker='v', ms=5.8, linestyle='None', label='SPS WCM\n2016 data')  
 ax[1].plot(zeta_SPS_inj_after_RF_spill_cut_plot / unit_factor, fits.Q_Gaussian(zeta_SPS_inj_after_RF_spill_cut_plot, *popt_Q_after_spill), color='lime', lw=2.8, label='Q-Gaussian fit')  
@@ -99,9 +100,9 @@ ax[1].set_xlabel('Time [ns]' if x_axis_in_time_units else r'$\zeta$ [m]')
 ax[0].set_ylabel('Amplitude [a.u.]')
 ax[1].set_ylabel('Amplitude [a.u.]')
 
-ax[0].text(0.6, 0.91, 'At injection, before RF spill', fontsize=13, transform=ax[0].transAxes)
-ax[1].text(0.6, 0.91, 'At injection, after RF spill', fontsize=13, transform=ax[1].transAxes)
-fig.tight_layout()
+ax[0].text(0.67, 0.86, 'At injection,\nbefore RF capture', fontsize=13, transform=ax[0].transAxes)
+ax[1].text(0.67, 0.86, 'At injection,\nafter RF capture', fontsize=13, transform=ax[1].transAxes)
+fig.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
 fig.savefig('SPS_longitudinal_profile_before_vs_after_RF_spill.png', dpi=250)
 plt.show()
 
