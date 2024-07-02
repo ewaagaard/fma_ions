@@ -144,7 +144,6 @@ class SPS_Flat_Bottom_Tracker:
                   apply_kinetic_IBS_kicks=False,
                   harmonic_nb = 4653,
                   ibs_step = 5000,
-                  Qy_frac: int = 19,
                   print_lost_particle_state=True,
                   minimum_aperture_to_remove=0.025,
                   add_tune_ripple=False,
@@ -170,8 +169,6 @@ class SPS_Flat_Bottom_Tracker:
             which ion to use: currently available are 'Pb' and 'O'
         which_context : str
             'gpu' or 'cpu'
-        Qy_frac : int
-            fractional part of vertical tune
         add_non_linear_magnet_errors : bool
             whether to add line with non-linear chromatic errors
         add_aperture : bool
@@ -229,8 +226,6 @@ class SPS_Flat_Bottom_Tracker:
         tbt : Records
             dataclass containing ensemble quantities and beam profile monitor data
         """
-        # Update vertical tune if changed
-        self.qy0 = int(self.qy0) + Qy_frac / 100
 
         # If specific beam parameters are not provided, load default SPS beam parameters - for Pb or O
         if beamParams is None:
@@ -265,7 +260,7 @@ class SPS_Flat_Bottom_Tracker:
             raise ValueError('Only Pb and O ions implemented so far!')
             
         # Extract line with aperture, beta-beat and non-linear magnet errors if desired
-        line, twiss = sps.load_xsuite_line_and_twiss(Qy_frac=Qy_frac, add_aperture=add_aperture, beta_beat=beta_beat,
+        line, twiss = sps.load_xsuite_line_and_twiss(add_aperture=add_aperture, beta_beat=beta_beat,
                                                    add_non_linear_magnet_errors=add_non_linear_magnet_errors, 
                                                    deferred_expressions=load_line_with_deferred_expressions,
                                                    plane=plane_for_beta_beat, voltage=voltage)

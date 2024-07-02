@@ -108,7 +108,6 @@ class SPS_sequence_maker:
     
     
     def load_xsuite_line_and_twiss(self,
-                                   Qy_frac=25, 
                                    beta_beat=None, 
                                    use_symmetric_lattice=False,
                                    add_non_linear_magnet_errors=False, 
@@ -122,8 +121,6 @@ class SPS_sequence_maker:
         
         Parameters:
         -----------
-        Qy_fractional : float
-            fractional vertical tune. "19"" means fractional tune Qy = 0.19
         beta_beat : float
             relative beta beat, i.e. relative difference between max beta function and max original beta function
         use_symmetric_lattice : bool
@@ -163,11 +160,8 @@ class SPS_sequence_maker:
             raise ValueError('Invalid optics: select Q20 or Q26')
         
         # Update sequence folder location
-        self.seq_folder = '{}/qy_dot{}'.format(sequence_path, Qy_frac)  
+        self.seq_folder = '{}/{}_qy_dot_{}'.format(sequence_path, self.proton_optics, int(self.qy0 % 1 * 100))
         os.makedirs(self.seq_folder, exist_ok=True)
-        
-        # Update fractional vertical tune 
-        self.qy0 = int(self.qy0) + Qy_frac / 100 
         print('\nTrying to load sequence with Qx, Qy = ({}, {}) and beta-beat = {}!\n'.format(self.qx0, self.qy0, beta_beat))
         
         if use_symmetric_lattice:
