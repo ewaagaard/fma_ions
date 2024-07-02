@@ -211,7 +211,11 @@ class Fit_Functions:
         if p0 is None:
             p0 = [1.0, 3.5, 0.8, 0.0, 0.0]
         
-        popt_B, pcov_B = curve_fit(self.Binomial, x_data, y_data, p0)
+        try:
+            popt_B, pcov_B = curve_fit(self.Binomial, x_data, y_data, p0)
+        except (RuntimeError, ValueError):
+            popt_B, pcov_B = np.nan * np.ones(len(p0)), np.nan * np.ones([len(p0), len(p0)])
+            
         return popt_B, pcov_B
     
     

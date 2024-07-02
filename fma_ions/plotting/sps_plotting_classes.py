@@ -11,6 +11,7 @@ from matplotlib import cm
 
 import scipy.constants as constants
 from scipy.stats import gaussian_kde
+from scipy.signal import savgol_filter
 import xobjects as xo
 
 from ..sequences import SPS_sequence_maker, BeamParameters_SPS, BeamParameters_SPS_Oxygen, BeamParameters_SPS_Proton
@@ -550,6 +551,118 @@ class SPS_Plotting:
             f3.savefig('main_plots/sigma_multiple_trackings{}.png'.format(extra_str), dpi=250)
             
             plt.show()
+
+
+    def plot_multiple_emittance_runs(self,
+                                     output_str_array,
+                                     string_array,
+                                     plot_moving_average=True,
+                                     x_unit_in_turns=False,
+                                     include_emittance_measurements=False,
+                                     extra_str='',
+                                     ylim=None
+                                     ):
+
+
+        """
+        Combined beta-beat plot of multiple tracking simulations
+        
+        output_str_array : [outfolder, outfolder, ...]
+            List containing string for outfolder tbt data
+        string_array : [str1, str2, ...]
+            List containing strings to explain the respective tbt data objects (which parameters were used)
+        plot_moving_average : bool
+            whether to use a savgol filter to plot the moving average
+        x_unit_in_turns : bool
+            if True, x axis units will be turn, otherwise in seconds
+        include_emittance_measurements : bool
+            whether to include data from 2023
+        extra_str : str
+            add to figure name
+        ylim : list
+            vertical limits to plot
+        """
+        # Make plot directory and update plot parameters
+        os.makedirs('main_plots', exist_ok=True)
+        plt.rcParams.update(
+            {
+                "font.family": "serif",
+                "font.size": 16,
+                "axes.titlesize": 16,
+                "axes.labelsize": 16,
+                "xtick.labelsize": 14,
+                "ytick.labelsize": 14,
+                "legend.fontsize": 10.4,
+                "figure.titlesize": 18,
+            }
+        )
+
+        # Load TBT data 
+        tbt_array = []
+        for output_folder in output_str_array:
+            self.output_folder = output_folder
+            tbt_dict = self.load_records_dict_from_json(output_folder=output_folder)
+            tbt_array.append(tbt_dict)
+
+        # Convert measured emittances to turns if this unit is used, otherwise keep seconds
+        if x_unit_in_turns:         
+            sps = SPS_sequence_maker()
+            _, twiss = sps.load_xsuite_line_and_twiss()
+            turns_per_sec = 1 / twiss.T_rev0
+            time_units = tbt_dict['Turns']
+            print('Set time units to turns')
+        else:
+            time_units = tbt_dict['Seconds']
+            print('Set time units to seconds')        
+        
+        # Load emittance measurements
+        if include_emittance_measurements:
+            if x_unit_in_turns:
+                sps = SPS_sequence_maker()
+                _, twiss = sps.load_xsuite_line_and_twiss()
+                turns_per_sec = 1 / twiss.T_rev0
+            
+            full_data = self.load_emittance_data()
+            time_units_x = (turns_per_sec * full_data['Ctime_X']) if x_unit_in_turns else full_data['Ctime_X']
+            time_units_y = (turns_per_sec * full_data['Ctime_Y']) if x_unit_in_turns else full_data['Ctime_Y']
+
+        # Generate figure
+        f, axs = plt.subplots(1, 2, figsize = (7.5, 3.9), sharey=True)
+        
+        # Loop over the tbt records classes 
+        for i, tbt_dict in enumerate(tbt_array):
+            if plot_moving_average:
+                axs[0].plot(time_units, savgol_filter(tbt_dict['exn'], 1000, 2) * 1e6, alpha=0.7, lw=1.5, label=string_array[i])
+                axs[1].plot(time_units, savgol_filter(tbt_dict['eyn'], 1000, 2) * 1e6, alpha=0.7, lw=1.5, label=string_array[i]) 
+            else:
+                axs[0].plot(time_units, tbt_dict['exn'] * 1e6, alpha=0.7, lw=1.5, label=string_array[i])
+                axs[1].plot(time_units, tbt_dict['eyn'] * 1e6, alpha=0.7, lw=1.5, label=string_array[i])
+    
+        # Include wire scanner data - subtract ion injection cycle time
+        if include_emittance_measurements:
+            axs[0].errorbar(time_units_x - self.ion_inj_ctime, 1e6 * np.array(full_data['N_avg_emitX']), yerr=1e6 * full_data['N_emitX_error'], 
+                       color='blue', fmt="o", label="Measured")
+            axs[1].errorbar(time_units_y - self.ion_inj_ctime, 1e6 * np.array(full_data['N_avg_emitY']), yerr=1e6 * full_data['N_emitY_error'], 
+                       color='blue', fmt="o", label="Measured")
+    
+        axs[0].set_ylabel(r'$\varepsilon_{x}^{n}$ [$\mu$m rad]')
+        axs[1].set_ylabel(r'$\varepsilon_{y}^{n}$ [$\mu$m rad]')
+
+    
+        # Fix labels and only make top visible
+        plt.setp(axs[1].get_yticklabels(), visible=False)
+        axs[0].legend(loc='lower right')
+        axs[0].set_xlabel('Turns' if x_unit_in_turns else 'Time [s]')
+        axs[1].set_xlabel('Turns' if x_unit_in_turns else 'Time [s]')
+        axs[1].text(0.04, 0.91, '{}'.format(extra_str), fontsize=15, transform=axs[1].transAxes)
+
+        if ylim is not None:
+            axs[0].set_ylim(ylim[0], ylim[1])
+            axs[1].set_ylim(ylim[0], ylim[1])
+        
+        f.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+        f.savefig('main_plots/emittance_growths_{}.png'.format(extra_str), dpi=250)
+        plt.show()
 
 
     def plot_WS_profile_monitor_data(self, 

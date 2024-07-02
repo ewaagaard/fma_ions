@@ -440,6 +440,7 @@ class SPS_Flat_Bottom_Tracker:
                                                       which_context='cpu',
                                                       add_non_linear_magnet_errors=False, 
                                                       beta_beat=None, 
+                                                      distribution_type='gaussian',
                                                       beamParams=None,
                                                       ibs_step : int = 200,
                                                       context = None,
@@ -465,6 +466,8 @@ class SPS_Flat_Bottom_Tracker:
             whether to add line with non-linear chromatic errors
         beta_beat : float
             relative beta beat, i.e. relative difference between max beta function and max original beta function
+        distribution_type : str
+            'gaussian' or 'binomial'
         beamParams : dataclass
             container of exn, eyn, Nb and sigma_z. Default 'None' will load nominal SPS beam parameters 
         ibs_step : int
@@ -489,7 +492,10 @@ class SPS_Flat_Bottom_Tracker:
         
         # If specific beam parameters are not provided, load default SPS beam parameters
         if beamParams is None:
-            beamParams = BeamParameters_SPS()
+            if distribution_type == 'gaussian':
+                beamParams = BeamParameters_SPS()
+            elif distribution_type == 'binomial':
+                beamParams = BeamParameters_SPS_Binomial_2016() # Assume after RF Spill
         print('Beam parameters:', beamParams)
 
         # Select relevant context
@@ -519,7 +525,7 @@ class SPS_Flat_Bottom_Tracker:
         line.build_tracker(_context=context)
                 
         # Generate particles object to track    
-        particles = self.generate_particles(line=line, context=context, beamParams=beamParams)
+        particles = self.generate_particles(line=line, context=context, beamParams=beamParams, distribution_type=distribution_type)
 
         ######### IBS kinetic kicks and analytical model #########
         beamparams = BeamParameters.from_line(line, n_part=beamParams.Nb)
@@ -547,6 +553,7 @@ class SPS_Flat_Bottom_Tracker:
         analytical_tbt.Ty[0] = growth_rates.Ty
         analytical_tbt.Tz[0] = growth_rates.Tz
         
+        print('Initial:\nAnalytical: {}\nKinetic: {}\n'.format(growth_rates, kinetic_kick_coefficients))
         
         # We loop here now
         time00 = time.time()
@@ -708,3 +715,54 @@ class SPS_Flat_Bottom_Tracker:
 
         if return_data:
             return df_kick, df_analytical
+        
+        
+    def print_kinetic_and_analytical_growth_rates(self, 
+                                                   distribution_type='gaussian', 
+                                                   beamParams=None,
+                                                   beta_beat=None,
+                                                   add_non_linear_magnet_errors=False
+                                                   )->None:
+        """Calculate kinetic and Nagaitsev analytical growth rates"""
+        # If specific beam parameters are not provided, load default SPS beam parameters
+        if beamParams is None:
+            if distribution_type == 'gaussian':
+                beamParams = BeamParameters_SPS()
+            elif distribution_type == 'binomial':
+                beamParams = BeamParameters_SPS_Binomial_2016() # Assume after RF Spill
+        print('Beam parameters:', beamParams)
+
+        # Select relevant context
+        context = xo.ContextCpu(omp_num_threads='auto')
+
+        # Get SPS Pb line - with aperture and non-linear magnet errors if desired
+        sps = SPS_sequence_maker(proton_optics=self.proton_optics, qx0=self.qx0, qy0=self.qy0)
+        line, twiss = sps.load_xsuite_line_and_twiss(add_aperture=False, beta_beat=beta_beat,
+                                                   add_non_linear_magnet_errors=add_non_linear_magnet_errors)
+
+        line.build_tracker(_context=context)
+                
+        # Generate particles object to track    
+        particles = self.generate_particles(line=line, context=context, beamParams=beamParams, distribution_type=distribution_type)
+
+        ######### IBS kinetic kicks and analytical model #########
+        beamparams = BeamParameters.from_line(line, n_part=beamParams.Nb)
+        opticsparams = OpticsParameters.from_line(line) # read from line without space  charge
+        IBS = KineticKickIBS(beamparams, opticsparams)
+        NIBS = NagaitsevIBS(beamparams, opticsparams)
+
+        # Initialize the dataclasses
+        kicked_tbt = Records_Growth_Rates.init_zeroes(self.num_turns)
+        analytical_tbt = Records_Growth_Rates.init_zeroes(self.num_turns)
+         
+        # Store the initial values
+        kicked_tbt.update_at_turn(0, particles, twiss)
+        analytical_tbt.update_at_turn(0, particles, twiss)
+        
+        
+        # Calculate initial growth rates and initialize
+        kinetic_kick_coefficients = IBS.compute_kick_coefficients(particles)
+        growth_rates = NIBS.growth_rates(analytical_tbt.epsilon_x[0], analytical_tbt.epsilon_y[0], 
+                                         analytical_tbt.sigma_delta[0], analytical_tbt.bunch_length[0])
+        
+        print('Initial:\nAnalytical: {}\nKinetic: {}\n'.format(growth_rates, kinetic_kick_coefficients))
