@@ -145,7 +145,7 @@ class Fit_Functions:
         try:
             poptq, pcovq = curve_fit(self.Q_Gaussian, x_data, y_data, p0)
         except (RuntimeError, ValueError):
-            poptq = np.nan * np.ones(len(p0))
+            poptq, pcovq = np.nan * np.ones(len(p0)), np.nan * np.ones([len(p0), len(p0)])
             
         return poptq, pcovq
 
