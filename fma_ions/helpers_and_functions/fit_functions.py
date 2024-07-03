@@ -163,10 +163,12 @@ class Fit_Functions:
         -------
         rms_bunch_length : float
         """
-        q =  poptq[1]
-        beta = poptq[2]
-        return 1./np.sqrt(beta*(5.-3.*q))
-    
+        if poptq[1] is not np.nan:
+            q =  poptq[1]
+            beta = poptq[2]
+            return 1./np.sqrt(beta*(5.-3.*q))
+        else:
+            return np.nan
 
     def Binomial(self, x, A, m, x_max, x0, offset):
         """
