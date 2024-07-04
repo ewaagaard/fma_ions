@@ -15,12 +15,9 @@ fits = fma_ions.Fit_Functions()
 # First generate qGaussian particles with default parameters, and more macroparticles for better plotting
 sps_seq = fma_ions.SPS_sequence_maker()
 line, twiss = sps_seq.load_xsuite_line_and_twiss()
-sps0 = fma_ions.SPS_Flat_Bottom_Tracker(num_part=1_000_000, turn_print_interval=5)
+sps0 = fma_ions.SPS_Flat_Bottom_Tracker(num_part=1_000_000)
 particles = sps0.generate_particles(line=line, distribution_type='qgaussian', beamParams=fma_ions.BeamParameters_SPS_Binomial_2016())
 
-
-
-'''
 # Make a histogram
 bin_heights, bin_borders = np.histogram(particles.zeta, bins=160)
 bin_widths = np.diff(bin_borders)
@@ -41,8 +38,6 @@ ax2.set_ylabel('Counts')
 ax2.set_xlabel(r'$\zeta$ [m]')
 ax2.legend()
 fig2.tight_layout()
-plt.show()
-'''
 
 # Then track for a few hundred turns, see what happens
 sps = fma_ions.SPS_Flat_Bottom_Tracker(num_turns=n_turns, num_part=num_part, turn_print_interval=5)
@@ -99,7 +94,7 @@ ax22.plot(time_array, sigmas_binomial, color='cyan', ls='--', alpha=0.95, label=
 ax22.plot(ctime, sigma_RMS_Binomial_in_m, color='darkorange', label='Measured profiles')
 ax22.set_ylabel(r'$\sigma_{z, RMS}$ [m] fitted binomial')
 ax22.set_xlabel('Time [s]')
-ax22.setxlim(time_array[0] * 0.8, time_array[-1] * 1.2)
+#ax22.set_xlim(time_array[0] * 0.8, time_array[-1] * 1.2)
 ax22.legend()
 
 # Insert extra box with fitted q-value of profiles
@@ -111,6 +106,16 @@ ax23.tick_params(axis="both", labelsize=12)
 ax23.tick_params(colors='green', axis='y')
 ax23.set_ylim(min(q_vals)-0.2, max(q_vals)+0.2)
 ax23.set_xlabel('Time [s]', fontsize=13.5)
-
 f3.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+
+
+# Then compare longitudinal profile monitor with initially generated particle - how much does distribution change?
+fig4, ax4 = plt.subplots(1, 1, figsize = (8,6))
+ax4.bar(bin_centers, bin_heights, width=bin_widths, label='Generated particles\nturn 0')
+ax4.plot(xdata, ydata, color='r', label='Zeta profile\nturn {}'.format(nturns_per_profile * (i+1)))
+ax4.set_ylabel('Counts')
+ax4.set_xlabel(r'$\zeta$ [m]')
+ax4.legend()
+fig4.tight_layout()
+
 plt.show()
