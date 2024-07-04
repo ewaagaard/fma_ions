@@ -114,7 +114,7 @@ class SPS_Plotting:
             x_unit_in_turns = False
             
             # Load bunch length data
-            _, _, sigma_RMS_Gaussian_in_m, sigma_RMS_Binomial_in_m, ctime = self.load_bunch_length_data()
+            sigma_RMS_Gaussian_in_m, sigma_RMS_Binomial_in_m, sigma_RMS_qGaussian_in_m, q_vals, q_error, ctime = self.load_bunch_length_data()
 
         # Convert measured emittances to turns if this unit is used, otherwise keep seconds
         if x_unit_in_turns:
@@ -510,7 +510,7 @@ class SPS_Plotting:
 
             # Load binomial bunch length data and plot
             if plot_bunch_length_measurements:
-                _, _, sigma_RMS_Gaussian_in_m, sigma_RMS_Binomial_in_m, ctime = self.load_bunch_length_data()
+                sigma_RMS_Gaussian_in_m, sigma_RMS_Binomial_in_m, sigma_RMS_qGaussian_in_m, q_vals, q_error, ctime = self.load_bunch_length_data()
                 axs[1, 1].plot(ctime, sigma_RMS_Binomial_in_m, color='orangered', alpha=0.95, ls='--', label='Measured\nbinomial')
                 
             # Fix labels and only make top visible
@@ -573,7 +573,7 @@ class SPS_Plotting:
 
             if plot_bunch_length_measurements:
                 # Load bunch length data
-                _, _, sigma_RMS_Gaussian_in_m, sigma_RMS_Binomial_in_m, ctime = self.load_bunch_length_data()
+                sigma_RMS_Gaussian_in_m, sigma_RMS_Binomial_in_m, sigma_RMS_qGaussian_in_m, q_vals, q_error, ctime = self.load_bunch_length_data()
                 #ax22.plot(ctime, sigma_RMS_Gaussian_in_m, color='royalblue', ls='-.', label='Measured $\sigma$ Gaussian')
                 ax22.plot(ctime, sigma_RMS_Binomial_in_m, color='orangered', alpha=0.7, ls='--', label='Measured RMS Binomial')
             ax22.set_ylabel(r'$\sigma_{z}$ [m]')
@@ -1040,11 +1040,15 @@ class SPS_Plotting:
         with open(bunch_length_data_path, 'rb') as f:
             sigma_RMS_Gaussian = np.load(f)
             sigma_RMS_Binomial = np.load(f)
+            sigma_RMS_qGaussian = np.load(f)
             sigma_RMS_Gaussian_in_m = np.load(f)
             sigma_RMS_Binomial_in_m = np.load(f)
+            sigma_RMS_qGaussian_in_m = np.load(f)
+            q_vals = np.load(f)
+            q_error = np.load(f)
             ctime = np.load(f)
-        
-        return sigma_RMS_Gaussian, sigma_RMS_Binomial, sigma_RMS_Gaussian_in_m, sigma_RMS_Binomial_in_m, ctime
+            
+        return sigma_RMS_Gaussian_in_m, sigma_RMS_Binomial_in_m, sigma_RMS_qGaussian_in_m, q_vals, q_error, ctime
 
         
 
