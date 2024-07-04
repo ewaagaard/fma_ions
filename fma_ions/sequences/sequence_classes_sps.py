@@ -58,9 +58,8 @@ class BeamParameters_SPS_Binomial_2016_before_RF_Spill:
 class BeamParameters_SPS_Oxygen:
     """Data Container for SPS oxygen beam parameters"""
     Nb:  float = 25e8 # half of (John, Bartosik 2021) for oxygen, assuming bunch splitting
-    sigma_z: float = 0.225 # in m, is the old value (close to Isabelle's and  Hannes'), but then bucket is too full if Gaussian longitudinal. 0.19 also used
-    sigma_z_binomial: float = 0.285 # RMS bunch length of binomial, default value to match data
-    m : float = 5.3 # binomial parameter to determine tail of parabolic distribution
+    sigma_z: float = 0.213 # assume same as Pb
+    q : float = 0.59 # q-Gaussian parameter after RF spill --> assume same as Pb
     exn: float = 1.3e-6
     eyn: float = 0.9e-6
 
