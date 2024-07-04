@@ -7,24 +7,21 @@ import pathlib
 
 # Find path of script being run
 dir_path = pathlib.Path(__file__).parent.absolute()
-script_names = ['sps_ideal_lattice_only_ibs_gaussian.py', 'sps_ideal_lattice_only_ibs_binomial_before_RF_spill.py',
-                'sps_ideal_lattice_only_ibs_binomial.py', 'sps_10percBB_sc_ibs_binomial.py',
-                'sps_10percBB_sc_binomial.py', 'sps_10percBB_only_ibs_binomial.py', 
-                'sps_5percBB_sc_ibs_gaussian.py', 'sps_5percBB_sc_ibs_binomial.py',
-                'sps_5percBB_sc_binomial.py', 'sps_5percBB_only_ibs_binomial.py',
-                'sps_2percBB_sc_ibs_binomial.py', 'sps_2percBB_sc_binomial.py',
-                'sps_2percBB_only_ibs_binomial.py']
-folder_names = ['sps_ideal_lattice_only_ibs_gaussian', 'sps_ideal_lattice_only_ibs_binomial_before_RF_spill',
-                'sps_ideal_lattice_only_ibs_binomial', 'sps_10percBB_sc_ibs_binomial',
-                'sps_10percBB_sc_binomial', 'sps_10percBB_only_ibs_binomial', 
-                'sps_5percBB_sc_ibs_gaussian', 'sps_5percBB_sc_ibs_binomial',
-                'sps_5percBB_sc_binomial', 'sps_5percBB_only_ibs_binomial',
-                'sps_2percBB_sc_ibs_binomial', 'sps_2percBB_sc_binomial',
-                'sps_2percBB_only_ibs_binomial']
-string_array = ['Ideal lattice' 'Ideal lattice, SC', 'Ideal lattice, IBS', 
-                '5% beta-beat', '5% beta-beat, SC', '5% beta-beat, IBS', '5% beta-beat, SC + IBS',
-                'Ideal lattice, IBS, before RF spill', '5% beta-beat, IBS, before RF spill',
-                '5% beta-beat, SC and IBS, before RF spill']    
+script_names = ['sps_ideal_lattice_only_ibs_qgaussian_before_RF_spill.py', 'sps_ideal_lattice_only_ibs_qgaussian.py',
+                'sps_ideal_lattice_only_ibs_gaussian.py', 'sps_10percBB_sc_qgaussian.py', 'sps_10percBB_sc_ibs_qgaussian.py',
+                'sps_10percBB_only_ibs_qgaussian.py', 'sps_5percBB_sc_qgaussian.py', 'sps_5percBB_sc_ibs_qgaussian.py',
+                'sps_5percBB_sc_ibs_gaussian.py', 'sps_5percBB_only_ibs_qgaussian.py', 'sps_2percBB_sc_qgaussian.py',
+                'sps_2percBB_sc_ibs_qgaussian.py', 'sps_2percBB_only_ibs_qgaussian.py']
+folder_names = ['sps_ideal_lattice_only_ibs_qgaussian_before_RF_spill', 'sps_ideal_lattice_only_ibs_qgaussian',
+                'sps_ideal_lattice_only_ibs_gaussian', 'sps_10percBB_sc_qgaussian', 'sps_10percBB_sc_ibs_qgaussian',
+                'sps_10percBB_only_ibs_qgaussian', 'sps_5percBB_sc_qgaussian', 'sps_5percBB_sc_ibs_qgaussian',
+                'sps_5percBB_sc_ibs_gaussian', 'sps_5percBB_only_ibs_qgaussian', 'sps_2percBB_sc_qgaussian',
+                'sps_2percBB_sc_ibs_qgaussian', 'sps_2percBB_only_ibs_qgaussian']
+string_array = ['sps_ideal_lattice_only_ibs_qgaussian_before_RF_spill', 'sps_ideal_lattice_only_ibs_qgaussian',
+                'sps_ideal_lattice_only_ibs_gaussian', 'sps_10percBB_sc_qgaussian', 'sps_10percBB_sc_ibs_qgaussian',
+                'sps_10percBB_only_ibs_qgaussian', 'sps_5percBB_sc_qgaussian', 'sps_5percBB_sc_ibs_qgaussian',
+                'sps_5percBB_sc_ibs_gaussian', 'sps_5percBB_only_ibs_qgaussian', 'sps_2percBB_sc_qgaussian',
+                'sps_2percBB_sc_ibs_qgaussian', 'sps_2percBB_only_ibs_qgaussian']    
 
 # Instantiate the submitter class and launch the two jobs
 sub = fma_ions.Submitter() 
