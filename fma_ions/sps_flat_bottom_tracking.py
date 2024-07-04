@@ -59,7 +59,7 @@ class SPS_Flat_Bottom_Tracker:
         line: xt.Line
         context : xo.context
         distribution_type : str
-            'gaussian', 'parabolic', 'binomial' or 'linear_in_zeta'
+            'gaussian', 'qgaussian', 'parabolic', 'binomial' or 'linear_in_zeta'
         beamParams : dataclass
             container of exn, eyn, Nb and sigma_z. Default 'None' will load nominal SPS beam parameters 
         use_binomial_dist_after_RF_spill : bool
@@ -99,6 +99,29 @@ class SPS_Flat_Bottom_Tracker:
                 line=line, _context=context)
             print('\nParabolic distribution generated.')
         
+        elif distribution_type=='qgaussian':
+            if beamParams is None:
+                beamParams = BeamParameters_SPS_Binomial_2016() if use_binomial_dist_after_RF_spill else BeamParameters_SPS_Binomial_2016_before_RF_Spill
+                
+                # Generate longitudinal coordinates s
+                zeta, delta = xp.longitudinal.generate_longitudinal_coordinates(line=line, distribution='qgaussian',
+                                                                                num_particles=self.num_part,
+                                                                                engine='single-rf-harmonic', sigma_z=beamParams.sigma_z,
+                                                                                particle_ref=line.particle_ref, return_matcher=False, q=beamParams.q)
+                # Initiate normalized coordinates
+                x_norm = np.random.normal(size=self.num_part)
+                px_norm = np.random.normal(size=self.num_part)
+                y_norm = np.random.normal(size=self.num_part)
+                py_norm = np.random.normal(size=self.num_part)
+                
+                particles = xp.build_particles(_context=None, particle_ref=line.particle_ref, 
+                                               zeta=zeta, delta=delta,
+                                               x_norm=x_norm, px_norm=px_norm,
+                                               y_norm=y_norm, py_norm=py_norm,
+                                               nemitt_x=beamParams.exn, nemitt_y=beamParams.eyn,
+                                               weight=beamParams.Nb/self.num_part, line=line)
+                
+                
         elif distribution_type=='binomial':
             if beamParams is None:
                 beamParams = BeamParameters_SPS_Binomial_2016() if use_binomial_dist_after_RF_spill else BeamParameters_SPS_Binomial_2016_before_RF_Spill
@@ -182,7 +205,7 @@ class SPS_Flat_Bottom_Tracker:
         SC_mode : str
             type of space charge - 'frozen' (recommended), 'quasi-frozen' or 'PIC'
         distribution_type : str
-            'gaussian' or 'parabolic' or 'binomial': particle distribution for tracking
+            'gaussian' or 'qgaussian' or 'parabolic' or 'binomial': particle distribution for tracking
         add_kinetic_IBS_kicks : bool
             whether to apply kinetic kicks from xibs 
         harmonic_nb : int
@@ -236,7 +259,7 @@ class SPS_Flat_Bottom_Tracker:
             if ion_type=='proton':
                 beamParams = BeamParameters_SPS_Proton()
                 harmonic_nb = 4620 # update harmonic number
-            if distribution_type == 'binomial':
+            if distribution_type == 'binomial' or distribution_type == 'qgaussian':
                 beamParams = BeamParameters_SPS_Binomial_2016() if use_binomial_dist_after_RF_spill else BeamParameters_SPS_Binomial_2016_before_RF_Spill
         print('Beam parameters:', beamParams)
 
@@ -340,7 +363,7 @@ class SPS_Flat_Bottom_Tracker:
         if add_tune_ripple:
             turns_per_sec = 1/twiss['T_rev0']
             ripple_period = int(turns_per_sec/ripple_freq)  # number of turns particle makes during one ripple oscillation
-            ripple = Tune_Ripple_SPS(Qy_frac=Qy_frac, beta_beat=beta_beat, num_turns=self.num_turns, ripple_period=ripple_period)
+            ripple = Tune_Ripple_SPS(beta_beat=beta_beat, num_turns=self.num_turns, ripple_period=ripple_period)
             kqf_vals, kqd_vals, _ = ripple.load_k_from_xtrack_matching(dq=dq, plane=ripple_plane)
 
         # Initialize the dataclasses and store the initial values
@@ -462,7 +485,7 @@ class SPS_Flat_Bottom_Tracker:
         beta_beat : float
             relative beta beat, i.e. relative difference between max beta function and max original beta function
         distribution_type : str
-            'gaussian' or 'binomial'
+            'gaussian' or 'qgaussian' or 'binomial'
         beamParams : dataclass
             container of exn, eyn, Nb and sigma_z. Default 'None' will load nominal SPS beam parameters 
         ibs_step : int
@@ -723,7 +746,7 @@ class SPS_Flat_Bottom_Tracker:
         if beamParams is None:
             if distribution_type == 'gaussian':
                 beamParams = BeamParameters_SPS()
-            elif distribution_type == 'binomial':
+            elif distribution_type == 'binomial' or distribution_type=='qgaussian': 
                 beamParams = BeamParameters_SPS_Binomial_2016() # Assume after RF Spill
         print('Beam parameters:', beamParams)
 

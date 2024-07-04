@@ -115,7 +115,7 @@ class FMA:
         context : xo.context
             xojebts context for tracking
         distribution_type : str
-            'gaussian' or 'parabolic' or 'binomial' or 'linear_in_zeta': particle distribution for tracking
+            'gaussian' or 'qGaussian' or 'parabolic' or 'binomial' or 'linear_in_zeta': particle distribution for tracking
         pic_solver : str
             Choose solver between `FFTSolver2p5DAveraged` and `FFTSolver2p5D`
         add_Z_kick_for_SC : bool
@@ -145,9 +145,9 @@ class FMA:
         if distribution_type=='gaussian' or distribution_type=='linear_in_zeta':
             q_val = 1.0
             print('\nGaussian longitudinal SC profile')
-        elif distribution_type=='binomial':
+        elif distribution_type=='binomial' or distribution_type=='qgaussian':
             q_val = beamParams.q
-            print('\nBinomial longitudinal SC profile, using parameters after spill: {}, and q = {}'.format(use_binomial_dist_after_RF_spill, 
+            print('\nBinomial or qGaussian longitudinal SC profile, using parameters after spill: {}, and q = {}'.format(use_binomial_dist_after_RF_spill, 
                                                                                                             beamParams.q))
         elif distribution_type=='parabolic':
             raise ValueError('Parabolic not yet implemented for frozen!')

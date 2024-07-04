@@ -34,9 +34,9 @@ class BeamParameters_SPS_Binomial_2016:
     after initial spill out of RF bucket has happened
     """
     Nb: float = 3.536e8 * 0.95 # injected intensity, after initial spill out of RF bucket
-    sigma_z: float = 0.226 # RMS bunch length of binomial, after initial spill out of RF bucket #0.213 measured, but takes ~30 turns to stabilze
-    m : float = 2.65 # binomial parameter to determine tail of parabolic distribution, after initial spill out of RF bucket
-    q : float = 0.528 # q-Gaussian parameter after RF spill
+    sigma_z: float = 0.215 # RMS bunch length of binomial, after initial spill out of RF bucket #0.213 measured, but takes ~30 turns to stabilze
+    m : float = 2.7 # binomial parameter to determine tail of parabolic distribution, after initial spill out of RF bucket
+    q : float = 0.54 # q-Gaussian parameter after RF spill (third profile)
     exn: float = 1.3e-6
     eyn: float = 0.9e-6
 
