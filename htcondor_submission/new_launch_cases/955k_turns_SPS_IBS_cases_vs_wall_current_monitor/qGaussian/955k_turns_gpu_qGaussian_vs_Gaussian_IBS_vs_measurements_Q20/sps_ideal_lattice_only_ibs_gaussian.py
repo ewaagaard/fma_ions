@@ -2,7 +2,6 @@
 SPS lattice with ideal lattice and only IBS (no SC) - with GPUs
 """
 import fma_ions
-import pandas as pd
 output_dir = './'
 
 n_turns = 955_000  # corresponds to 22 s
