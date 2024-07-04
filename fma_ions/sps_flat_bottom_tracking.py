@@ -43,7 +43,7 @@ class SPS_Flat_Bottom_Tracker:
 
     def generate_particles(self, 
                            line: xt.Line, 
-                           context : xo.context, 
+                           context=None, 
                            distribution_type='gaussian', 
                            beamParams=None,
                            use_binomial_dist_after_RF_spill=True,
@@ -74,6 +74,10 @@ class SPS_Flat_Bottom_Tracker:
         only_one_zeta : bool
             for 'linear_in_zeta' distribution, whether to select only one particle in zeta (penultimate in amplitude) or not
         """
+        if context is None:
+            context = xo.ContextCpu(omp_num_threads='auto')
+            print('CPU context generated')
+        
         if distribution_type=='gaussian':
             if beamParams is None:
                 beamParams = BeamParameters_SPS()
@@ -103,23 +107,24 @@ class SPS_Flat_Bottom_Tracker:
             if beamParams is None:
                 beamParams = BeamParameters_SPS_Binomial_2016() if use_binomial_dist_after_RF_spill else BeamParameters_SPS_Binomial_2016_before_RF_Spill
                 
-                # Generate longitudinal coordinates s
-                zeta, delta = xp.longitudinal.generate_longitudinal_coordinates(line=line, distribution='qgaussian',
-                                                                                num_particles=self.num_part,
-                                                                                engine='single-rf-harmonic', sigma_z=beamParams.sigma_z,
-                                                                                particle_ref=line.particle_ref, return_matcher=False, q=beamParams.q)
-                # Initiate normalized coordinates
-                x_norm = np.random.normal(size=self.num_part)
-                px_norm = np.random.normal(size=self.num_part)
-                y_norm = np.random.normal(size=self.num_part)
-                py_norm = np.random.normal(size=self.num_part)
-                
-                particles = xp.build_particles(_context=None, particle_ref=line.particle_ref, 
-                                               zeta=zeta, delta=delta,
-                                               x_norm=x_norm, px_norm=px_norm,
-                                               y_norm=y_norm, py_norm=py_norm,
-                                               nemitt_x=beamParams.exn, nemitt_y=beamParams.eyn,
-                                               weight=beamParams.Nb/self.num_part, line=line)
+            # Generate longitudinal coordinates s
+            print('\nBinomial distribution with sigma={:.3f} m and q={:.3f} generated.\n'.format(beamParams.sigma_z, beamParams.q))
+            zeta, delta = xp.longitudinal.generate_longitudinal_coordinates(line=line, distribution='qgaussian',
+                                                                            num_particles=self.num_part,
+                                                                            engine='single-rf-harmonic', sigma_z=beamParams.sigma_z,
+                                                                            particle_ref=line.particle_ref, return_matcher=False, q=beamParams.q)
+            # Initiate normalized coordinates
+            x_norm = np.random.normal(size=self.num_part)
+            px_norm = np.random.normal(size=self.num_part)
+            y_norm = np.random.normal(size=self.num_part)
+            py_norm = np.random.normal(size=self.num_part)
+            
+            particles = xp.build_particles(_context=None, particle_ref=line.particle_ref, 
+                                           zeta=zeta, delta=delta,
+                                           x_norm=x_norm, px_norm=px_norm,
+                                           y_norm=y_norm, py_norm=py_norm,
+                                           nemitt_x=beamParams.exn, nemitt_y=beamParams.eyn,
+                                           weight=beamParams.Nb/self.num_part, line=line)
                 
                 
         elif distribution_type=='binomial':

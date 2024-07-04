@@ -16,6 +16,7 @@ tbt_dict = tbt.to_dict(convert_to_numpy=True)
 # Load injection data
 sps_plot = fma_ions.SPS_Plotting()
 _, _, sigma_RMS_Gaussian_in_m, sigma_RMS_Binomial_in_m, ctime = sps_plot.load_bunch_length_data()
+sps_plot.plot_longitudinal_monitor_data(tbt_dict=tbt_dict)
 
 # Fit q-Gaussian profiles - Find total number of stacked profiles and turns per profiles
 n_profiles = len(tbt_dict['z_bin_heights'][0]) 

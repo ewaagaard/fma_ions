@@ -14,7 +14,7 @@ class Fit_Functions:
     def __init__(self):
         pass
     
-    def Gaussian(self, x, A, mean, sigma, offset):
+    def Gaussian(self, x, A, mean, sigma): #add C for offset
         """
         Gaussian, or normal distribution
         
@@ -27,14 +27,12 @@ class Fit_Functions:
             offset
         sigma : float
             first moment
-        offset : float
-            baseline
 
         Returns
         -------
         Gaussian function values
         """
-        return A * np.exp(-(x - mean)**2 / (2 * sigma**2)) + offset
+        return A * np.exp(-(x - mean)**2 / (2 * sigma**2)) #+ C
     
     
     def fit_Gaussian(self, x_data, y_data, p0 = None):
@@ -59,17 +57,20 @@ class Fit_Functions:
         if p0 is not None: 
             initial_guess = p0
         else:
+            initial_guess = (1.0, 1.0, 1.0)
+            '''
             initial_amplitude = np.max(y_data) - np.min(y_data)
             initial_mean = x_data[np.argmax(y_data)]
             initial_sigma = 1.0 # starting guess for now
             initial_offset = np.min(savgol_filter(y_data,21,2))
             
             initial_guess = (initial_amplitude, initial_mean, initial_sigma, initial_offset)
+            '''
         # Try to fit a Gaussian, otherwise return array of infinity
         try:
             popt, pcov = curve_fit(self.Gaussian, x_data, y_data, p0=initial_guess)
         except (RuntimeError, ValueError):
-            popt = np.infty * np.ones(len(initial_guess))
+            popt, pcov = np.nan * np.ones(len(initial_guess)), np.nan * np.ones([len(initial_guess), len(initial_guess)])
             
         return popt, pcov
     
@@ -109,14 +110,14 @@ class Fit_Functions:
         return eq
     
     
-    def Q_Gaussian(self, x, mu, q, beta, A, C):
+    def Q_Gaussian(self, x, mu, q, beta, A): #add C for offset
         """
         Q-Gaussian function
         
         Returns Q-Gaussian from Eq. (2.1) in (Umarov, Tsallis, Steinberg, 2008) 
         available at https://link.springer.com/article/10.1007/s00032-008-0087-y
         """
-        Gq =  A * np.sqrt(beta) / self._Cq(q) * self._eq(-beta*(x - mu)**2, q) + C
+        Gq =  A * np.sqrt(beta) / self._Cq(q) * self._eq(-beta*(x - mu)**2, q) #+ C
         return Gq
     
     
@@ -139,8 +140,8 @@ class Fit_Functions:
         """
     
         # Test Gaussian fit for the first guess
-        popt, _ = self.fit_Gaussian(x_data, y_data) # gives A, mu, sigma, offset
-        p0 = [popt[1], q0, 1/popt[2]**2/(5-3*q0), 2*popt[0], popt[3]] # mu, q, beta, A, offset
+        popt, _ = self.fit_Gaussian(x_data, y_data)
+        p0 = [popt[1], q0, 1/popt[2]**2/(5-3*q0), 2*popt[0]] # add popt[3]] if desired offset
     
         try:
             poptq, pcovq = curve_fit(self.Q_Gaussian, x_data, y_data, p0)
@@ -170,7 +171,7 @@ class Fit_Functions:
         else:
             return np.nan
 
-    def Binomial(self, x, A, m, x_max, x0, offset):
+    def Binomial(self, x, A, m, x_max, x0): #add C for offset
         """
         Binomial distribution
         
@@ -183,14 +184,12 @@ class Fit_Functions:
             binomial coefficient
         x_max : float
         x0 : float
-        offset : float
-            baseline
 
         Returns
         -------
         Binomial function values
         """
-        return A * np.abs((1 - ((x-x0)/x_max)**2))**(m-0.5) + offset
+        return A * np.abs((1 - ((x-x0)/x_max)**2))**(m-0.5) # + offset
     
     
     def fit_Binomial(self, x_data, y_data, p0=None):
@@ -211,7 +210,7 @@ class Fit_Functions:
             fitted coefficients
         """
         if p0 is None:
-            p0 = [1.0, 3.5, 0.8, 0.0, 0.0]
+            p0 = [1.0, 3.5, 0.8, 0.0]
         
         try:
             popt_B, pcov_B = curve_fit(self.Binomial, x_data, y_data, p0)

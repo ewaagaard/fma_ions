@@ -34,9 +34,9 @@ class BeamParameters_SPS_Binomial_2016:
     after initial spill out of RF bucket has happened
     """
     Nb: float = 3.536e8 * 0.95 # injected intensity, after initial spill out of RF bucket
-    sigma_z: float = 0.215 # RMS bunch length of binomial, after initial spill out of RF bucket #0.213 measured, but takes ~30 turns to stabilze
-    m : float = 2.7 # binomial parameter to determine tail of parabolic distribution, after initial spill out of RF bucket
-    q : float = 0.54 # q-Gaussian parameter after RF spill (third profile)
+    sigma_z: float = 0.214 # RMS bunch length of binomial, after initial spill out of RF bucket #0.213 measured, but takes ~30 turns to stabilze
+    m : float = 2.98 # binomial parameter to determine tail of parabolic distribution, after initial spill out of RF bucket
+    q : float = 0.59 # q-Gaussian parameter after RF spill (third profile)
     exn: float = 1.3e-6
     eyn: float = 0.9e-6
 
@@ -47,9 +47,9 @@ class BeamParameters_SPS_Binomial_2016_before_RF_Spill:
     before initial RF spill
     """
     Nb:  float = 3.536e8  # injected bunch intensity measured with Wall Current Monitor (WCM)
-    sigma_z: float = 0.268 # RMS bunch length of binomial, measured before RF spill
-    m : float = 4.65 # binomial parameter to determine tail of parabolic distribution
-    q : float = 0.752 # q-Gaussian parameter
+    sigma_z: float = 0.286 # RMS bunch length of binomial, measured before RF spill
+    m : float = 6.124 # binomial parameter to determine tail of parabolic distribution
+    q : float = 0.82 # q-Gaussian parameter
     exn: float = 1.3e-6
     eyn: float = 0.9e-6
 
@@ -93,7 +93,6 @@ class SPS_sequence_maker:
     # Define beam type - default is Pb
     ion_type: str = 'Pb'
     seq_name: str = 'nominal'
-    seq_folder: str = 'sps'
     B_PS_extr: float = 1.2368 # [T] - magnetic field in PS for Pb ions, from Heiko Damerau
     rho_PS: float = 70.1206 # [m] - PS bending radius 
     Q_PS: float = 54.
@@ -102,10 +101,12 @@ class SPS_sequence_maker:
     proton_optics : str = 'q26'
 
     def __post_init__(self):
+        
+        self.seq_folder = '{}/{}_qy_dot_{}'.format(sequence_path, self.proton_optics, int(self.qy0 % 1 * 100))
         # Check that proton charge is be correct
         if self.ion_type == 'proton':
             self.Q_PS, self.Q_SPS = 1., 1.
-    
+            
     
     def load_xsuite_line_and_twiss(self,
                                    beta_beat=None, 
