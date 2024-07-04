@@ -108,7 +108,7 @@ class SPS_Flat_Bottom_Tracker:
                 beamParams = BeamParameters_SPS_Binomial_2016() if use_binomial_dist_after_RF_spill else BeamParameters_SPS_Binomial_2016_before_RF_Spill
                 
             # Generate longitudinal coordinates s
-            print('\nBinomial distribution with sigma={:.3f} m and q={:.3f} generated.\n'.format(beamParams.sigma_z, beamParams.q))
+            print('\nq-Gaussian distribution with sigma={:.3f} m and q={:.3f} generated.\n'.format(beamParams.sigma_z, beamParams.q))
             zeta, delta = xp.longitudinal.generate_longitudinal_coordinates(line=line, distribution='qgaussian',
                                                                             num_particles=self.num_part,
                                                                             engine='single-rf-harmonic', sigma_z=beamParams.sigma_z,
