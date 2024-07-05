@@ -43,8 +43,8 @@ plt.rcParams.update(
         "font.size": 20,
         "axes.titlesize": 20,
         "axes.labelsize": 18,
-        "xtick.labelsize": 18,
-        "ytick.labelsize": 18,
+        "xtick.labelsize": 15.5,
+        "ytick.labelsize": 15.5,
         "legend.fontsize": 15,
         "figure.titlesize": 20,
     }
@@ -107,8 +107,6 @@ class SPS_Plotting:
         adjusting_factor_Nb_for_initial_drop : float
             factor by which to multiply WCM data (normalized) times the simulated intensity. A factor 1.0 means that simulations
             started without considering initial RF spill, 0.95 means that the beam parameters were adjusted to after the spill
-        plot_emittances_separately : bool
-            whether to include them in separate plots
         """
         os.makedirs('output_plots', exist_ok=True)
         
@@ -153,9 +151,9 @@ class SPS_Plotting:
         time_units_DCBCT = (turns_per_sec * time_BCT) if x_unit_in_turns else time_BCT
 
         # Emittances and bunch intensity 
-        f, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize = (14,5))
-        ax1.plot(time_units, tbt_dict['exn'] * 1e6, alpha=0.7, lw=1.5, label='Simulated')
-        ax2.plot(time_units, tbt_dict['eyn'] * 1e6, alpha=0.7, c='orange', lw=1.5, label='Simulated')
+        f, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize = (9.5, 3.6))
+        ax1.plot(time_units, tbt_dict['exn'] * 1e6, alpha=0.7, c='turquoise', lw=1.5, label='Simulated')
+        ax2.plot(time_units, tbt_dict['eyn'] * 1e6, alpha=0.7, c='turquoise', lw=1.5, label='Simulated')
         if include_emittance_measurements:
             ax1.errorbar(time_units_x, 1e6 * np.array(full_data['N_avg_emitX']), yerr=1e6 * full_data['N_emitX_error'], 
                        color='blue', fmt="o", label="Measured")
@@ -163,12 +161,12 @@ class SPS_Plotting:
                        color='darkorange', fmt="o", label="Measured")
             
         # Plot bunch intensities, also with mme
-        ax3.plot(time_units, tbt_dict['Nb'], alpha=0.7, lw=2.2, c='goldenrod', label='Simulated bunch intensity')
+        ax3.plot(time_units, tbt_dict['Nb'], alpha=0.7, lw=2.2, c='turquoise', label='Simulated')
         if also_plot_DCBCT_Nb_data:
             ax3.plot(time_units_DCBCT, Nb_BCT_normalized, label='DC-BCT', alpha=0.8, color='b')
         if also_plot_WCM_Nb_data:
             ax3.plot(time_units_WCM, Nb_WCM / adjusting_factor_Nb_for_initial_drop * tbt_dict['Nb'][0],  alpha=0.8,
-                      label='Wall Current Monitor', color='r')
+                      label='Measured', color='r')
 
         # Find min and max emittance values - set window limits 
         all_emit = np.concatenate((tbt_dict['exn'], tbt_dict['eyn']))
@@ -180,13 +178,12 @@ class SPS_Plotting:
         ax1.set_xlabel('Turns' if x_unit_in_turns else 'Time [s]')
         ax2.set_xlabel('Turns' if x_unit_in_turns else 'Time [s]')
         ax3.set_xlabel('Turns' if   x_unit_in_turns else 'Time [s]')
+        #plt.setp(ax2.get_yticklabels(), visible=False)
         ax1.set_ylabel(r'$\varepsilon_{x}^{n}$ [$\mu$m]')
         ax2.set_ylabel(r'$\varepsilon_{y}^{n}$ [$\mu$m]')
         ax3.set_ylabel(r'Ions per bunch $N_{b}$')
         ax3.set_xlabel('Turns' if x_unit_in_turns else 'Time [s]')
-        ax1.legend()
-        ax2.legend()
-        ax3.legend(fontsize=13.5, loc='lower left')
+        ax3.legend(fontsize=12.1, loc='upper right')
         ax1.set_ylim(min_emit-0.08, max_emit+0.1)
         ax2.set_ylim(min_emit-0.08, max_emit+0.1)
         f.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
@@ -318,7 +315,7 @@ class SPS_Plotting:
             z_bin_heights_sorted = np.array(sorted(tbt_dict['z_bin_heights'][:, i], reverse=True))
             z_height_max_avg = np.mean(z_bin_heights_sorted[:5]) # take average of top 5 values
             xdata, ydata = tbt_dict['z_bin_centers'], tbt_dict['z_bin_heights'][:, i] / z_height_max_avg
-            
+                        
             if distribution=='qgaussian' or distribution=='binomial':
                     # Fit both q-Gaussian and binomial
                     popt_Q, pcov_Q = fits.fit_Q_Gaussian(xdata, ydata)
@@ -851,7 +848,7 @@ class SPS_Plotting:
             
             ### Measured injection profile, after or before initial RF spill
             if inj_profile_is_after_RF_spill:
-                ax[0].plot(zeta_SPS_inj_after_RF_spill, data_SPS_inj_after_RF_spill, label='SPS wall current\nmonitor data\nafter RF spill')  
+                ax[0].plot(zeta_SPS_inj_after_RF_spill, data_SPS_inj_after_RF_spill, label='SPS wall current\nmonitor data\nafter RF capture')  
             else:
                 ax[0].plot(zeta_SPS_inj, data_SPS_inj, label='SPS wall current\nmonitor data at inj')  
                 ax[0].plot(zeta_PS_BSM, data_PS_BSM, label='PS BSM data \nat extraction')
@@ -1740,7 +1737,7 @@ class SPS_Plot_Phase_Space:
             if also_include_profile_data:
                 ax.plot(zeta_SPS_inj, data_SPS_inj, label='SPS wall current monitor data')
                 if also_show_SPS_inj_profile_after_RF_spill:
-                    ax.plot(zeta_SPS_inj_after_RF_spill, data_SPS_inj_after_RF_spill, label='SPS wall current\nmonitor data after RF spill')    
+                    ax.plot(zeta_SPS_inj_after_RF_spill, data_SPS_inj_after_RF_spill, label='SPS wall current\nmonitor data after RF capture')    
                 ax.plot(zeta_PS_BSM, data_PS_BSM, label='PS BSM data at extraction')
             ax.legend(loc='upper right', fontsize=13)
             ax.set_xlim(-0.85, 0.85)
