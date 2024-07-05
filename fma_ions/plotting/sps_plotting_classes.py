@@ -72,11 +72,13 @@ class SPS_Plotting:
                            include_emittance_measurements=False,
                            x_unit_in_turns=True,
                            plot_bunch_length_measurements=True,
-                           distribution_type='binomial',
+                           distribution_type='qgaussian',
+                           inj_profile_is_after_RF_spill=True,
                            also_plot_sigma_delta=False,
                            also_plot_WCM_Nb_data=True,
                            also_plot_DCBCT_Nb_data=False,
-                           adjusting_factor_Nb_for_initial_drop=0.95):
+                           adjusting_factor_Nb_for_initial_drop=0.95,
+                           plot_emittances_separately=False):
         """
         Generates emittance plots from turn-by-turn (TBT) data class from simulations,
         compare with emittance measurements (default 2023-10-16) if desired.
@@ -93,7 +95,9 @@ class SPS_Plotting:
         plot_bunch_length_measurements : bool
             whether to include bunch length measurements from SPS wall current monitor from 2016 studies by Hannes and Tomas0
         distribution_type : str
-            either 'gaussian' or 'binomial'
+            either 'qgaussian', 'gaussian' or 'binomial'
+        inj_profile_is_after_RF_spill : bool
+            whether SPS injection profile is after the initial spill out of the RF bucket
         also_plot_sigma_delta : bool
             whether also to plot sigma_delta
         also_plot_WCM_Nb_data : bool
@@ -103,6 +107,8 @@ class SPS_Plotting:
         adjusting_factor_Nb_for_initial_drop : float
             factor by which to multiply WCM data (normalized) times the simulated intensity. A factor 1.0 means that simulations
             started without considering initial RF spill, 0.95 means that the beam parameters were adjusted to after the spill
+        plot_emittances_separately : bool
+            whether to include them in separate plots
         """
         os.makedirs('output_plots', exist_ok=True)
         
@@ -114,7 +120,7 @@ class SPS_Plotting:
             x_unit_in_turns = False
             
             # Load bunch length data
-            sigma_RMS_Gaussian_in_m, sigma_RMS_Binomial_in_m, sigma_RMS_qGaussian_in_m, q_vals, q_error, ctime = self.load_bunch_length_data()
+            sigma_RMS_Gaussian_in_m, sigma_RMS_Binomial_in_m, sigma_RMS_qGaussian_in_m, q_measured, dq_measured, ctime = self.load_bunch_length_data()
 
         # Convert measured emittances to turns if this unit is used, otherwise keep seconds
         if x_unit_in_turns:
@@ -194,60 +200,64 @@ class SPS_Plotting:
             ax12.set_xlabel('Turns' if x_unit_in_turns else 'Time [s]')
             f2.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
             f2.savefig('output_plots/sigma_delta.png', dpi=250)
-        
-        # Bunch length            
+
+        ######### Measured bunch length data and q-values #########
+        if distribution_type=='gaussian':
+            turn_array, time_array, sigmas_gaussian = self.fit_bunch_lengths_to_data(tbt_dict=tbt_dict, distribution=distribution_type)
+        else:
+            turn_array, time_array, sigmas_q_gaussian, sigmas_binomial, q, q_error, m, m_error = self.fit_bunch_lengths_to_data(tbt_dict=tbt_dict,
+                                                                                                distribution=distribution_type)
+       
         f3, ax22 = plt.subplots(1, 1, figsize = (8,6))
         # Uncomment if want to plot standard deviation of numerical particle object
         #ax22.plot(time_units, tbt_dict['bunch_length'], color='turquoise', alpha=0.7, lw=1.5, label='STD($\zeta$) of simulated particles')      
-        turn_array, time_array, sigmas_q_gaussian, sigmas_binomial, q, q_error, m, m_error = self.fit_bunch_lengths_to_data(tbt_dict=tbt_dict,
-                                                                                                distribution=distribution_type)
+
         if plot_bunch_length_measurements:
             if distribution_type=='gaussian':
-                ax22.plot(ctime, sigma_RMS_Gaussian_in_m, color='royalblue', label='RMS of fitted Gaussian for measured profiles')
+                ax22.plot(ctime, sigma_RMS_Gaussian_in_m, color='darkorange', label='Measured profiles')
+                ax22.plot(turn_array if x_unit_in_turns else time_array, sigmas_gaussian, color='cyan', ls='--', alpha=0.95,
+                          label='Simulated profiles')
             elif distribution_type=='binomial':
                 ax22.plot(ctime, sigma_RMS_Binomial_in_m, color='darkorange', alpha=0.95, label='Measured profiles')
-        
-        # Uncomment if want to plot q-Gaussians - typically same RMS as binomial, but less stable fits 
-        #ax22.plot(turn_array if x_unit_in_turns else time_array, sigmas_q_gaussian, color='blue', ls='--', 
-        #          label='RMS of fitted q-Gaussian for simulated profiles')
-        ax22.plot(turn_array if x_unit_in_turns else time_array, sigmas_binomial, color='cyan', ls='--', alpha=0.95,
-                  label='Simulated profiles')
+                ax22.plot(turn_array if x_unit_in_turns else time_array, sigmas_binomial, color='cyan', ls='--', alpha=0.95,
+                          label='Simulated profiles')
+            elif distribution_type=='qgaussian':
+                ax22.plot(ctime, sigma_RMS_qGaussian_in_m, color='darkorange', alpha=0.95, label='Measured profiles')
+                ax22.plot(turn_array if x_unit_in_turns else time_array, sigmas_q_gaussian, color='cyan', ls='--', alpha=0.95,
+                          label='Simulated profiles')
+
         ax22.set_ylabel(r'$\sigma_{{z, RMS}}$ [m] of fitted {}'.format(distribution_type))
         ax22.set_xlabel('Turns' if x_unit_in_turns else 'Time [s]')
         ax22.legend()
         
-        # Insert extra box with fitted m-value of profiles - plot every 10th value
-        ax23 = ax22.inset_axes([0.7,0.5,0.25,0.25])
+        if distribution_type != 'gaussian':
+            # Insert extra box with fitted m-value of profiles - plot every 10th value
+            ax23 = ax22.inset_axes([0.7,0.5,0.25,0.25])
         
-        # Select only reasonable q-values (above 0), then plot only every nth interval
-        n_interval = 200
-        q_ind = q>0
-        q = q[q_ind]
-        q_error = q_error[q_ind]
-        turn_array_q = turn_array[q_ind]
-        time_array_q = time_array[q_ind]
-
-        ax23.errorbar(turn_array_q[::n_interval] if x_unit_in_turns else time_array_q[::n_interval], q[::n_interval], yerr=q_error[::n_interval], 
-                      color='green', alpha=0.55, markerfacecolor='lime', 
-                      ls='None', marker='o', ms=5.1, label='Fitted q of simulated profiles')
-        ax23.set_ylabel('Fitted $q$-value', fontsize=13.5, color='green')
-
-        # UNCOMMENT TO plot only m        
-        #ax23.errorbar(turn_array[::n_interval] if x_unit_in_turns else time_array[::n_interval], m[::n_interval], yerr=m_error[::n_interval], 
-        #              color='green', alpha=0.55, markerfacecolor='lime', 
-        #              ls='None', marker='o', ms=5.1, label='Fitted {} m of simulated profiles'.format(distribution_type))
-        #ax23.set_ylabel('Fitted $m$-value', fontsize=13.5, color='green')
-        #ax23.set_ylim(min(m)-0.2, max(m)+0.2)
-        
-        ax23.tick_params(axis="both", labelsize=12)
-        #ax23.set_yscale('log')
-        ax23.tick_params(colors='green', axis='y')
-        ax23.set_ylim(min(q)-0.2, max(q)+0.2)
-        ax23.set_xlabel('Time [s]', fontsize=13.5)
+            # Select only reasonable q-values (above 0), then plot only every nth interval
+            n_interval = 200
+            q_ind = q>0
+            q = q[q_ind]
+            q_error = q_error[q_ind]
+            turn_array_q = turn_array[q_ind]
+            time_array_q = time_array[q_ind]
+    
+            ax23.errorbar(turn_array_q[::n_interval] if x_unit_in_turns else time_array_q[::n_interval], q[::n_interval], yerr=q_error[::n_interval], 
+                          color='cyan', alpha=0.85, markerfacecolor='cyan', 
+                          ls='None', marker='o', ms=5.1, label='Simulated')
+            start_ind = 2 if inj_profile_is_after_RF_spill else 0
+            ax23.errorbar(ctime[start_ind::15], q_measured[start_ind::15], yerr=dq_measured[start_ind::15], markerfacecolor='darkorange', color='darkorange', alpha=0.65, ls='None', marker='o', ms=5.1, label='Measured')
+            ax23.set_ylabel('Fitted $q$-value', fontsize=13.5) #, color='green')
+            #ax23.legend(fontsize=11, loc='upper left')
+            
+            ax23.tick_params(axis="both", labelsize=12)
+            #ax23.tick_params(colors='green', axis='y')
+            ax23.set_ylim(min(q)-0.2, max(q)+0.2)
+            ax23.set_xlabel('Time [s]', fontsize=13.5)
 
         
         f3.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
-        f3.savefig('output_plots/sigma.png', dpi=250)
+        f3.savefig('output_plots/sigma_rms_and_qvalues.png', dpi=250)
 
         plt.show()
 
@@ -255,7 +265,7 @@ class SPS_Plotting:
     def fit_bunch_lengths_to_data(self, 
                                   tbt_dict=None,
                                   output_folder=None,
-                                  distribution='binomial',
+                                  distribution='qgaussian',
                                   show_final_profile=False):
         """
         Fit and extract beam parameters from simulated data, for a given
@@ -268,7 +278,7 @@ class SPS_Plotting:
         output_folder : str
             path to data. default is 'None', assuming then that data is in the same directory
         distribution : str
-            distribution type of beam. The default is 'binomial'.
+            distribution type of beam: 'binomial', 'qgaussian' or 'gaussian'. The default is 'qgaussian'. 
         show_final_profile : bool
             whether to plot final profile fit vs measurements
 
@@ -309,14 +319,14 @@ class SPS_Plotting:
             z_height_max_avg = np.mean(z_bin_heights_sorted[:5]) # take average of top 5 values
             xdata, ydata = tbt_dict['z_bin_centers'], tbt_dict['z_bin_heights'][:, i] / z_height_max_avg
             
-            if distribution=='binomial':
+            if distribution=='qgaussian' or distribution=='binomial':
                     # Fit both q-Gaussian and binomial
                     popt_Q, pcov_Q = fits.fit_Q_Gaussian(xdata, ydata)
                     q_vals[i] = popt_Q[1]
                     q_errors[i] = np.sqrt(np.diag(pcov_Q))[1] # error from covarance_matrix
                     sigmas_q_gaussian[i] = fits.get_sigma_RMS_from_qGaussian_fit(popt_Q)
                     print('Profile {}: q-Gaussian fit q={:.3f} +/- {:.2f}, sigma_RMS = {:.3f} m'.format(i, q_vals[i], q_errors[i], 
-                                                                                                                 sigmas_q_gaussian[i]))
+                                                                                                              sigmas_q_gaussian[i]))
                     popt_B, pcov_B = fits.fit_Binomial(xdata, ydata)
                     sigmas_binomial[i], sigmas_error = fits.get_sigma_RMS_from_binomial_fit(popt_B, pcov_B)
                     m[i] = popt_B[1]
@@ -324,8 +334,8 @@ class SPS_Plotting:
                     print('Profile {}: binomial fit m={:.3f} +/- {:.2f}, sigma_RMS = {:.3f} +/- {:.2f}\n'.format(i, m[i], m_error[i], 
                                                                                                                  sigmas_binomial[i], sigmas_error))
             elif distribution=='gaussian':
-                popt_G = fits.fit_Gaussian(xdata, ydata)
-                sigmas[i] = popt_G[2]
+                popt_G, pcov_G = fits.fit_Gaussian(xdata, ydata)
+                sigmas[i] = np.abs(popt_G[2])
                 print('Gaussian: sigma_RMS = {:.3f} m'.format(popt_G[2]))
             else:
                 raise ValueError('Only binomial or gaussian distributions implemented')
