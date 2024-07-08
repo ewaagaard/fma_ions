@@ -78,7 +78,8 @@ class SPS_Plotting:
                            also_plot_WCM_Nb_data=True,
                            also_plot_DCBCT_Nb_data=False,
                            adjusting_factor_Nb_for_initial_drop=0.95,
-                           plot_emittances_separately=False):
+                           plot_emittances_separately=False,
+                           also_plot_particle_std_BL=False):
         """
         Generates emittance plots from turn-by-turn (TBT) data class from simulations,
         compare with emittance measurements (default 2023-10-16) if desired.
@@ -107,6 +108,8 @@ class SPS_Plotting:
         adjusting_factor_Nb_for_initial_drop : float
             factor by which to multiply WCM data (normalized) times the simulated intensity. A factor 1.0 means that simulations
             started without considering initial RF spill, 0.95 means that the beam parameters were adjusted to after the spill
+        also_plot_particle_std_BL : bool
+            whether to also plot the standard deviation of particle zeta, i.e. discrete bunch length
         """
         os.makedirs('output_plots', exist_ok=True)
         
@@ -207,7 +210,8 @@ class SPS_Plotting:
        
         f3, ax22 = plt.subplots(1, 1, figsize = (8,6))
         # Uncomment if want to plot standard deviation of numerical particle object
-        #ax22.plot(time_units, tbt_dict['bunch_length'], color='turquoise', alpha=0.7, lw=1.5, label='STD($\zeta$) of simulated particles')      
+        if also_plot_particle_std_BL:
+            ax22.plot(time_units, tbt_dict['bunch_length'], color='turquoise', alpha=0.7, lw=1.5, label='STD($\zeta$) of simulated particles')      
 
         if plot_bunch_length_measurements:
             if distribution_type=='gaussian':
@@ -313,6 +317,7 @@ class SPS_Plotting:
         try:
             with open('saved_bunch_length_fits.pickle', 'rb') as handle:
                 BL_dict = pickle.load(handle)
+            print('Loaded dictionary of fitted bunch lengths')
                 
             if distribution=='qgaussian' or distribution=='binomial':
                 sigmas_q_gaussian, sigmas_binomial = BL_dict['sigmas_q_gaussian'], BL_dict['sigmas_binomial']
