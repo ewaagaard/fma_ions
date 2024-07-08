@@ -9,6 +9,8 @@ import xpart as xp
 from xibs.inputs import BeamParameters, OpticsParameters
 from xibs.analytical import NagaitsevIBS
 
+get_first_parameters_from_particles = False
+
 plt.rcParams.update(
     {
         "font.family": "serif",
@@ -62,7 +64,15 @@ for i, line in enumerate(lines):
     # Initialize the dataclass
     analytical_tbt = fma_ions.Records_Growth_Rates.init_zeroes(num_turns)
     twiss = line.twiss()
-    analytical_tbt.update_at_turn(0, particles, twiss)
+    if get_first_parameters_from_particles:
+        analytical_tbt.update_at_turn(0, particles, twiss)
+    else:
+        analytical_tbt.epsilon_x[0] = 1.79e-07
+        analytical_tbt.epsilon_y[0] = 1.24e-07
+        analytical_tbt.sigma_delta[0] = 0.00046 # reasonable value for SPS
+        analytical_tbt.bunch_length[0] = beamParams.sigma_z
+        analytical_tbt.Nb[0] = beamParams.Nb 
+
 
     for turn in range(1, num_turns):
         
