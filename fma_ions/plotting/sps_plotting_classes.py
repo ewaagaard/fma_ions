@@ -3,7 +3,7 @@ Container for all plotting classes relevant to treating SPS data
 """
 from dataclasses import dataclass
 from pathlib import Path
-import os, json
+import os, json, pickle
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -309,34 +309,60 @@ class SPS_Plotting:
         # Initiate fit function
         fits = Fit_Functions()
 
-        # Fit binomials to 
-        for i in range(n_profiles):
-
-            z_bin_heights_sorted = np.array(sorted(tbt_dict['z_bin_heights'][:, i], reverse=True))
-            z_height_max_avg = np.mean(z_bin_heights_sorted[:5]) # take average of top 5 values
-            xdata, ydata = tbt_dict['z_bin_centers'], tbt_dict['z_bin_heights'][:, i] / z_height_max_avg
-                        
+        # Try loading already fitted profiles - otherwise fit them!
+        try:
+            with open('saved_bunch_length_fits.pickle', 'rb') as handle:
+                BL_dict = pickle.load(handle)
+                
             if distribution=='qgaussian' or distribution=='binomial':
-                    # Fit both q-Gaussian and binomial
-                    popt_Q, pcov_Q = fits.fit_Q_Gaussian(xdata, ydata)
-                    q_vals[i] = popt_Q[1]
-                    q_errors[i] = np.sqrt(np.diag(pcov_Q))[1] # error from covarance_matrix
-                    sigmas_q_gaussian[i] = fits.get_sigma_RMS_from_qGaussian_fit(popt_Q)
-                    print('Profile {}: q-Gaussian fit q={:.3f} +/- {:.2f}, sigma_RMS = {:.3f} m'.format(i, q_vals[i], q_errors[i], 
-                                                                                                              sigmas_q_gaussian[i]))
-                    popt_B, pcov_B = fits.fit_Binomial(xdata, ydata)
-                    sigmas_binomial[i], sigmas_error = fits.get_sigma_RMS_from_binomial_fit(popt_B, pcov_B)
-                    m[i] = popt_B[1]
-                    m_error[i] = np.sqrt(np.diag(pcov_B))[1]
-                    print('Profile {}: binomial fit m={:.3f} +/- {:.2f}, sigma_RMS = {:.3f} +/- {:.2f}\n'.format(i, m[i], m_error[i], 
-                                                                                                                 sigmas_binomial[i], sigmas_error))
+                sigmas_q_gaussian, sigmas_binomial = BL_dict['sigmas_q_gaussian'], BL_dict['sigmas_binomial']
+                q_vals, q_errors, m, m_error = BL_dict['q_vals'], BL_dict['q_errors'], BL_dict['m'], BL_dict['m_error']
             elif distribution=='gaussian':
-                popt_G, pcov_G = fits.fit_Gaussian(xdata, ydata)
-                sigmas[i] = np.abs(popt_G[2])
-                print('Gaussian: sigma_RMS = {:.3f} m'.format(popt_G[2]))
+                sigmas = BL_dict['sigmas']
             else:
-                raise ValueError('Only binomial or gaussian distributions implemented')
+                raise ValueError('Only binomial, q-gaussian or gaussian distributions implemented')
+                
+
+        except FileNotFoundError: 
             
+            # Fit binomials, q-gaussian or gaussian bunch lengths
+            for i in range(n_profiles):
+                z_bin_heights_sorted = np.array(sorted(tbt_dict['z_bin_heights'][:, i], reverse=True))
+                z_height_max_avg = np.mean(z_bin_heights_sorted[:5]) # take average of top 5 values
+                xdata, ydata = tbt_dict['z_bin_centers'], tbt_dict['z_bin_heights'][:, i] / z_height_max_avg
+                            
+                if distribution=='qgaussian' or distribution=='binomial':
+                        # Fit both q-Gaussian and binomial
+                        popt_Q, pcov_Q = fits.fit_Q_Gaussian(xdata, ydata)
+                        q_vals[i] = popt_Q[1]
+                        q_errors[i] = np.sqrt(np.diag(pcov_Q))[1] # error from covarance_matrix
+                        sigmas_q_gaussian[i] = fits.get_sigma_RMS_from_qGaussian_fit(popt_Q)
+                        print('Profile {}: q-Gaussian fit q={:.3f} +/- {:.2f}, sigma_RMS = {:.3f} m'.format(i, q_vals[i], q_errors[i], 
+                                                                                                                  sigmas_q_gaussian[i]))
+                        popt_B, pcov_B = fits.fit_Binomial(xdata, ydata)
+                        sigmas_binomial[i], sigmas_error = fits.get_sigma_RMS_from_binomial_fit(popt_B, pcov_B)
+                        m[i] = popt_B[1]
+                        m_error[i] = np.sqrt(np.diag(pcov_B))[1]
+                        print('Profile {}: binomial fit m={:.3f} +/- {:.2f}, sigma_RMS = {:.3f} +/- {:.2f}\n'.format(i, m[i], m_error[i], 
+                                                                                                                     sigmas_binomial[i], sigmas_error))
+                elif distribution=='gaussian':
+                    popt_G, pcov_G = fits.fit_Gaussian(xdata, ydata)
+                    sigmas[i] = np.abs(popt_G[2])
+                    print('Gaussian: sigma_RMS = {:.3f} m'.format(popt_G[2]))
+                else:
+                    raise ValueError('Only binomial, q-gaussian or gaussian distributions implemented')
+                    
+            # Create dictionary with fits
+            if distribution=='qgaussian' or distribution=='binomial':
+                BL_dict = {'sigmas_q_gaussian': sigmas_q_gaussian, 'sigmas_binomial': sigmas_binomial, 
+                           'q_vals': q_vals, 'q_errors': q_errors, 'm': m, 'm_error': m_error}
+            else:
+                BL_dict = {'sigmas': sigmas}
+                    
+            # Dump saved fits in dictionary, then pickle file
+            with open('saved_bunch_length_fits.pickle', 'wb') as handle:
+                pickle.dump(BL_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+            print('Dictionary with saved fits dumped')               
 
         #### First final profile vs fit
         if show_final_profile:
