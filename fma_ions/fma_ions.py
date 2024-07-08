@@ -98,7 +98,8 @@ class FMA:
                                 distribution_type='gaussian',
                                 pic_solver = 'FFTSolver2p5D',
                                 add_Z_kick_for_SC=True,
-                                use_binomial_dist_after_RF_spill=True):
+                                use_binomial_dist_after_RF_spill=True,
+                                z_kick_num_integ_per_sigma=5):
         """
         Install frozen Space Charge (SC) and generate particles with provided Xsuite line and beam parameters
         
@@ -122,6 +123,8 @@ class FMA:
             whether to install longitudinal kick for frozen space charge, otherwise risks of being non-symplectic
         use_binomial_dist_after_RF_spill : bool
             for binomial distributions, whether to use measured parameters after initial spill out of RF bucket (or before)
+        z_kick_num_integ_per_sigma : int
+            number of longitudinal kicks per sigma
         
         Returns:
         -------
@@ -200,7 +203,7 @@ class FMA:
             tt = line.get_table()
             tt_sc = tt.rows[tt.element_type=='SpaceChargeBiGaussian']
             for nn in tt_sc.name:
-                line[nn].z_kick_num_integ_per_sigma = 5
+                line[nn].z_kick_num_integ_per_sigma = z_kick_num_integ_per_sigma
 
             print('\nInstalled longitudinal SC kicks')
 
