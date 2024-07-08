@@ -186,7 +186,8 @@ class SPS_Flat_Bottom_Tracker:
                   only_one_zeta=False,
                   install_beam_monitors=True,
                   nturns_profile_accumulation_interval = 100,
-                  nbins = 140
+                  nbins = 140,
+                  z_kick_num_integ_per_sigma=5
                   ):
         """
         Run full tracking at SPS flat bottom
@@ -248,6 +249,9 @@ class SPS_Flat_Bottom_Tracker:
             turn interval between which to aggregate transverse and longitudinal particles for histogram
         nbins : int
             number of bins for histograms of transverse and longitudinal monitors
+        z_kick_num_integ_per_sigma : int
+            number of longitudinal kicks per sigma
+
 
         Returns:
         --------
@@ -361,8 +365,10 @@ class SPS_Flat_Bottom_Tracker:
                                                    mode=SC_mode, 
                                                    optimize_for_tracking=(not add_tune_ripple), 
                                                    distribution_type=distribution_type, 
-                                                   context=context)
-            print('Installed space charge on line\n')
+                                                   context=context,
+                                                   z_kick_num_integ_per_sigma=z_kick_num_integ_per_sigma)
+            print('Installed {} space charge interactions with {} z kick intergrations per sigma on line\n'.format(num_spacecharge_interactions,
+                                                                                                                   z_kick_num_integ_per_sigma))
             
         # Add tune ripple
         if add_tune_ripple:

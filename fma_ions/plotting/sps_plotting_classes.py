@@ -211,7 +211,7 @@ class SPS_Plotting:
         f3, ax22 = plt.subplots(1, 1, figsize = (8,6))
         # Uncomment if want to plot standard deviation of numerical particle object
         if also_plot_particle_std_BL:
-            ax22.plot(time_units, tbt_dict['bunch_length'], color='turquoise', alpha=0.7, lw=1.5, label='STD($\zeta$) of simulated particles')      
+            ax22.plot(time_units, tbt_dict['bunch_length'], color='darkcyan', alpha=0.7, lw=1.5, label='STD($\zeta$) of simulated particles')      
 
         if plot_bunch_length_measurements:
             if distribution_type=='gaussian':
