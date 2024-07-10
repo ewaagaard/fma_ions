@@ -38,7 +38,7 @@ print(line.particle_ref.show())
 
 # Update beam parameters to proton parameters
 beamParams = fma_ions.BeamParameters_SPS()
-beamParams.Nb = 1e11 
+beamParams.Nb = 1.0e11 
 en0 = [1.0e-6, 1.0e-6] # starting guess for emittances value
 beamParams.sigma_z = 0.22
 beamParams.delta = 1e-3

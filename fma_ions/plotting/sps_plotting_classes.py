@@ -70,7 +70,7 @@ class SPS_Plotting:
                            tbt_dict=None, 
                            output_folder=None,
                            include_emittance_measurements=False,
-                           x_unit_in_turns=True,
+                           x_unit_in_turns=False,
                            plot_bunch_length_measurements=True,
                            distribution_type='qgaussian',
                            inj_profile_is_after_RF_spill=True,
@@ -212,21 +212,24 @@ class SPS_Plotting:
         # Uncomment if want to plot standard deviation of numerical particle object
         if also_plot_particle_std_BL:
             ax22.plot(time_units, tbt_dict['bunch_length'], color='darkcyan', alpha=0.7, lw=1.5, label='STD($\zeta$) of simulated particles')      
-
-        if plot_bunch_length_measurements:
-            if distribution_type=='gaussian':
+        
+        if distribution_type=='gaussian':
+            ax22.plot(turn_array if x_unit_in_turns else time_array, sigmas_gaussian, color='cyan', ls='--', alpha=0.95,
+                      label='Simulated profiles')
+            if plot_bunch_length_measurements:
                 ax22.plot(ctime, sigma_RMS_Gaussian_in_m, color='darkorange', label='Measured profiles')
-                ax22.plot(turn_array if x_unit_in_turns else time_array, sigmas_gaussian, color='cyan', ls='--', alpha=0.95,
-                          label='Simulated profiles')
-            elif distribution_type=='binomial':
-                ax22.plot(ctime, sigma_RMS_Binomial_in_m, color='darkorange', alpha=0.95, label='Measured profiles')
-                ax22.plot(turn_array if x_unit_in_turns else time_array, sigmas_binomial, color='cyan', ls='--', alpha=0.95,
-                          label='Simulated profiles')
-            elif distribution_type=='qgaussian':
-                ax22.plot(ctime, sigma_RMS_qGaussian_in_m, color='darkorange', alpha=0.95, label='Measured profiles')
-                ax22.plot(turn_array if x_unit_in_turns else time_array, sigmas_q_gaussian, color='cyan', ls='--', alpha=0.95,
-                          label='Simulated profiles')
 
+        elif distribution_type=='binomial':
+            ax22.plot(turn_array if x_unit_in_turns else time_array, sigmas_binomial, color='cyan', ls='--', alpha=0.95,
+                      label='Simulated profiles')
+            if plot_bunch_length_measurements:
+                ax22.plot(ctime, sigma_RMS_Binomial_in_m, color='darkorange', alpha=0.95, label='Measured profiles')
+        elif distribution_type=='qgaussian':
+            ax22.plot(turn_array if x_unit_in_turns else time_array, sigmas_q_gaussian, color='cyan', ls='--', alpha=0.95,
+                      label='Simulated profiles')
+            if plot_bunch_length_measurements:
+                ax22.plot(ctime, sigma_RMS_qGaussian_in_m, color='darkorange', alpha=0.95, label='Measured profiles')
+                    
         ax22.set_ylabel(r'$\sigma_{{z, RMS}}$ [m] of fitted {}'.format(distribution_type))
         ax22.set_xlabel('Turns' if x_unit_in_turns else 'Time [s]')
         ax22.legend()
@@ -247,7 +250,8 @@ class SPS_Plotting:
                           color='cyan', alpha=0.85, markerfacecolor='cyan', 
                           ls='None', marker='o', ms=5.1, label='Simulated')
             start_ind = 2 if inj_profile_is_after_RF_spill else 0
-            ax23.errorbar(ctime[start_ind::15], q_measured[start_ind::15], yerr=dq_measured[start_ind::15], markerfacecolor='darkorange', color='darkorange', alpha=0.65, ls='None', marker='o', ms=5.1, label='Measured')
+            if plot_bunch_length_measurements:
+                ax23.errorbar(ctime[start_ind::15], q_measured[start_ind::15], yerr=dq_measured[start_ind::15], markerfacecolor='darkorange', color='darkorange', alpha=0.65, ls='None', marker='o', ms=5.1, label='Measured')
             ax23.set_ylabel('Fitted $q$-value', fontsize=13.5) #, color='green')
             #ax23.legend(fontsize=11, loc='upper left')
             
