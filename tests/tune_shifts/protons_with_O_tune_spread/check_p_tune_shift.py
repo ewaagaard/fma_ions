@@ -27,7 +27,7 @@ dQx_O = -0.19109
 dQy_O = -0.27610
 
 # First, check that reference particle is correct
-with open('SPS_2021_Protons_matched_with_RF.json', 'r') as fid:
+with open('../SPS_2021_Protons_matched_with_RF.json', 'r') as fid:
     loaded_dct = json.load(fid)
 line = xt.Line.from_dict(loaded_dct)
 twiss = line.twiss()

@@ -15,7 +15,7 @@ class Submitter:
                    change_to_best_node : bool = True,
                    number_of_turn_string : str = '',
                    copy_plot_scripts_to_output : bool = True,
-                   output_format : str = 'parquet'
+                   output_format : str = 'json'
                    ):
         """Method to submit .py script to HTCondor using CPUs"""
 
@@ -29,9 +29,9 @@ class Submitter:
         settings = {}
         settings['output_directory_afs'] = '/afs/cern.ch/work/e/elwaagaa/public/output_logs/{:%Y_%m_%d__%H_%M}{}'.format(datetime.datetime.now(), 
                                                                                                                                                   extra_str)
-        settings['output_directory_eos'] = '{}/{:%Y_%m_%d__%H_%M}_{}_gpu{}'.format(output_folder_eos, datetime.datetime.now(), 
+        settings['output_directory_eos'] = '{}/{:%Y_%m_%d__%H_%M}_{}_cpu{}'.format(output_folder_eos, datetime.datetime.now(), 
                                                                                 number_of_turn_string, extra_str)
-        self.output_folder_eos = '{}/{:%Y_%m_%d__%H_%M}_{}_gpu'.format(output_folder_eos, datetime.datetime.now(), 
+        self.output_folder_eos = '{}/{:%Y_%m_%d__%H_%M}_{}_cpu'.format(output_folder_eos, datetime.datetime.now(), 
                                                                                 number_of_turn_string)
         os.makedirs(settings['output_directory_afs'], exist_ok=True)
         os.makedirs(settings['output_directory_eos'], exist_ok=True)
@@ -96,7 +96,7 @@ queue'''
                    change_to_best_node : bool = True,
                    number_of_turn_string : str = '',
                    copy_plot_scripts_to_output : bool = True,
-                   output_format : str = 'parquet'
+                   output_format : str = 'json'
                    ):
         """Method to submit .py script to HTCondor with GPUs"""        
 
@@ -174,7 +174,13 @@ queue'''
         """Create a simple TBT data plot script in the output directory"""
         plot_file = open('plot_tbt.py','w')
         plot_file.write(
-        '''\nimport fma_ions\nsps = fma_ions.SPS_Flat_Bottom_Tracker()\nsps.load_tbt_data_and_plot(show_plot=True)'''
+        '''import fma_ions
+# Load data and plot
+sps_plot = fma_ions.SPS_Plotting()
+sps_plot.plot_tracking_data()
+sps_plot.plot_longitudinal_monitor_data()
+sps_plot.plot_WS_profile_monitor_data()
+        '''
         )
         plot_file.close()
         os.system(f'cp plot_tbt.py {os.path.join(eos_output_directory,"plot_tbt.py")}')
@@ -185,7 +191,7 @@ queue'''
 
         plot_file = open('plot_combined_output.py','w')
         plot_file.write(
-        f'''import fma_ions\nfolder_names = {folder_names}\nstring_array = {string_names}\n\nsps = fma_ions.SPS_Flat_Bottom_Tracker()
+        f'''import fma_ions\nfolder_names = {folder_names}\nstring_array = {string_names}\n\nsps = fma_ions.SPS_Plotting()
 sps.plot_multiple_sets_of_tracking_data(output_str_array=folder_names, string_array=string_array)
         '''
         )

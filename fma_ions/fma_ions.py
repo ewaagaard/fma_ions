@@ -96,7 +96,10 @@ class FMA:
                                 optimize_for_tracking=True,
                                 context=None,
                                 distribution_type='gaussian',
-                                pic_solver = 'FFTSolver2p5D'):
+                                pic_solver = 'FFTSolver2p5D',
+                                add_Z_kick_for_SC=True,
+                                use_binomial_dist_after_RF_spill=True,
+                                z_kick_num_integ_per_sigma=5):
         """
         Install frozen Space Charge (SC) and generate particles with provided Xsuite line and beam parameters
         
@@ -113,9 +116,15 @@ class FMA:
         context : xo.context
             xojebts context for tracking
         distribution_type : str
-            'gaussian' or 'parabolic' or 'binomial' or 'linear_in_zeta': particle distribution for tracking
+            'gaussian' or 'qGaussian' or 'parabolic' or 'binomial' or 'linear_in_zeta': particle distribution for tracking
         pic_solver : str
             Choose solver between `FFTSolver2p5DAveraged` and `FFTSolver2p5D`
+        add_Z_kick_for_SC : bool
+            whether to install longitudinal kick for frozen space charge, otherwise risks of being non-symplectic
+        use_binomial_dist_after_RF_spill : bool
+            for binomial distributions, whether to use measured parameters after initial spill out of RF bucket (or before)
+        z_kick_num_integ_per_sigma : int
+            number of longitudinal kicks per sigma
         
         Returns:
         -------
@@ -134,21 +143,21 @@ class FMA:
         twiss_xtrack = line.twiss()
 
         print('\nInstalling space charge on line...')
+        
         # Initialize longitudinal profile for beams 
         if distribution_type=='gaussian' or distribution_type=='linear_in_zeta':
-            sigma_z_RMS = beamParams.sigma_z
             q_val = 1.0
             print('\nGaussian longitudinal SC profile')
-        elif distribution_type=='binomial':
-            sigma_z_RMS = beamParams.sigma_z_binomial
-            q_val = 0.8
-            print('\nBinomial longitudinal SC profile')
+        elif distribution_type=='binomial' or distribution_type=='qgaussian':
+            q_val = beamParams.q
+            print('\nBinomial or qGaussian longitudinal SC profile, using parameters after spill: {}, and q = {}'.format(use_binomial_dist_after_RF_spill, 
+                                                                                                            beamParams.q))
         elif distribution_type=='parabolic':
             raise ValueError('Parabolic not yet implemented for frozen!')
         
         lprofile = xf.LongitudinalProfileQGaussian(
                 number_of_particles = beamParams.Nb,
-                sigma_z = sigma_z_RMS,
+                sigma_z = beamParams.sigma_z,
                 z0=0.,
                 q_parameter=q_val)
 
@@ -162,7 +171,7 @@ class FMA:
                            particle_ref = line.particle_ref,
                            longitudinal_profile = lprofile,
                            nemitt_x = beamParams.exn, nemitt_y = beamParams.eyn,
-                           sigma_z = sigma_z_RMS,
+                           sigma_z = beamParams.sigma_z,
                            num_spacecharge_interactions = self.num_spacecharge_interactions)
         
         # Select mode - frozen is default
@@ -188,6 +197,15 @@ class FMA:
         # Build tracker for line
         line.build_tracker(_context = context)
         #twiss_xtrack_with_sc = line.twiss()  # --> better to do Twiss before installing SC, if enough SC interactions
+
+        # Install longitudinal kick for frozen and quasi-frozen
+        if add_Z_kick_for_SC and (mode != 'PIC'):
+            tt = line.get_table()
+            tt_sc = tt.rows[tt.element_type=='SpaceChargeBiGaussian']
+            for nn in tt_sc.name:
+                line[nn].z_kick_num_integ_per_sigma = z_kick_num_integ_per_sigma
+
+            print('\nInstalled longitudinal SC kicks')
 
         # Find integer tunes from Twiss - BEFORE installing space charge
         self._Qx_int = int(twiss_xtrack['qx'])

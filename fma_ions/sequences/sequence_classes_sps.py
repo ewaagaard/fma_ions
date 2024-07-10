@@ -23,25 +23,45 @@ error_file_path = Path(__file__).resolve().parent.joinpath('../../data/sps_seque
 class BeamParameters_SPS:
     """Data Container for SPS Pb default beam parameters"""
     Nb:  float = 2.46e8 # measured 2.46e8 ions per bunch on 2023-10-16
-    sigma_z: float = 0.225 # in m, is the old value (close to Isabelle's and  Hannes'), but then bucket is too full if Gaussian longitudinal. 0.19 also used
-    sigma_z_binomial: float = 0.285 # RMS bunch length of binomial, default value to match data
-    m : float = 5.3 # binomial parameter to determine tail of parabolic distribution
+    sigma_z: float = 0.213 # 0.225 in m, is the old value (close to Isabelle's and  Hannes'), but then bucket is too full if Gaussian longitudinal. 0.19 also used
     exn: float = 1.1e-6
     eyn: float = 0.9e-6
-    Qx_int: float = 26.
-    Qy_int: float = 26.
+    q : float = 0.59 # q-Gaussian parameter after RF spill (third profile)
+
+@dataclass
+class BeamParameters_SPS_Binomial_2016:
+    """
+    Data Container for SPS Pb longitudinally binomial beam parameters, from 2016 measurements,
+    after initial spill out of RF bucket has happened
+    """
+    Nb: float = 3.536e8 * 0.95 # injected intensity, after initial spill out of RF bucket
+    sigma_z: float = 0.213 # RMS bunch length of binomial, after initial spill out of RF bucket #0.213 measured, but takes ~30 turns to stabilze
+    m : float = 2.98 # binomial parameter to determine tail of parabolic distribution, after initial spill out of RF bucket
+    q : float = 0.59 # q-Gaussian parameter after RF spill (third profile)
+    exn: float = 1.3e-6
+    eyn: float = 0.9e-6
+
+@dataclass
+class BeamParameters_SPS_Binomial_2016_before_RF_Spill:
+    """
+    Data Container for SPS Pb longitudinally binomial beam parameters, from 2016 measurements, 
+    before initial RF spill
+    """
+    Nb:  float = 3.536e8  # injected bunch intensity measured with Wall Current Monitor (WCM)
+    sigma_z: float = 0.286 # RMS bunch length of binomial, measured before RF spill
+    m : float = 6.124 # binomial parameter to determine tail of parabolic distribution
+    q : float = 0.82 # q-Gaussian parameter
+    exn: float = 1.3e-6
+    eyn: float = 0.9e-6
 
 @dataclass
 class BeamParameters_SPS_Oxygen:
     """Data Container for SPS oxygen beam parameters"""
     Nb:  float = 25e8 # half of (John, Bartosik 2021) for oxygen, assuming bunch splitting
-    sigma_z: float = 0.225 # in m, is the old value (close to Isabelle's and  Hannes'), but then bucket is too full if Gaussian longitudinal. 0.19 also used
-    sigma_z_binomial: float = 0.285 # RMS bunch length of binomial, default value to match data
-    m : float = 5.3 # binomial parameter to determine tail of parabolic distribution
+    sigma_z: float = 0.213 # assume same as Pb
+    q : float = 0.59 # q-Gaussian parameter after RF spill --> assume same as Pb
     exn: float = 1.3e-6
     eyn: float = 0.9e-6
-    Qx_int: float = 26.
-    Qy_int: float = 26.
 
 @dataclass
 class BeamParameters_SPS_Proton:
@@ -51,8 +71,6 @@ class BeamParameters_SPS_Proton:
     sigma_z_binomial: float = 0.285 # RMS bunch length of binomial, default value to match data
     exn: float = 0.65e-6 # to get same tune spread as Pb, 2.5e-6 is old test values for round proton beams
     eyn: float = 0.65e-6
-    Qx_int: float = 26.
-    Qy_int: float = 26.
 
 @dataclass
 class SPS_sequence_maker:
@@ -75,7 +93,6 @@ class SPS_sequence_maker:
     # Define beam type - default is Pb
     ion_type: str = 'Pb'
     seq_name: str = 'nominal'
-    seq_folder: str = 'sps'
     B_PS_extr: float = 1.2368 # [T] - magnetic field in PS for Pb ions, from Heiko Damerau
     rho_PS: float = 70.1206 # [m] - PS bending radius 
     Q_PS: float = 54.
@@ -84,13 +101,14 @@ class SPS_sequence_maker:
     proton_optics : str = 'q26'
 
     def __post_init__(self):
+        
+        self.seq_folder = '{}/{}_qy_dot_{}'.format(sequence_path, self.proton_optics, int(self.qy0 % 1 * 100))
         # Check that proton charge is be correct
         if self.ion_type == 'proton':
             self.Q_PS, self.Q_SPS = 1., 1.
-    
+            
     
     def load_xsuite_line_and_twiss(self,
-                                   Qy_frac=25, 
                                    beta_beat=None, 
                                    use_symmetric_lattice=False,
                                    add_non_linear_magnet_errors=False, 
@@ -104,8 +122,6 @@ class SPS_sequence_maker:
         
         Parameters:
         -----------
-        Qy_fractional : float
-            fractional vertical tune. "19"" means fractional tune Qy = 0.19
         beta_beat : float
             relative beta beat, i.e. relative difference between max beta function and max original beta function
         use_symmetric_lattice : bool
@@ -137,13 +153,16 @@ class SPS_sequence_maker:
         err_str = '_with_non_linear_chrom_error' if add_non_linear_magnet_errors else ''
         def_exp_str = '_deferred_exp' if deferred_expressions else ''
         aperture_str = '_with_aperture' if add_aperture else ''
+        if self.proton_optics == 'q20':
+            proton_optics_str = '_q20_optics' 
+        elif self.proton_optics == 'q26':
+            proton_optics_str = ''
+        else:
+            raise ValueError('Invalid optics: select Q20 or Q26')
         
         # Update sequence folder location
-        self.seq_folder = '{}/qy_dot{}'.format(sequence_path, Qy_frac)  
+        self.seq_folder = '{}/{}_qy_dot_{}'.format(sequence_path, self.proton_optics, int(self.qy0 % 1 * 100))
         os.makedirs(self.seq_folder, exist_ok=True)
-        
-        # Update fractional vertical tune 
-        self.qy0 = int(self.qy0) + Qy_frac / 100 
         print('\nTrying to load sequence with Qx, Qy = ({}, {}) and beta-beat = {}!\n'.format(self.qx0, self.qy0, beta_beat))
         
         if use_symmetric_lattice:
@@ -155,12 +174,13 @@ class SPS_sequence_maker:
                 
         # Check if pre-generated sequence exists 
         if beta_beat is None or beta_beat == 0.0:
-            sps_fname = '{}/SPS_2021_{}{}{}{}{}.json'.format(self.seq_folder, self.ion_type, symmetric_string,
-                                                                          def_exp_str, err_str, aperture_str)
+            sps_fname = '{}/SPS_2021_{}{}{}{}{}{}.json'.format(self.seq_folder, self.ion_type, symmetric_string,
+                                                                          def_exp_str, err_str, aperture_str, proton_optics_str)
         else:                                                  
-            sps_fname = '{}/SPS_2021_{}{}{}_{}plane_{}_percent_beta_beat{}{}.json'.format(self.seq_folder, self.ion_type, 
+            sps_fname = '{}/SPS_2021_{}{}{}_{}plane_{}_percent_beta_beat{}{}{}.json'.format(self.seq_folder, self.ion_type, 
                                                                                      symmetric_string, def_exp_str, plane, 
-                                                                                     int(beta_beat*100), err_str, aperture_str)
+                                                                                     int(beta_beat*100), err_str, aperture_str, 
+                                                                                     proton_optics_str)
             
         # Try to load pre-generated sequence if exists
         try:
@@ -174,11 +194,12 @@ class SPS_sequence_maker:
 
         except FileNotFoundError:
             print('\nPre-made SPS sequence does not exists, generating new sequence with Qx, Qy = ({}, {}), beta-beat = {} \
-                  and non-linear error={} and aperture= {}\n{}'.format(self.qx0, 
+                  and non-linear error={} and aperture= {} and optics = {}\n{}'.format(self.qx0, 
                                                                         self.qy0, 
                                                                         beta_beat,
                                                                         add_non_linear_magnet_errors,
                                                                         add_aperture,
+                                                                        self.proton_optics,
                                                                         sps_fname))
             # Make new line with beta-beat and/or non-linear chromatic errors
             if beta_beat is None:
@@ -206,7 +227,7 @@ class SPS_sequence_maker:
 
     def generate_xsuite_seq(self,
                             save_madx_seq=False, 
-                            save_xsuite_seq=True, 
+                            save_xsuite_seq=False, 
                             return_xsuite_line=True, 
                             voltage=3.0e6,
                             use_symmetric_lattice=False,
@@ -245,6 +266,14 @@ class SPS_sequence_maker:
             use_Pb_ions = False
         else:
             use_Pb_ions = True
+
+        # Define optics
+        if self.proton_optics == 'q20':
+            proton_optics_str = '_q20_optics' 
+        elif self.proton_optics == 'q26':
+            proton_optics_str = ''
+        else:
+            raise ValueError('Invalid optics: select Q20 or Q26')
 
         # Update sequence folder location
         os.makedirs(self.seq_folder, exist_ok=True)
@@ -310,9 +339,9 @@ class SPS_sequence_maker:
                                                                                   self.seq_name,
                                                                                   err_str), beam=True)  
         # Save Xsuite sequence
-        sps_fname = '{}/SPS_2021_{}{}{}{}.json'.format(self.seq_folder, self.ion_type, symmetric_string,
-                                                                      def_exp_str, err_str)
         if save_xsuite_seq:
+            sps_fname = '{}/SPS_2021_{}{}{}{}{}.json'.format(self.seq_folder, self.ion_type, symmetric_string,
+                                                                      def_exp_str, err_str, proton_optics_str)
             with open(sps_fname, 'w') as fid:
                 json.dump(line.to_dict(), fid, cls=xo.JEncoder)
                 
@@ -401,6 +430,14 @@ class SPS_sequence_maker:
         else:
             use_Pb_ions = True
 
+        # Check optics
+        if self.proton_optics == 'q20':
+            proton_optics_str = '_q20_optics' 
+        elif self.proton_optics == 'q26':
+            proton_optics_str = ''
+        else:
+            raise ValueError('Invalid optics: select Q20 or Q26')
+
         err_str = '_with_non_linear_chrom_error' if add_non_linear_magnet_errors else ''
         aperture_str = '_with_aperture' if add_aperture else ''
         
@@ -409,9 +446,11 @@ class SPS_sequence_maker:
         
         # Try loading existing json file, otherwise create new from MADX
         if use_symmetric_lattice:
-            fname = '{}/qy_dot{}/SPS_2021_{}_symmetric_deferred_exp{}{}.json'.format(sequence_path, Qy_frac, self.ion_type, err_str, aperture_str)
+            fname = '{}/qy_dot{}/SPS_2021_{}_symmetric_deferred_exp{}{}{}.json'.format(sequence_path, Qy_frac, self.ion_type, err_str, 
+                                                                                       aperture_str, proton_optics_str)
         else:
-            fname = '{}/qy_dot{}/SPS_2021_{}_nominal_deferred_exp{}{}.json'.format(sequence_path, Qy_frac, self.ion_type, err_str, aperture_str)
+            fname = '{}/qy_dot{}/SPS_2021_{}_nominal_deferred_exp{}{}{}.json'.format(sequence_path, Qy_frac, self.ion_type, err_str, 
+                                                                                     aperture_str, proton_optics_str)
         
         #sps = SPS_sequence_maker()
         madx = self.load_simple_madx_seq(add_non_linear_magnet_errors=add_non_linear_magnet_errors,
@@ -463,7 +502,7 @@ class SPS_sequence_maker:
 
     def generate_xsuite_seq_with_beta_beat(self, 
                                            beta_beat=0.05,
-                                           save_xsuite_seq=True, 
+                                           save_xsuite_seq=False, 
                                            line=None,
                                            use_symmetric_lattice=False,
                                            add_non_linear_magnet_errors=False,
@@ -472,13 +511,14 @@ class SPS_sequence_maker:
                                            voltage=3.0e6
                                            ):
         """
-        Generate Xsuite line with desired beta beat, optimizer quadrupole errors finds
+        Generate Xsuite line with desired beta beat, optimizer finds
         quadrupole error in first slice of last SPS quadrupole to emulate desired beta_beat
         
         Parameters:
         -----------
         beta_beat : float
-            desired beta beat, i.e. relative difference between max beta function and max original beta function
+            desired beta beat, i.e. relative difference between max beta function and max original beta function. If
+            not 'both', the other plane will be assumed to have 0 beta-beat
         save_xsuite_seq : bool
             flag to save xsuite sequence in desired location
         line : xtrack.Line
@@ -498,6 +538,14 @@ class SPS_sequence_maker:
         -------
         line - xsuite line for tracking
         """
+        # Check optics
+        if self.proton_optics == 'q20':
+            proton_optics_str = '_q20_optics' 
+        elif self.proton_optics == 'q26':
+            proton_optics_str = ''
+        else:
+            raise ValueError('Invalid optics: select Q20 or Q26')
+
         # Substrings to identify line
         symmetric_string = '_symmetric' if use_symmetric_lattice else '_nominal'
         err_str = '_with_non_linear_chrom_error' if add_non_linear_magnet_errors else ''
@@ -510,33 +558,16 @@ class SPS_sequence_maker:
         self._line0 = self._line.copy()
         self._twiss0 = self._line0.twiss()
         
-        # Introduce beta to arbitrary QD 
-        print('\nFinding optimal QD error for chosen beta-beat {}...\n'.format(beta_beat))
-        
         # Initial guess: small perturbation to initial value, then minimize loss function
-        if plane=='Y':
-            dqd0 = self._line0['qd.63510..1'].knl[1] + 1e-5
-        elif plane == 'X':
-            dqd0 = self._line0['qf.63410..1'].knl[1] + 1e-5
-        elif plane=='both':
-            dqd0 = [self._line0['qd.63510..1'].knl[1] + 1e-5, self._line0['qf.63410..1'].knl[1] + 1e-5]
-        # Vector with starting guess - qd error, kqf and kqd knobs
-        #dqd0 = [dqd0_qd, self._line0.vars['kqf']._value, self._line0.vars['kqd']._value]
-        
         print('\nBeta-beat search for {} in {} plane(s)!\n'.format(beta_beat, plane))
-        
+        dqd0 = [self._line0['qd.63510..1'].knl[1] + 1e-6, self._line0['qf.63410..1'].knl[1] + 1e-6]
         result = minimize(self._loss_function_beta_beat, dqd0, args=(beta_beat, plane), 
-                          method='nelder-mead', tol=1e-5, options={'maxiter':100})
+                          method='nelder-mead', tol=1e-7, options={'maxiter':100})
         print(result)
         
         # Update QD value, and also additional QF value if both planes are used
-        if plane=='Y':
-            self._line['qd.63510..1'].knl[1] = result.x[0]
-        elif plane == 'X':
-            self._line['qf.63410..1'].knl[1] = result.x[0]
-        if plane=='both':
-            self._line['qd.63510..1'].knl[1] = result.x[0]
-            self._line['qf.63410..1'].knl[1] = result.x[1]
+        self._line['qd.63510..1'].knl[1] = result.x[0]
+        self._line['qf.63410..1'].knl[1] = result.x[1]
         twiss2 = self._line.twiss()
         
         # Compare difference in Twiss
@@ -586,8 +617,9 @@ class SPS_sequence_maker:
         
         
         # Save Xsuite sequence
-        sps_fname = '{}/qy_dot{}/SPS_2021_{}{}_{}plane_{}_percent_beta_beat{}.json'.format(sequence_path, Qy_frac, self.ion_type, 
-                                                                                 symmetric_string, plane, int(beta_beat*100), err_str)
+        sps_fname = '{}/qy_dot{}/SPS_2021_{}{}_{}plane_{}_percent_beta_beat{}{}.json'.format(sequence_path, Qy_frac, self.ion_type, 
+                                                                                 symmetric_string, plane, int(beta_beat*100), err_str,
+                                                                                 proton_optics_str)
         if save_xsuite_seq:
             with open(sps_fname, 'w') as fid:
                 json.dump(self._line.to_dict(), fid, cls=xo.JEncoder)
@@ -613,36 +645,35 @@ class SPS_sequence_maker:
         loss - loss function value, np.abs(beta_beat - desired beta beat)
         """
         
-        
+        # Define beta-beat vector
+        if plane=='Y':
+            beta_beats = [0.0, beta_beat]
+        elif plane=='X':
+            beta_beats = [beta_beat, 0.0]
+        elif plane=='both':
+            beta_beats = [beta_beat, beta_beat]
+        else:
+            raise ValueError('Invalid plane!')
+            
         # Try with new quadrupole error, otherwise return high value (square of error)
         try:
-            # Set the quadrupole knobs
-            #self._line.vars['kqf'] = dqd[1]
-            #self._line.vars['kqd'] = dqd[2]
-            
-            # Copy the line, adjust QD strength of last sliced quadrupole by dqd - if both planes, vary first slice of last quadrupole
-            if plane=='Y':
-                self._line['qd.63510..1'].knl[1] = dqd[0]
-            elif plane=='X':
-                self._line['qf.63410..1'].knl[1] = dqd[0]
-            elif plane=='both':
-                self._line['qd.63510..1'].knl[1] = dqd[0]
-                self._line['qf.63410..1'].knl[1] = dqd[1]
+            # Vary first slice of last quadrupole
+            self._line['qd.63510..1'].knl[1] = dqd[0]
+            self._line['qf.63410..1'].knl[1] = dqd[1]
             twiss2 = self._line.twiss()
         
             # Vertical plane beta-beat
             Y_beat = (np.max(twiss2['bety']) - np.max(self._twiss0['bety']))/np.max(self._twiss0['bety'])
             X_beat = (np.max(twiss2['betx']) - np.max(self._twiss0['betx']))/np.max(self._twiss0['betx'])
-            print('Setting QD error to {:.3e} with Ybeat={:.4e}, Xbeat={:.4f}, qx = {:.4f}, qy = {:.4f}'.format(dqd[0], Y_beat, X_beat,
-                                                                                                                twiss2['qx'], twiss2['qy']))
-            if plane=='Y':
-                loss = (beta_beat - Y_beat)**2
-            elif plane=='X':
-                loss = (beta_beat - X_beat)**2
-            elif plane=='both':
-                loss = (beta_beat - Y_beat)**2 + (beta_beat - X_beat)**2
-            else:
-                raise ValueError('Invalid plane!')
+            print('Setting QD error to {:.3e}, QF error to {:.3e},  with Ybeat={:.4e}, Xbeat={:.4f}, qx = {:.4f}, qy = {:.4f}'.format(dqd[0],
+                                                                                                                                      dqd[1],
+                                                                                                                                      Y_beat, 
+                                                                                                                                      X_beat,
+                                                                                                                                      twiss2['qx'], 
+                                                                                                                                      twiss2['qy']))
+            # Define objective function as squared difference
+            loss = (beta_beats[0] - X_beat)**2 + (beta_beats[1] - Y_beat)**2
+
         except ValueError:
             loss = dqd[0]**2 
             self._line = self._line0.copy()
@@ -781,6 +812,8 @@ class SPS_sequence_maker:
         madx.exec("sps_define_sext_knobs();")
         if self.proton_optics == 'q26':
             madx.exec("sps_set_chroma_weights_q26();")
+        elif self.proton_optics == 'q20':
+            madx.exec("sps_set_chroma_weights_q20();")
         madx.input(f"""match;
         global, dq1={self.dq1};
         global, dq2={self.dq2};
@@ -814,7 +847,10 @@ class SPS_sequence_maker:
         
         # Call the right magnet strengths for Q26: if not Pb ions, then protons
         if use_Pb_ions:
-            madx.call("{}/strengths/lhc_ion.str".format(optics))
+            if self.proton_optics == 'q26':
+                madx.call("{}/strengths/lhc_ion.str".format(optics))
+            elif self.proton_optics == 'q20':
+                madx.call("{}/strengths/lhc_q20.str".format(optics))
         else:
             if self.proton_optics == 'q26':
                 madx.call("{}/strengths/lhc_q26.str".format(optics))

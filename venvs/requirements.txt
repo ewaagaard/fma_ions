@@ -8,9 +8,10 @@ numpy==1.26.4
 pandas==2.2.0
 pyarrow==15.0.1
 scipy==1.12.0
-xfields==0.15.0
-xibs==0.8.0
-xobjects==0.3.1
-xpart==0.18.0
-xtrack==0.56.1
+xdeps==0.6.1
+xfields==0.18.0
+xobjects==0.4.1
+xpart==0.18.4
+xsuite==0.13.0
+xtrack==0.62.0
 
