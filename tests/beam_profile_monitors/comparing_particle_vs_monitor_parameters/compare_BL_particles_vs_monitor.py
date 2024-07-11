@@ -50,7 +50,8 @@ tbt.update_at_turn(0, particles, twiss)
 # Start tracking 
 time00 = time.time()
 for turn in range(1, num_turns):
-    print('\nTracking turn {}'.format(turn))   
+    if turn % 10 == 0:
+        print('Tracking turn {}'.format(turn))   
 
     # Track particles and fill zeta container
     line.track(particles, num_turns=1)

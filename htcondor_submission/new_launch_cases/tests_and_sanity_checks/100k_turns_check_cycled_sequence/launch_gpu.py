@@ -8,11 +8,17 @@ import pathlib
 # Find path of script being run
 dir_path = pathlib.Path(__file__).parent.absolute()
 script_names = ['sps_ideal_lattice_only_ibs_q20_cycled.py', 'sps_ideal_lattice_only_ibs_q20_normal.py', 
-                'sps_ideal_lattice_only_ibs_q26_cycled.py', 'sps_ideal_lattice_only_ibs_q26_normal.py']
+                'sps_ideal_lattice_only_ibs_q26_cycled.py', 'sps_ideal_lattice_only_ibs_q26_normal.py',
+                'sps_ideal_lattice_gaussian_only_ibs_q20_cycled.py', 'sps_ideal_lattice_gaussian_only_ibs_q20_normal.py', 
+                'sps_ideal_lattice_gaussian_only_ibs_q26_cycled.py', 'sps_ideal_lattice_gaussian_only_ibs_q26_normal.py']
 folder_names = ['sps_ideal_lattice_only_ibs_q20_cycled', 'sps_ideal_lattice_only_ibs_q20_normal', 
-                'sps_ideal_lattice_only_ibs_q26_cycled', 'sps_ideal_lattice_only_ibs_q26_normal']
+                'sps_ideal_lattice_only_ibs_q26_cycled', 'sps_ideal_lattice_only_ibs_q26_normal',
+                'sps_ideal_lattice_gaussian_only_ibs_q20_cycled', 'sps_ideal_lattice_gaussian_only_ibs_q20_normal', 
+                'sps_ideal_lattice_gaussian_only_ibs_q26_cycled', 'sps_ideal_lattice_gaussian_only_ibs_q26_normal']
 string_array = ['sps_ideal_lattice_only_ibs_q20_cycled', 'sps_ideal_lattice_only_ibs_q20_normal', 
-                'sps_ideal_lattice_only_ibs_q26_cycled', 'sps_ideal_lattice_only_ibs_q26_normal']    
+                'sps_ideal_lattice_only_ibs_q26_cycled', 'sps_ideal_lattice_only_ibs_q26_normal',
+                'sps_ideal_lattice_gaussian_only_ibs_q20_cycled', 'sps_ideal_lattice_gaussian_only_ibs_q20_normal', 
+                'sps_ideal_lattice_gaussian_only_ibs_q26_cycled', 'sps_ideal_lattice_gaussian_only_ibs_q26_normal']    
 
 # Instantiate the submitter class and launch the two jobs
 sub = fma_ions.Submitter() 
