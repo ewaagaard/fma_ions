@@ -612,6 +612,7 @@ class SPS_Plotting:
             ax2.set_ylabel(r'$\varepsilon_{y}^{n}$ [$\mu$m]')
             ax3.set_ylabel(r'$N_{b}$')
             ax3.legend(fontsize=13, loc='upper right')
+            ax1.text(0.04, 0.91, '{}'.format(extra_str), fontsize=15, transform=ax1.transAxes)
             f.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
             f.savefig('main_plots/result_multiple_trackings{}.png'.format(extra_str), dpi=250)
             
