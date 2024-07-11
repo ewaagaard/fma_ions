@@ -187,7 +187,7 @@ class SPS_Flat_Bottom_Tracker:
                   install_beam_monitors=True,
                   nturns_profile_accumulation_interval = 100,
                   nbins = 140,
-                  z_kick_num_integ_per_sigma=5
+                  z_kick_num_integ_per_sigma=20
                   ):
         """
         Run full tracking at SPS flat bottom
