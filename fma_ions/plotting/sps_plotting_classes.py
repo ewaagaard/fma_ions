@@ -370,7 +370,7 @@ class SPS_Plotting:
                 BL_dict = {'sigmas': sigmas}
                     
             # Dump saved fits in dictionary, then pickle file
-            with open('saved_bunch_length_fits.pickle', 'wb') as handle:
+            with open('{}saved_bunch_length_fits.pickle'.format(output_folder_str), 'wb') as handle:
                 pickle.dump(BL_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
             print('Dictionary with saved fits dumped')               
 
