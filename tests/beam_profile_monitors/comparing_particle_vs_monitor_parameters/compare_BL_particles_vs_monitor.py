@@ -3,13 +3,16 @@ Script to track particles --> compare bunch length of particles vs profile monit
 """
 import fma_ions
 import time
-import matplotlib
+import matplotlib.pyplot as plt
 import numpy as np
 import xpart as xp
+import xobjects as xo
 
 num_part = 10_000
 num_turns = 500
 zeta_container_interval = 100
+
+context = xo.ContextCpu(omp_num_threads='auto')
 
 # SPS sequence generator
 sps = fma_ions.SPS_sequence_maker()
@@ -27,7 +30,7 @@ px_norm = np.random.normal(size=num_part)
 y_norm = np.random.normal(size=num_part)
 py_norm = np.random.normal(size=num_part)
 
-particles = xp.build_particles(_context=None, particle_ref=line.particle_ref, 
+particles = xp.build_particles(_context=context, particle_ref=line.particle_ref, 
                                 zeta=zeta, delta=delta,
                                 x_norm=x_norm, px_norm=px_norm,
                                 y_norm=y_norm, py_norm=py_norm,
@@ -76,10 +79,10 @@ print('\nTracking time: {:.1f} s = {:.1f} h'.format(dt0, dt0/3600))
 
 # Make array with turns
 turn_array = np.arange(0, num_turns, step=zeta_container_interval)
+BL = np.array(BL)
 
-        f3, ax22 = plt.subplots(1, 1, figsize = (8,6))
-        # Uncomment if want to plot standard deviation of numerical particle object
-        if also_plot_particle_std_BL:
-            ax22.plot(time_units, tbt_dict['bunch_length'], color='darkcyan', alpha=0.7, lw=1.5, label='STD($\zeta$) of simulated particles')      
-            ax22.plot(turn_array if x_unit_in_turns else time_array, sigmas_gaussian, color='cyan', ls='--', alpha=0.95,
-                      label='Simulated profiles')
+f, ax = plt.subplots(1, 1, figsize = (8,6))
+ax.plot(tbt.turns, tbt.bunch_length, label='Bunch length')
+ax.plot(turn_array, BL, ms='o', ls='None', label='Aggregated bunch length')
+ax.set_ylabel('$\sigma_{z}$ [m]')
+ax.set_xlabel('Turns')
