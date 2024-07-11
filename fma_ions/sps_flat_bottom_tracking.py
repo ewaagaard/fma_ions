@@ -302,8 +302,9 @@ class SPS_Flat_Bottom_Tracker:
         print('{} optics: Qx = {:.3f}, Qy = {:.3f}'.format(self.proton_optics, twiss['qx'], twiss['qy']))
         if cycle_sequence_to_minimum_dpx:
             line = line.cycle(index_first_element=np.argmin(np.abs(twiss.dpx)))
-            twiss2 = line.twiss()
-            print('Cycled sequence: Qx = {:.3f}, Qy = {:.3f}, starting Dx = {:3f} m, starting Dxprime = {:.3f}m\n'.format(twiss2['qx'], twiss2['qy'], twiss2.dx[0], twiss2.dpx[0]))
+            del twiss # delete old twiss table
+            twiss = line.twiss()
+            print('Cycled sequence: Qx = {:.3f}, Qy = {:.3f}, starting Dx = {:3f} m, starting Dxprime = {:.3f}m\n'.format(twiss['qx'], twiss['qy'], twiss.dx[0], twiss.dpx[0]))
 
                 
         # Remove unrealistic aperture below limit
