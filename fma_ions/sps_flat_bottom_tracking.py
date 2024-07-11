@@ -296,6 +296,7 @@ class SPS_Flat_Bottom_Tracker:
                                                    add_non_linear_magnet_errors=add_non_linear_magnet_errors, 
                                                    deferred_expressions=load_line_with_deferred_expressions,
                                                    plane=plane_for_beta_beat, voltage=voltage)
+        print('{} optics: Qx = {:.3f}, Qy = {:.3f}'.format(self.proton_optics, twiss['qx'], twiss['qy']))
                 
         # Remove unrealistic aperture below limit
         if minimum_aperture_to_remove is not None and add_aperture:
@@ -540,6 +541,7 @@ class SPS_Flat_Bottom_Tracker:
         sps = SPS_sequence_maker()
         line, twiss = sps.load_xsuite_line_and_twiss(Qy_frac=Qy_frac, add_aperture=False, beta_beat=beta_beat,
                                                    add_non_linear_magnet_errors=add_non_linear_magnet_errors)
+        print('{} optics: Qx = {:.3f}, Qy = {:.3f}'.format(self.proton_optics, twiss['qx'], twiss['qy']))
         
         # Find bucket length
         bucket_length = line.get_length()/harmonic_nb

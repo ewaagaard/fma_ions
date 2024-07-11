@@ -20,23 +20,25 @@ print('\nQ26 max values: betx = {:3f} m, bety = {:3f} m, Dx = {:3f} m'.format(ma
 print('Q20 max values: betx = {:3f} m, bety = {:3f} m, Dx = {:3f} m'.format(max(twiss2.betx), max(twiss2.bety), max(twiss2.dx)))
 
 # Plot Q26 optics
-fig1 = plt.figure(1, figsize=(6.4, 4.8*1.5))
-spbet = plt.subplot(3,1,1)
-spco = plt.subplot(3,1,2, sharex=spbet)
-spdisp = plt.subplot(3,1,3, sharex=spbet)
+fig1, (spbet, spdisp, spdisp1) = plt.subplots(3, 1, figsize=(6.4, 4.8*1.5), sharex=True)
 
 spbet.plot(twiss.s, twiss.betx)
 spbet.plot(twiss.s, twiss.bety)
 spbet.set_ylabel(r'$\beta_{x,y}$ [m]')
 
-spco.plot(twiss.s, twiss.x)
-spco.plot(twiss.s, twiss.y)
-spco.set_ylabel(r'(Closed orbit)$_{x,y}$ [m]')
+#spco.plot(twiss.s, twiss.x)
+#spco.plot(twiss.s, twiss.y)
+#spco.set_ylabel(r'(Closed orbit)$_{x,y}$ [m]')
 
 spdisp.plot(twiss.s, twiss.dx)
 spdisp.plot(twiss.s, twiss.dy)
 spdisp.set_ylabel(r'$D_{x,y}$ [m]')
 spdisp.set_xlabel('s [m]')
+
+spdisp1.plot(twiss.s, twiss.dpx)
+spdisp1.plot(twiss.s, twiss.dpy)
+spdisp1.set_ylabel(r"$D_{x,y}$' [m]")
+spdisp1.set_xlabel('s [m]')
 
 fig1.suptitle(
     r'Q26: $q_x$ = ' f'{twiss.qx:.4f}' r' $q_y$ = ' f'{twiss.qy:.4f}' '\n'
@@ -47,20 +49,25 @@ fig1.subplots_adjust(left=.15, right=.92, hspace=.27)
 fig1.tight_layout()
 
 # Plot Q20 optics
-fig2, (spbet2, spco2, spdisp2) = plt.subplots(3, 1, figsize=(6.4, 4.8*1.5), sharex=True)
+fig2, (spbet2, spdisp2, spdisp22) = plt.subplots(3, 1, figsize=(6.4, 4.8*1.5), sharex=True)
 
 spbet2.plot(twiss2.s, twiss2.betx)
 spbet2.plot(twiss2.s, twiss2.bety)
 spbet2.set_ylabel(r'$\beta_{x,y}$ [m]')
 
-spco2.plot(twiss2.s, twiss2.x)
-spco2.plot(twiss2.s, twiss2.y)
-spco2.set_ylabel(r'(Closed orbit)$_{x,y}$ [m]')
+#spco2.plot(twiss2.s, twiss2.x)
+#spco2.plot(twiss2.s, twiss2.y)
+#spco2.set_ylabel(r'(Closed orbit)$_{x,y}$ [m]')
 
 spdisp2.plot(twiss2.s, twiss2.dx)
 spdisp2.plot(twiss2.s, twiss2.dy)
 spdisp2.set_ylabel(r'$D_{x,y}$ [m]')
 spdisp2.set_xlabel('s [m]')
+
+spdisp22.plot(twiss2.s, twiss2.dpx)
+spdisp22.plot(twiss2.s, twiss2.dpy)
+spdisp22.set_ylabel(r"$D_{x,y}$' [m]")
+spdisp22.set_xlabel('s [m]')
 
 fig2.suptitle(
     r'Q20: $q_x$ = ' f'{twiss2.qx:.4f}' r' $q_y$ = ' f'{twiss2.qy:.4f}' '\n'
