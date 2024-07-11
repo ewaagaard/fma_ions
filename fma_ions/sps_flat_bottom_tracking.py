@@ -187,7 +187,8 @@ class SPS_Flat_Bottom_Tracker:
                   install_beam_monitors=True,
                   nturns_profile_accumulation_interval = 100,
                   nbins = 140,
-                  z_kick_num_integ_per_sigma=20
+                  z_kick_num_integ_per_sigma=20,
+                  cycle_sequence_to_minimum_dpx=False
                   ):
         """
         Run full tracking at SPS flat bottom
@@ -251,6 +252,8 @@ class SPS_Flat_Bottom_Tracker:
             number of bins for histograms of transverse and longitudinal monitors
         z_kick_num_integ_per_sigma : int
             number of longitudinal kicks per sigma
+        cycle_sequence_to_minimum_dpx : bool
+            whether to cycle line to minimum D'x at the start, with line.cycle()
 
 
         Returns:
@@ -297,6 +300,11 @@ class SPS_Flat_Bottom_Tracker:
                                                    deferred_expressions=load_line_with_deferred_expressions,
                                                    plane=plane_for_beta_beat, voltage=voltage)
         print('{} optics: Qx = {:.3f}, Qy = {:.3f}'.format(self.proton_optics, twiss['qx'], twiss['qy']))
+        if cycle_sequence_to_minimum_dpx:
+            line = line.cycle(index_first_element=np.argmin(np.abs(twiss.dpx)))
+            twiss2 = line.twiss()
+            print('Cycled sequence: Qx = {:.3f}, Qy = {:.3f}, starting Dx = {:3f} m, starting Dxprime = {:.3f}m\n'.format(twiss2['qx'], twiss2['qy'], twiss2.dx[0], twiss2.dpx[0]))
+
                 
         # Remove unrealistic aperture below limit
         if minimum_aperture_to_remove is not None and add_aperture:
