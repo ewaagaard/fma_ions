@@ -13,6 +13,7 @@ import scipy.constants as constants
 from scipy.stats import gaussian_kde
 from scipy.signal import savgol_filter
 import xobjects as xo
+import xtrack as xt
 
 from ..sequences import SPS_sequence_maker, BeamParameters_SPS, BeamParameters_SPS_Oxygen, BeamParameters_SPS_Proton
 from ..longitudinal import generate_parabolic_distribution
@@ -658,6 +659,61 @@ class SPS_Plotting:
             f3.savefig('main_plots/sigma_multiple_trackings{}.png'.format(extra_str), dpi=250)
             
             plt.show()
+
+    def plot_tracking_vs_analytical(self,
+                                    analytical_tbt,
+                                    tbt_dict=None, 
+                                    output_folder=None,
+                                    distribution_type='gaussian',
+                                    ):
+        """
+        Loads beam parameter data from tracking, then comparing this with anaytically propagated parameters
+        
+        Parameters:
+        analytical_tbt : Records
+            dataclass with propagated analytical parameters
+        tbt_dict : dict
+            dictionary containing the TBT data. If None, loads json file.
+        output_folder : str
+            path to data. default is 'None', assuming then that data is in the same directory
+        distribution_type : str
+            either 'qgaussian', 'gaussian' or 'binomial'
+        """
+        os.makedirs('output_plots', exist_ok=True)
+        
+        if tbt_dict is None:
+            tbt_dict = self.load_records_dict_from_json(output_folder=output_folder)
+
+        time_units = tbt_dict['Seconds']
+            
+        # Emittances and bunch intensity 
+        f, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize = (9.5, 3.6))
+        ax1.plot(time_units, tbt_dict['exn'] * 1e6, alpha=0.7, c='turquoise', lw=1.5, label='Kinetic kick')
+        ax1.plot(turns, analytical_tbt.epsilon_x * 1e6 * twiss.beta0 * twiss.gamma0, lw=2.5, label='Nagaitsev analytical')
+
+        ax2.plot(time_units, tbt_dict['eyn'] * 1e6, alpha=0.7, c='turquoise', lw=1.5, label='Kinetic kick')
+        ax2.plot(turns, analytical_tbt.epsilon_y * 1e6 * twiss.beta0 * twiss.gamma0, lw=2.5, label=optics[i])
+        
+        ax3.plot(time_units, tbt_dict['Nb'], alpha=0.7, lw=2.2, c='turquoise', label='Kinetic kick')
+
+        # Find min and max emittance values - set window limits 
+        all_emit = np.concatenate((tbt_dict['exn'], tbt_dict['eyn']))
+        min_emit = 1e6 * np.min(all_emit)
+        max_emit = 1e6 * np.max(all_emit)
+
+        for ax in (ax1, ax2, ax3):
+            ax.set_xlabel('Time [s]')
+
+        #plt.setp(ax2.get_yticklabels(), visible=False)
+        ax1.set_ylabel(r'$\varepsilon_{x}^{n}$ [$\mu$m]')
+        ax2.set_ylabel(r'$\varepsilon_{y}^{n}$ [$\mu$m]')
+        ax3.set_ylabel(r'Ions per bunch $N_{b}$')
+        ax3.legend(fontsize=12.1, loc='upper right')
+        ax1.set_ylim(min_emit-0.08, max_emit+0.1)
+        ax2.set_ylim(min_emit-0.08, max_emit+0.1)
+        f.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+
+        plt.show()
 
 
     def plot_multiple_emittance_runs(self,
