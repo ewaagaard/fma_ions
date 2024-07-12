@@ -99,7 +99,7 @@ class FMA:
                                 pic_solver = 'FFTSolver2p5D',
                                 add_Z_kick_for_SC=True,
                                 use_binomial_dist_after_RF_spill=True,
-                                z_kick_num_integ_per_sigma=5):
+                                z_kick_num_integ_per_sigma=10):
         """
         Install frozen Space Charge (SC) and generate particles with provided Xsuite line and beam parameters
         

@@ -187,7 +187,7 @@ class SPS_Flat_Bottom_Tracker:
                   install_beam_monitors=True,
                   nturns_profile_accumulation_interval = 100,
                   nbins = 140,
-                  z_kick_num_integ_per_sigma=20,
+                  z_kick_num_integ_per_sigma=10,
                   cycle_sequence_to_minimum_dpx=False
                   ):
         """

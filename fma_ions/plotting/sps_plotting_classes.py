@@ -670,8 +670,8 @@ class SPS_Plotting:
         Loads beam parameter data from tracking, then comparing this with anaytically propagated parameters
         
         Parameters:
-        analytical_tbt : Records
-            dataclass with propagated analytical parameters
+        analytical_tbt : dict
+            dictionary with propagated analytical parameters
         tbt_dict : dict
             dictionary containing the TBT data. If None, loads json file.
         output_folder : str
@@ -689,10 +689,10 @@ class SPS_Plotting:
         # Emittances and bunch intensity 
         f, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize = (9.5, 3.6))
         ax1.plot(time_units, tbt_dict['exn'] * 1e6, alpha=0.7, c='turquoise', lw=1.5, label='Kinetic kick')
-        ax1.plot(turns, analytical_tbt.epsilon_x * 1e6 * twiss.beta0 * twiss.gamma0, lw=2.5, label='Nagaitsev analytical')
+        ax1.plot(analytical_tbt.time, analytical_tbt.exn * 1e6, lw=2.5, label='Nagaitsev analytical')
 
         ax2.plot(time_units, tbt_dict['eyn'] * 1e6, alpha=0.7, c='turquoise', lw=1.5, label='Kinetic kick')
-        ax2.plot(turns, analytical_tbt.epsilon_y * 1e6 * twiss.beta0 * twiss.gamma0, lw=2.5, label=optics[i])
+        ax2.plot(analytical_tbt, analytical_tbt.eyn * 1e6, lw=2.5, label='Nagaitsev analytical')
         
         ax3.plot(time_units, tbt_dict['Nb'], alpha=0.7, lw=2.2, c='turquoise', label='Kinetic kick')
 
