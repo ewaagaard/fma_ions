@@ -19,6 +19,7 @@ __pycache__/
 *.log
 *.err
 *.parquet
+*.pickle
 *htcondor_submission/output/
 
 # MADX files
