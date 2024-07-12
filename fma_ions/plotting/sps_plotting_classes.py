@@ -664,6 +664,7 @@ class SPS_Plotting:
                                     analytical_tbt,
                                     tbt_dict=None, 
                                     output_folder=None,
+                                    extra_str='',
                                     distribution_type='gaussian',
                                     ):
         """
@@ -674,6 +675,8 @@ class SPS_Plotting:
             dictionary with propagated analytical parameters
         tbt_dict : dict
             dictionary containing the TBT data. If None, loads json file.
+        extra_str : str
+            extra string to plot
         output_folder : str
             path to data. default is 'None', assuming then that data is in the same directory
         distribution_type : str
@@ -687,12 +690,12 @@ class SPS_Plotting:
         time_units = tbt_dict['Seconds']
             
         # Emittances and bunch intensity 
-        f, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize = (9.5, 3.6))
+        f, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize = (10.2, 4.1))
         ax1.plot(time_units, tbt_dict['exn'] * 1e6, alpha=0.7, c='turquoise', lw=1.5, label='Kinetic kick')
-        ax1.plot(analytical_tbt.time, analytical_tbt.exn * 1e6, lw=2.5, label='Nagaitsev analytical')
+        ax1.plot(analytical_tbt['ctime'], analytical_tbt['exn'] * 1e6, lw=2.5, label='Nagaitsev analytical')
 
         ax2.plot(time_units, tbt_dict['eyn'] * 1e6, alpha=0.7, c='turquoise', lw=1.5, label='Kinetic kick')
-        ax2.plot(analytical_tbt, analytical_tbt.eyn * 1e6, lw=2.5, label='Nagaitsev analytical')
+        ax2.plot(analytical_tbt['ctime'], analytical_tbt['eyn'] * 1e6, lw=2.5, label='Nagaitsev analytical')
         
         ax3.plot(time_units, tbt_dict['Nb'], alpha=0.7, lw=2.2, c='turquoise', label='Kinetic kick')
 
@@ -705,10 +708,11 @@ class SPS_Plotting:
             ax.set_xlabel('Time [s]')
 
         #plt.setp(ax2.get_yticklabels(), visible=False)
+        ax1.text(0.04, 0.91, '{}'.format(extra_str), fontsize=15, transform=ax1.transAxes)
         ax1.set_ylabel(r'$\varepsilon_{x}^{n}$ [$\mu$m]')
         ax2.set_ylabel(r'$\varepsilon_{y}^{n}$ [$\mu$m]')
         ax3.set_ylabel(r'Ions per bunch $N_{b}$')
-        ax3.legend(fontsize=12.1, loc='upper right')
+        ax1.legend(fontsize=11.0, loc='lower right')
         ax1.set_ylim(min_emit-0.08, max_emit+0.1)
         ax2.set_ylim(min_emit-0.08, max_emit+0.1)
         f.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
