@@ -9,15 +9,17 @@ import numpy as np
 sps = fma_ions.SPS_sequence_maker(ion_type='proton') 
 line, twiss_sps = sps.load_xsuite_line_and_twiss()
 
-print('Pb beam:')
+print('Proton beam:')
 print(line.particle_ref.show())
 
 # Update beam parameters
 beamParams = fma_ions.BeamParameters_SPS_Proton()
-# beamParams.Nb = 2.5e8 
-#beamParams.exn = #1.3e-6 # if same as Isabelle
+beamParams.Nb = 1.0e11 
+beamParams.exn = 0.5e-6
+beamParams.eyn = 0.5e-6
+beamParams.sigma_z = 0.22 #m
 beamParams.delta = 1e-3
-print(beamParams)
+
 
 # Then calculate it manually
 sc = injector_model.SC_Tune_Shifts()
@@ -39,4 +41,6 @@ integrand_y = twiss_xtrack_interpolated['bety'] / (sigma_y * (sigma_x + sigma_y)
 
 dQx0 = - K_sc / (4 * np.pi) * np.trapz(integrand_x, x = twiss_xtrack_interpolated['s'])
 dQy0 = - K_sc / (4 * np.pi) * np.trapz(integrand_y, x = twiss_xtrack_interpolated['s'])
-print('\nSC tune shift protons (with current beam parameters): dQx = {:.5f}, dQy = {:.5f}'.format(dQx0, dQy0))
+
+print('\nWith: sigma_z = {:.3f} m, Nb = {:.3e}, exn = {:.2e}, eyn = {:.2e}:'.format(beamParams.sigma_z, beamParams.Nb, beamParams.exn, beamParams.eyn))
+print('\nSC tune shift protons: dQx = {:.5f}, dQy = {:.5f}'.format(dQx0, dQy0))
