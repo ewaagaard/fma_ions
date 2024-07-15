@@ -360,12 +360,18 @@ class SPS_Flat_Bottom_Tracker:
 
         ######### IBS kinetic kicks #########
         if apply_kinetic_IBS_kicks:
-            beamparams = BeamParameters.from_line(line, n_part=beamParams.Nb)
-            opticsparams = OpticsParameters.from_line(line) # read from line without space  charge
-            IBS = KineticKickIBS(beamparams, opticsparams)
+            # For the kinetic formalism: kicks are computed based on the
+            # friction and diffusion terms of the kinetic theory of gases
+            ibs_kick = xf.IBSKineticKick(num_slices=50)
+
+            # By default the element is off until configuration. Let's install
+            # the kick at the end of the line and configure it. This internally
+            # provides the necessary information to the element
+            line.configure_intrabeam_scattering(
+                element=ibs_kick, name="ibskick", index=-1, update_every=ibs_step
+            )
             print('\nFixed IBS coefficient recomputation at interval = {} steps\n'.format(ibs_step))
-            kinetic_kick_coefficients = IBS.compute_kick_coefficients(particles)
-            print(kinetic_kick_coefficients)
+
 
         # Install SC and build tracker - optimize line if line variables for tune ripple not needed
         if install_SC_on_line:
@@ -408,22 +414,6 @@ class SPS_Flat_Bottom_Tracker:
             
             if turn % self.turn_print_interval == 0:
                 print('\nTracking turn {}'.format(turn))            
-
-            ########## IBS -> Potentially re-compute the ellitest_parts integrals and IBS growth rates #########
-            if apply_kinetic_IBS_kicks and ((turn % ibs_step == 0) or (turn == 1)):
-                
-                # We compute from values at the previous turn
-                kinetic_kick_coefficients = IBS.compute_kick_coefficients(particles)
-                print(
-                    "\n" + "=" * 60 + "\n",
-                    f"Turn {turn:d}: re-computing growth rates and kick coefficients\n",
-                    kinetic_kick_coefficients,
-                    "\n" + "=" * 60,
-                )
-                
-            ########## ----- Apply IBS Kick if desired ----- ##########
-            if apply_kinetic_IBS_kicks:
-                IBS.apply_ibs_kick(particles)
             
             ########## ----- Exert TUNE RIPPLE if desired ----- ##########
             if add_tune_ripple:
