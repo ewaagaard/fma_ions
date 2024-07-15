@@ -665,6 +665,8 @@ class SPS_Plotting:
                                     tbt_dict=None, 
                                     output_folder=None,
                                     extra_str='',
+                                    ylim=None,
+                                    Nb_limit=None,
                                     distribution_type='gaussian',
                                     ):
         """
@@ -677,6 +679,10 @@ class SPS_Plotting:
             dictionary containing the TBT data. If None, loads json file.
         extra_str : str
             extra string to plot
+        ylim : list
+            if not None, the vertical limits on emittances vertical axis
+        Nb_limit : list
+            if not None, will set intensity limit
         output_folder : str
             path to data. default is 'None', assuming then that data is in the same directory
         distribution_type : str
@@ -700,9 +706,9 @@ class SPS_Plotting:
         ax3.plot(time_units, tbt_dict['Nb'], alpha=0.7, lw=2.2, c='turquoise', label='Kinetic kick')
 
         # Find min and max emittance values - set window limits 
-        all_emit = np.concatenate((tbt_dict['exn'], tbt_dict['eyn']))
-        min_emit = 1e6 * np.min(all_emit)
-        max_emit = 1e6 * np.max(all_emit)
+        #all_emit = np.concatenate((tbt_dict['exn'], tbt_dict['eyn']))
+        #min_emit = 1e6 * np.min(all_emit)
+        #max_emit = 1e6 * np.max(all_emit)
 
         for ax in (ax1, ax2, ax3):
             ax.set_xlabel('Time [s]')
@@ -713,8 +719,10 @@ class SPS_Plotting:
         ax2.set_ylabel(r'$\varepsilon_{y}^{n}$ [$\mu$m]')
         ax3.set_ylabel(r'Ions per bunch $N_{b}$')
         ax1.legend(fontsize=11.0, loc='lower right')
-        ax1.set_ylim(min_emit-0.08, max_emit+0.1)
-        ax2.set_ylim(min_emit-0.08, max_emit+0.1)
+        if ylim is not None:
+            ax1.set_ylim(ylim[0], ylim[1])
+            ax2.set_ylim(ylim[0], ylim[1])
+            ax3.set_ylim(Nb_limit[0], Nb_limit[1])
         f.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
 
         plt.show()
