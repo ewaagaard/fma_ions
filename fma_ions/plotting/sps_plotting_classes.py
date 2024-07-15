@@ -723,6 +723,8 @@ class SPS_Plotting:
             ax1.set_ylim(ylim[0], ylim[1])
             ax2.set_ylim(ylim[0], ylim[1])
             ax3.set_ylim(Nb_limit[0], Nb_limit[1])
+        ax1.set_xlim(time_units[0] - time_units[-1] * 0.05, time_units[-1] * 1.1)
+        ax2.set_xlim(time_units[0] - time_units[-1] * 0.05, time_units[-1] * 1.1)
         f.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
 
         plt.show()
