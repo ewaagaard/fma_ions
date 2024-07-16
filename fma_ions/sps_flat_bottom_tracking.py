@@ -188,7 +188,7 @@ class SPS_Flat_Bottom_Tracker:
                   nturns_profile_accumulation_interval = 100,
                   nbins = 140,
                   z_kick_num_integ_per_sigma=10,
-                  cycle_sequence_to_minimum_dpx=False
+                  cycle_mode_to_minimize_dx_dpx=None
                   ):
         """
         Run full tracking at SPS flat bottom
@@ -252,8 +252,9 @@ class SPS_Flat_Bottom_Tracker:
             number of bins for histograms of transverse and longitudinal monitors
         z_kick_num_integ_per_sigma : int
             number of longitudinal kicks per sigma
-        cycle_sequence_to_minimum_dpx : bool
-            whether to cycle line to minimum D'x at the start, with line.cycle()
+        cycle_mode_to_minimize_dx_dpx : str
+            options: None, 'dx', 'dpx' or 'both' --> whether to cycle line to minimum Dx at the start, 
+            minimum D'x or minimize both. None will not perform any cycling
 
 
         Returns:
@@ -300,16 +301,26 @@ class SPS_Flat_Bottom_Tracker:
                                                    deferred_expressions=load_line_with_deferred_expressions,
                                                    plane=plane_for_beta_beat, voltage=voltage)
         print('{} optics: Qx = {:.3f}, Qy = {:.3f}'.format(self.proton_optics, twiss['qx'], twiss['qy']))
-        if cycle_sequence_to_minimum_dpx:
-            line = line.cycle(index_first_element=np.argmin(np.abs(twiss.dpx)))
+        
+        # Remove unrealistic aperture below limit
+        if minimum_aperture_to_remove is not None and add_aperture:
+            line = sps.remove_aperture_below_threshold(line, minimum_aperture_to_remove)
+        
+        if cycle_mode_to_minimize_dx_dpx is not None:
+            
+            if cycle_mode_to_minimize_dx_dpx == 'dx':
+                penalty = np.abs(twiss.dx)
+            elif cycle_mode_to_minimize_dx_dpx == 'dpx':    
+                penalty = np.abs(twiss.dpx)
+            elif cycle_mode_to_minimize_dx_dpx == 'both':   
+                penalty = twiss.dx**2 + twiss.dpx**2 
+            else:
+                raise ValueError("No valid cycling mode - choose 'dx', 'dpx' or 'both'")
+            line = line.cycle(index_first_element=np.argmin(penalty))
             del twiss # delete old twiss table
             twiss = line.twiss()
             print('Cycled sequence: Qx = {:.3f}, Qy = {:.3f}, starting Dx = {:3f} m, starting Dxprime = {:.3f}m\n'.format(twiss['qx'], twiss['qy'], twiss.dx[0], twiss.dpx[0]))
 
-                
-        # Remove unrealistic aperture below limit
-        if minimum_aperture_to_remove is not None and add_aperture:
-            line = sps.remove_aperture_below_threshold(line, minimum_aperture_to_remove)
 
         # If scaling synchrotron tune
         if scale_factor_Qs is not None:
