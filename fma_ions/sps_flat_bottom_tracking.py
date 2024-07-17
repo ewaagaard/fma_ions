@@ -188,7 +188,8 @@ class SPS_Flat_Bottom_Tracker:
                   nturns_profile_accumulation_interval = 100,
                   nbins = 140,
                   z_kick_num_integ_per_sigma=10,
-                  cycle_mode_to_minimize_dx_dpx=None
+                  cycle_mode_to_minimize_dx_dpx=None,
+                  target_dx_and_dpx=None
                   ):
         """
         Run full tracking at SPS flat bottom
@@ -253,9 +254,11 @@ class SPS_Flat_Bottom_Tracker:
         z_kick_num_integ_per_sigma : int
             number of longitudinal kicks per sigma
         cycle_mode_to_minimize_dx_dpx : str
-            options: None, 'dx', 'dpx' or 'both' --> whether to cycle line to minimum Dx at the start, 
+            options: None, 'dx', 'dpx', 'both' and 'custum' --> whether to cycle line to minimum Dx at the start, 
             minimum D'x or minimize both. None will not perform any cycling
-
+        target_dx_and_dpx : list
+            if cycle_mode chosen to be 'custom' above, provide list [dx_target, dpx_target] to cycle sequence as close as possible 
+            to these values
 
         Returns:
         --------
@@ -314,6 +317,8 @@ class SPS_Flat_Bottom_Tracker:
                 penalty = np.abs(twiss.dpx)
             elif cycle_mode_to_minimize_dx_dpx == 'both':   
                 penalty = twiss.dx**2 + twiss.dpx**2 
+            elif cycle_mode_to_minimize_dx_dpx == 'custom':
+                penalty = (twiss.dx - target_dx_and_dpx[0])**2 + (twiss.dpx - - target_dx_and_dpx[1])**2
             else:
                 raise ValueError("No valid cycling mode - choose 'dx', 'dpx' or 'both'")
             line = line.cycle(index_first_element=np.argmin(penalty))
