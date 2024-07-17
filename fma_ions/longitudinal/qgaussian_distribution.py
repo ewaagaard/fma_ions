@@ -5,7 +5,7 @@ from fma_ions.sequences import PS_sequence_maker
 import numpy as np
 
 
-def generate_binomial_distribution_from_PS_extr(_context=None, 
+def generate_qgaussian_distribution_from_PS_extr(_context=None, 
                                                 num_particles=None,
                                                 nemitt_x=None, 
                                                 nemitt_y=None, 
@@ -13,9 +13,9 @@ def generate_binomial_distribution_from_PS_extr(_context=None,
                                                 total_intensity_particles=None,
                                                 line=None,
                                                 return_separatrix_coord=False,
-                                                m=None):
+                                                q=1.0):
     """
-    Function to generate a binomial longitudinal distribution from PS extraction
+    Function to generate a qgaussian longitudinal distribution from PS extraction
     intended for SPS injection
     
     Parameters:
@@ -34,27 +34,25 @@ def generate_binomial_distribution_from_PS_extr(_context=None,
         line object to which generate particle objects
     return_separatrix_coord : bool
         whether to return zeta/delta coordinates of separatrix
-    m : float
-        binomial parameter for fit
+    q : float
+        q-Gaussian parameter to control tail population
     """
-    if m is None:
-        m = 4.7  # typical value for ions at PS extraction
 
     # Import PS line
     ps = PS_sequence_maker()
     ps_line, _ = ps.load_xsuite_line_and_twiss(at_injection_energy=False)
 
     # Generate longitudinal coordinates from PS extraction
-    zeta, delta, _ = generate_longitudinal_coordinates(line=ps_line, distribution='binomial', 
+    zeta, delta, _ = generate_longitudinal_coordinates(line=ps_line, distribution='qgaussian', 
                                                              num_particles=num_particles, 
                                                              engine='single-rf-harmonic', sigma_z=sigma_z,
-                                                             particle_ref=ps_line.particle_ref, return_matcher=True, m=m)
+                                                             particle_ref=ps_line.particle_ref, return_matcher=True, q=q)
     
     # Get a separate matcher for SPS
-    _, _, matcher = generate_longitudinal_coordinates(line=line, distribution='binomial', 
+    _, _, matcher = generate_longitudinal_coordinates(line=line, distribution='qgaussian', 
                                                              num_particles=num_particles, 
                                                              engine='single-rf-harmonic', sigma_z=sigma_z,
-                                                             particle_ref=line.particle_ref, return_matcher=True, m=m)
+                                                             particle_ref=line.particle_ref, return_matcher=True, q=q)
     
     # Get separatrix coordinates from matcher
     if return_separatrix_coord:
@@ -84,7 +82,7 @@ def generate_binomial_distribution_from_PS_extr(_context=None,
                                 nemitt_x=nemitt_x, nemitt_y=nemitt_y,
                                 weight=total_intensity_particles/num_particles, line=line)
 
-    print('Generated binomially longitudinal particles with m = {} and sigma_z = {:.3f} m'.format(m, np.std(particles.zeta)))
+    print('Generated q-Gaussian longitudinal particles with q = {} and sigma_z = {:.3f} m'.format(q, np.std(particles.zeta)))
 
     if return_separatrix_coord:
         return particles, zeta_separatrix, delta_separatrix
@@ -93,7 +91,7 @@ def generate_binomial_distribution_from_PS_extr(_context=None,
 
 
 
-def generate_binomial_distribution(_context=None, 
+def generate_qgaussian_distribution(_context=None, 
 							num_particles=None,
                 			nemitt_x=None, 
                 			nemitt_y=None, 
@@ -102,21 +100,18 @@ def generate_binomial_distribution(_context=None,
                 			total_intensity_particles=None,
                 			line=None,
                 			return_matcher=False,
-                            m=None
+                            q=1.0
                 			):
 
 	"""
-	Function to generate a parabolic longitudinal distribution for xtrack.Line
+	Function to generate a longitudinally matched q-Gaussian distribution xtrack.Line
 	"""
-	
-	if m is None:
-		m = 4.7 # typical value for ions at PS extraction
 
 	# Generate longitudinal coordinates s
-	zeta, delta, matcher = generate_longitudinal_coordinates(line=line, distribution='binomial', 
-							num_particles=num_particles, 
-							engine='single-rf-harmonic', sigma_z=sigma_z,
-							particle_ref=particle_ref, return_matcher=True, m=m)
+	zeta, delta, matcher = generate_longitudinal_coordinates(line=line, distribution='qgaussian', 
+                                                             num_particles=num_particles, 
+                                                             engine='single-rf-harmonic', sigma_z=sigma_z,
+                                                             particle_ref=particle_ref, return_matcher=True, q=q)
 	
 	# Initiate normalized coordinates 
 	x_norm = np.random.normal(size=num_particles)

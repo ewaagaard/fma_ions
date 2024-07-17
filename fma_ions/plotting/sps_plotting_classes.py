@@ -417,7 +417,8 @@ class SPS_Plotting:
                                             distribution_type='qgaussian',
                                             also_plot_particle_std_BL=False,
                                             bunch_length_in_log_scale=False,
-                                            ylim_bunch_length=None):
+                                            ylim_bunch_length=None, 
+                                            return_fig=False):
         """
         If multiple runs with turn-by-turn (tbt) data has been made, provide list with Records class objects and list
         of explaining string to generate comparative plots of emittances, bunch intensities, etc
@@ -457,6 +458,8 @@ class SPS_Plotting:
             whether to plot standard deviation of particle zeta ("discrete" bunch length)
         ylim_bunch_length : list
             lower and upper bounds for emittance plots, if None (default), automatic limits are set
+        return_fig : bool
+            whether to return figure and axis object - if False, will do plt.show()
         """
         os.makedirs('main_plots', exist_ok=True)
         plt.rcParams.update(
@@ -582,7 +585,6 @@ class SPS_Plotting:
             
             f.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
             f.savefig('main_plots/result_multiple_trackings_compact{}.png'.format(extra_str), dpi=250)
-            plt.show()
             
         else:
             # Emittances and bunch intensity 
@@ -658,6 +660,10 @@ class SPS_Plotting:
             f3.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
             f3.savefig('main_plots/sigma_multiple_trackings{}.png'.format(extra_str), dpi=250)
             
+            
+        if return_fig:
+            return f, (ax1, ax2, ax3) 
+        else:
             plt.show()
 
     def plot_tracking_vs_analytical(self,
