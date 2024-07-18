@@ -9,12 +9,12 @@ import xobjects as xo
 # Generate SPS sequence
 sps_maker = fma_ions.SPS_sequence_maker()
 line, twiss = sps_maker.load_xsuite_line_and_twiss()
-context = xo.ContextCpu()
+context = xo.ContextCpu(omp_num_threads='auto')
 
 # Test default tracking with space charge on GPU context - then test plotting
-sps = fma_ions.SPS_Flat_Bottom_Tracker(num_part=50_000, num_turns=100, turn_print_interval=10)
-particles = sps.generate_particles(line, context, distribution_type='binomial', use_binomial_dist_after_RF_spill=False)
-particles2 = sps.generate_particles(line, context, distribution_type='binomial', use_binomial_dist_after_RF_spill=True)
+sps = fma_ions.SPS_Flat_Bottom_Tracker(num_part=50_000, num_turns=50, turn_print_interval=10)
+particles = sps.generate_particles(line, context, distribution_type='qgaussian', matched_for_PS_extraction=True)
+particles2 = sps.generate_particles(line, context, distribution_type='qgaussian', matched_for_PS_extraction=False)
 
 # Make histograms of particles
 widths, centers, heights = [], [], []
@@ -100,8 +100,8 @@ for i in range(2):
     ax[0].set_ylabel('Amplitude [a.u.]')
     ax[1].set_ylabel('Amplitude [a.u.]')
     
-    ax[0].text(0.6, 0.91, 'At injection, before RF spill', fontsize=13, transform=ax[0].transAxes)
-    ax[1].text(0.6, 0.91, 'At injection, after RF spill', fontsize=13, transform=ax[1].transAxes)
+    ax[0].text(0.6, 0.91, 'At injection, before RF capture', fontsize=13, transform=ax[0].transAxes)
+    ax[1].text(0.6, 0.91, 'At injection, after RF capture', fontsize=13, transform=ax[1].transAxes)
     fig.tight_layout()
     fig.savefig('SPS_simulated_particles_vs_before_and_after_RF_spill{}.png'.format(string[i]), dpi=250)
     plt.show()

@@ -11,12 +11,12 @@ import xpart as xp
 import xfields as xf
 import xobjects as xo
 
-from .sequences import SPS_sequence_maker, BeamParameters_SPS,  BeamParameters_SPS_Oxygen, BeamParameters_SPS_Proton
-from .sequences import BeamParameters_SPS_Binomial_2016, BeamParameters_SPS_Binomial_2016_before_RF_Spill
+from .beam_parameters import BeamParameters_SPS, BeamParameters_SPS_Binomial_2016, BeamParameters_SPS_Binomial_2016_before_RF_capture, BeamParameters_SPS_Oxygen, BeamParameters_SPS_Proton
+
+from .sequences import SPS_sequence_maker
+
 from .fma_ions import FMA
-from .helpers_and_functions import Records, Zeta_Container, Longitudinal_Monitor, _geom_epsx, _geom_epsy, Records_Growth_Rates
-from .longitudinal import generate_parabolic_distribution
-from .longitudinal import generate_binomial_distribution_from_PS_extr
+from .helpers_and_functions import Records, Zeta_Container, Longitudinal_Monitor, Records_Growth_Rates
 from .longitudinal import generate_particles_transverse_gaussian, build_particles_linear_in_zeta, return_separatrix_coordinates
 
 from xibs.inputs import BeamParameters, OpticsParameters
@@ -73,7 +73,7 @@ class SPS_Flat_Bottom_Tracker:
             if distribution_type in ['gaussian', 'parabolic']:
                 beamParams = BeamParameters_SPS()
             elif distribution_type in ['qgaussian', 'binomial']:
-                beamParams = BeamParameters_SPS_Binomial_2016_before_RF_Spill if matched_for_PS_extraction else BeamParameters_SPS_Binomial_2016()
+                beamParams = BeamParameters_SPS_Binomial_2016_before_RF_capture if matched_for_PS_extraction else BeamParameters_SPS_Binomial_2016()
         
         # Generate particles
         if distribution_type == 'linear_in_zeta':
@@ -98,12 +98,8 @@ class SPS_Flat_Bottom_Tracker:
                   apply_kinetic_IBS_kicks=False,
                   harmonic_nb = 4653,
                   ibs_step = 5000,
-                  print_lost_particle_state=True,
                   minimum_aperture_to_remove=0.025,
-                  ripple_plane='both',
-                  dq=0.01,
-                  ripple_freq=50,
-                  use_binomial_dist_after_RF_spill=True,
+                  matched_for_PS_extraction=False,
                   plane_for_beta_beat='Y',
                   num_spacecharge_interactions=1080,
                   voltage=3.0e6,
@@ -150,14 +146,8 @@ class SPS_Flat_Bottom_Tracker:
         minimum_aperture_to_remove : float 
             minimum threshold of horizontal SPS aperture to remove, default is 0.025 (can also be set to None)
             as faulty IPM aperture has 0.01 m, which is too small
-        ripple_plane : str
-            plane in which to add the tune ripple: 'X', 'Y' or 'both'
-        dq : float
-            amplitude for tune ripple, if applied
-        ripple_freq : float
-            ripple frequency in Hz
-        use_binomial_dist_after_RF_spill : bool
-            for binomial distributions, whether to use measured parameters after initial spill out of RF bucket (or before)
+        matched_for_PS_extraction : bool
+            whether to match particle object to before RF capture at SPS injection. If 'True', particles will be matched to PS extraction 
         plane_for_beta_beat : str
             plane in which beta-beat exists: 'X', 'Y' (default) or 'both'
         num_spacecharge_interactions : int
@@ -198,8 +188,8 @@ class SPS_Flat_Bottom_Tracker:
             if ion_type=='proton':
                 beamParams = BeamParameters_SPS_Proton()
                 harmonic_nb = 4620 # update harmonic number
-            if distribution_type == 'binomial' or distribution_type == 'qgaussian':
-                beamParams = BeamParameters_SPS_Binomial_2016() if use_binomial_dist_after_RF_spill else BeamParameters_SPS_Binomial_2016_before_RF_Spill
+            if distribution_type in ['binomial', 'qgaussian']:
+                beamParams = BeamParameters_SPS_Binomial_2016_before_RF_capture if matched_for_PS_extraction else BeamParameters_SPS_Binomial_2016()
         print('Beam parameters:', beamParams)
 
         # Select relevant context
@@ -222,7 +212,6 @@ class SPS_Flat_Bottom_Tracker:
         # Extract line with aperture, beta-beat and non-linear magnet errors if desired
         line, twiss = sps.load_xsuite_line_and_twiss(add_aperture=add_aperture, beta_beat=beta_beat,
                                                    add_non_linear_magnet_errors=add_non_linear_magnet_errors, 
-                                                   deferred_expressions=load_line_with_deferred_expressions,
                                                    plane=plane_for_beta_beat, voltage=voltage)
         print('{} optics: Qx = {:.3f}, Qy = {:.3f}'.format(self.proton_optics, twiss['qx'], twiss['qy']))
         
@@ -290,8 +279,8 @@ class SPS_Flat_Bottom_Tracker:
 
         # Generate particles object to track    
         particles = self.generate_particles(line=line, context=context, distribution_type=distribution_type,
-                                            beamParams=beamParams, scale_factor_Qs=scale_factor_Qs,
-                                            only_one_zeta=only_one_zeta, use_binomial_dist_after_RF_spill=use_binomial_dist_after_RF_spill)
+                                            beamParams=beamParams, scale_factor_Qs=scale_factor_Qs, 
+                                            matched_for_PS_extraction=matched_for_PS_extraction)
         particles.reorganize()
 
 
@@ -367,7 +356,7 @@ class SPS_Flat_Bottom_Tracker:
                 
             # Print number and cause of lost particles
             if particles.state[particles.state <= 0].size > 0:
-                if print_lost_particle_state and turn % self.turn_print_interval == 0:
+                if turn % self.turn_print_interval == 0:
                     print('Lost particle state: most common code: "-{}" for {} particles out of {} lost in total'.format(np.bincount(np.abs(particles.state[particles.state <= 0])).argmax(),
                                                                                                           np.max(np.bincount(np.abs(particles.state[particles.state <= 0]))),
                                                                                                           len(particles.state[particles.state <= 0])))
@@ -399,7 +388,6 @@ class SPS_Flat_Bottom_Tracker:
                                                       ibs_step : int = 200,
                                                       context = None,
                                                       show_plot=False,
-                                                      print_lost_particle_state=True,
                                                       install_longitudinal_rect=True,
                                                       plot_longitudinal_phase_space=True,
                                                       harmonic_nb = 4653,
@@ -430,8 +418,6 @@ class SPS_Flat_Bottom_Tracker:
             external xobjects context, if none is provided a new will be generated
         Qy_frac : int
             fractional part of vertical tune, e.g. "19" for 26.19
-        print_lost_particle_state : bool
-            whether to print the state of lost particles
         install_longitudinal_rect : bool
             whether to install the longitudinal LimitRect or not, to kill particles outside of bucket
         plot_longitudinal_phase_space : bool
@@ -557,7 +543,7 @@ class SPS_Flat_Bottom_Tracker:
             analytical_tbt.bunch_length[turn] = ana_bunch_length
             
             # Print how many particles are lost or outside of the bucket, depending on if longitudinal LimitRect is installed
-            if print_lost_particle_state and turn % self.turn_print_interval == 0:
+            if turn % self.turn_print_interval == 0:
                 if particles.state[particles.state <= 0].size > 0 and install_longitudinal_rect:
                     print('Lost particle state: most common code: "-{}" for {} particles out of {} lost in total'.format(np.bincount(np.abs(particles.state[particles.state <= 0])).argmax(),
                                                                                                           np.max(np.bincount(np.abs(particles.state[particles.state <= 0]))),

@@ -15,7 +15,8 @@ from scipy.signal import savgol_filter
 import xobjects as xo
 import xtrack as xt
 
-from ..sequences import SPS_sequence_maker, BeamParameters_SPS, BeamParameters_SPS_Oxygen, BeamParameters_SPS_Proton
+from ..beam_parameters import BeamParameters_SPS, BeamParameters_SPS_Oxygen, BeamParameters_SPS_Proton
+from ..sequences import SPS_sequence_maker
 from ..longitudinal import generate_parabolic_distribution
 from ..longitudinal import generate_binomial_distribution_from_PS_extr
 from ..helpers_and_functions import Records, Records_Growth_Rates, Full_Records, _bunch_length, _geom_epsx, _geom_epsy, _sigma_delta

@@ -17,7 +17,8 @@ import xpart as xp
 import xfields as xf
 import xobjects as xo
 
-from .sequences import SPS_sequence_maker, BeamParameters_SPS
+from .beam_parameters import BeamParameters_SPS
+from .sequences import SPS_sequence_maker
 from .fma_ions import FMA
 
 sequence_path = Path(__file__).resolve().parent.joinpath('../data/sps_sequences').absolute()
