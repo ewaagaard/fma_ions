@@ -23,7 +23,9 @@ def _geom_epsx(parts: xp.Particles, twiss: xt.TwissTable) -> float:
     We index dx and betx at 0 which corresponds to the beginning / end of
     the line, since this is where / when we will be applying the kicks.
     """
-    sigma_x = np.std(parts.x[parts.state > 0])
+    x = parts.x[parts.state > 0]
+    delta = parts.delta[parts.state > 0]
+    sigma_x = np.std(x - twiss["dx"][0] * delta)
     sig_delta = _sigma_delta(parts)
     return (sigma_x**2 - (twiss["dx"][0] * sig_delta) ** 2) / twiss["betx"][0]
 
@@ -33,7 +35,9 @@ def _geom_epsy(parts: xp.Particles, twiss: xt.TwissTable) -> float:
     We index dy and bety at 0 which corresponds to the beginning / end of
     the line, since this is where / when we will be applying the kicks.
     """
-    sigma_y = np.std(parts.y[parts.state > 0])
+    y = parts.y[parts.state > 0]
+    delta = parts.delta[parts.state > 0]
+    sigma_y =  np.std(y - twiss["dy"][0] * delta)
     sig_delta = _sigma_delta(parts)
     return (sigma_y**2 - (twiss["dy"][0] * sig_delta) ** 2) / twiss["bety"][0]
 #############################################################################
