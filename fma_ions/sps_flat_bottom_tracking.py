@@ -15,9 +15,9 @@ from .sequences import SPS_sequence_maker, BeamParameters_SPS,  BeamParameters_S
 from .sequences import BeamParameters_SPS_Binomial_2016, BeamParameters_SPS_Binomial_2016_before_RF_Spill
 from .fma_ions import FMA
 from .helpers_and_functions import Records, Zeta_Container, Longitudinal_Monitor, _geom_epsx, _geom_epsy, Records_Growth_Rates
-from .tune_ripple import Tune_Ripple_SPS
 from .longitudinal import generate_parabolic_distribution
 from .longitudinal import generate_binomial_distribution_from_PS_extr
+from .longitudinal import generate_particles_transverse_gaussian, build_particles_linear_in_zeta, return_separatrix_coordinates
 
 from xibs.inputs import BeamParameters, OpticsParameters
 from xibs.kicks import KineticKickIBS
@@ -46,11 +46,8 @@ class SPS_Flat_Bottom_Tracker:
                            context=None, 
                            distribution_type='gaussian', 
                            beamParams=None,
-                           use_binomial_dist_after_RF_spill=True,
-                           num_particles_linear_in_zeta=5, 
-                           xy_norm_default=0.1,
-                           scale_factor_Qs=None,
-                           only_one_zeta=False) -> xp.Particles:
+                           matched_for_PS_extraction=False,
+                           scale_factor_Qs=None) -> xp.Particles:
         """
         Generate xp.Particles object: matched Gaussian or longitudinally parabolic
 
@@ -62,100 +59,29 @@ class SPS_Flat_Bottom_Tracker:
             'gaussian', 'qgaussian', 'parabolic', 'binomial' or 'linear_in_zeta'
         beamParams : dataclass
             container of exn, eyn, Nb and sigma_z. Default 'None' will load nominal SPS beam parameters 
-        use_binomial_dist_after_RF_spill : bool
-            for binomial distributions, whether to use measured parameters after initial spill out of RF bucket (or before)
-        num_particles_linear_in_zeta : int
-            number of equally spaced macroparticles linear in zeta
-        xy_norm_default : float
-            if building particles linear in zeta, what is the default normalized transverse coordinates (exact center not ideal for 
-            if we want to study space charge and resonances)
+        matched_for_PS_extraction : bool
+            whether to match particle object to before RF capture at SPS injection. If 'True', particles will be matched to PS extraction 
         scale_factor_Qs : float
             if not None, factor by which we scale Qs (V_RF, h) and divide sigma_z and Nb for similar space charge effects
-        only_one_zeta : bool
-            for 'linear_in_zeta' distribution, whether to select only one particle in zeta (penultimate in amplitude) or not
         """
         if context is None:
             context = xo.ContextCpu(omp_num_threads='auto')
             print('CPU context generated')
         
-        if distribution_type=='gaussian':
-            if beamParams is None:
+        # Load beam parameters if not custom provided
+        if beamParams is None:
+            if distribution_type in ['gaussian', 'parabolic']:
                 beamParams = BeamParameters_SPS()
-            particles = xp.generate_matched_gaussian_bunch(_context=context,
-                num_particles=self.num_part, 
-                total_intensity_particles=beamParams.Nb,
-                nemitt_x=beamParams.exn, 
-                nemitt_y=beamParams.eyn, 
-                sigma_z= beamParams.sigma_z,
-                particle_ref=line.particle_ref, 
-                line=line)
-            print('\nGaussian distribution generated.')
+            elif distribution_type in ['qgaussian', 'binomial']:
+                beamParams = BeamParameters_SPS_Binomial_2016_before_RF_Spill if matched_for_PS_extraction else BeamParameters_SPS_Binomial_2016()
         
-        elif distribution_type=='parabolic':
-            if beamParams is None:
-                beamParams = BeamParameters_SPS()
-            particles = generate_parabolic_distribution(
-                num_particles=self.num_part, 
-                total_intensity_particles=beamParams.Nb,
-                nemitt_x=beamParams.exn, 
-                nemitt_y=beamParams.eyn, 
-                sigma_z= beamParams.sigma_z,
-                line=line, _context=context)
-            print('\nParabolic distribution generated.')
-        
-        elif distribution_type=='qgaussian':
-            if beamParams is None:
-                beamParams = BeamParameters_SPS_Binomial_2016() if use_binomial_dist_after_RF_spill else BeamParameters_SPS_Binomial_2016_before_RF_Spill
-                
-            # Generate longitudinal coordinates s
-            print('\nq-Gaussian distribution with sigma={:.3f} m and q={:.3f} generated.\n'.format(beamParams.sigma_z, beamParams.q))
-            zeta, delta = xp.longitudinal.generate_longitudinal_coordinates(line=line, distribution='qgaussian',
-                                                                            num_particles=self.num_part,
-                                                                            engine='single-rf-harmonic', sigma_z=beamParams.sigma_z,
-                                                                            particle_ref=line.particle_ref, return_matcher=False, q=beamParams.q)
-            # Initiate normalized coordinates
-            x_norm = np.random.normal(size=self.num_part)
-            px_norm = np.random.normal(size=self.num_part)
-            y_norm = np.random.normal(size=self.num_part)
-            py_norm = np.random.normal(size=self.num_part)
-            
-            particles = xp.build_particles(_context=None, particle_ref=line.particle_ref, 
-                                           zeta=zeta, delta=delta,
-                                           x_norm=x_norm, px_norm=px_norm,
-                                           y_norm=y_norm, py_norm=py_norm,
-                                           nemitt_x=beamParams.exn, nemitt_y=beamParams.eyn,
-                                           weight=beamParams.Nb/self.num_part, line=line)
-                
-                
-        elif distribution_type=='binomial':
-            if beamParams is None:
-                beamParams = BeamParameters_SPS_Binomial_2016() if use_binomial_dist_after_RF_spill else BeamParameters_SPS_Binomial_2016_before_RF_Spill
-            
-            # Also calculate SPS separatrix for plotting
-            print('\nCreating binomial with sigma_z = {:.3f} m, and m={}'.format(beamParams.sigma_z, beamParams.m))
-            particles, self._zeta_separatrix, self._delta_separatrix = generate_binomial_distribution_from_PS_extr(num_particles=self.num_part,
-                                                                    nemitt_x=beamParams.exn, nemitt_y=beamParams.eyn,
-                                                                    sigma_z=beamParams.sigma_z, total_intensity_particles=beamParams.Nb,
-                                                                    line=line, m=beamParams.m, return_separatrix_coord=True)
-            print('\nBinomial distribution with sigma={:.3f} m and m={:.3f} generated.\n'.format(beamParams.sigma_z, beamParams.m))
-        
-        elif distribution_type=='linear_in_zeta':
-            
-            # Find suitable zeta range - make linear spacing between close to center of RF bucket and to separatrix
-            factor = scale_factor_Qs if scale_factor_Qs is not None else 1.0
-            zetas = np.linspace(0.05, 0.7 / factor, num=num_particles_linear_in_zeta)
-            
-            # If only want penultimate particle in amplitude, select this one
-            if only_one_zeta:
-                zetas = np.array(zetas[-2])
-
-            # Build the particle object
-            particles = xp.build_particles(line = line, particle_ref = line.particle_ref,
-                                        x_norm=xy_norm_default, y_norm=xy_norm_default, delta=0.0, zeta=zetas,
-                                        nemitt_x = beamParams.exn, nemitt_y = beamParams.eyn, _context=context)
-        else:   
-            raise ValueError('Only Gaussian, parabolic and binomial distributions are implemented!')
-            
+        # Generate particles
+        if distribution_type == 'linear_in_zeta':
+            particles = build_particles_linear_in_zeta(beamParams, line, scale_factor_Qs=scale_factor_Qs)
+        else:
+            particles = generate_particles_transverse_gaussian(beamParams, line, longitudinal_distribution_type=distribution_type, num_part=self.num_part, 
+                                                               _context=context, matched_for_PS_extraction=matched_for_PS_extraction)
+    
         return particles
 
 
@@ -174,7 +100,6 @@ class SPS_Flat_Bottom_Tracker:
                   ibs_step = 5000,
                   print_lost_particle_state=True,
                   minimum_aperture_to_remove=0.025,
-                  add_tune_ripple=False,
                   ripple_plane='both',
                   dq=0.01,
                   ripple_freq=50,
@@ -225,8 +150,6 @@ class SPS_Flat_Bottom_Tracker:
         minimum_aperture_to_remove : float 
             minimum threshold of horizontal SPS aperture to remove, default is 0.025 (can also be set to None)
             as faulty IPM aperture has 0.01 m, which is too small
-        add_tune_ripple : bool
-            whether to add external tune ripple from the Tune_Ripple_SPS class
         ripple_plane : str
             plane in which to add the tune ripple: 'X', 'Y' or 'both'
         dq : float
@@ -287,8 +210,6 @@ class SPS_Flat_Bottom_Tracker:
         else:
             raise ValueError('Context is either "gpu" or "cpu"')
 
-        # Deferred expressions only needed for tune ripple
-        load_line_with_deferred_expressions = True if add_tune_ripple else False
 
         # Get SPS Pb line - select ion or proton
         if ion_type=='Pb' or ion_type=='proton':
@@ -395,19 +316,12 @@ class SPS_Flat_Bottom_Tracker:
             line = fma_sps.install_SC_and_get_line(line=line,
                                                    beamParams=beamParams, 
                                                    mode=SC_mode, 
-                                                   optimize_for_tracking=(not add_tune_ripple), 
+                                                   optimize_for_tracking=True, 
                                                    distribution_type=distribution_type, 
                                                    context=context,
                                                    z_kick_num_integ_per_sigma=z_kick_num_integ_per_sigma)
             print('Installed {} space charge interactions with {} z kick intergrations per sigma on line\n'.format(num_spacecharge_interactions,
                                                                                                                    z_kick_num_integ_per_sigma))
-            
-        # Add tune ripple
-        if add_tune_ripple:
-            turns_per_sec = 1/twiss['T_rev0']
-            ripple_period = int(turns_per_sec/ripple_freq)  # number of turns particle makes during one ripple oscillation
-            ripple = Tune_Ripple_SPS(beta_beat=beta_beat, num_turns=self.num_turns, ripple_period=ripple_period)
-            kqf_vals, kqd_vals, _ = ripple.load_k_from_xtrack_matching(dq=dq, plane=ripple_plane)
 
         # Initialize the dataclasses and store the initial values
         tbt = Records.init_zeroes(self.num_turns)  # only emittances and bunch intensity
@@ -431,11 +345,6 @@ class SPS_Flat_Bottom_Tracker:
             if turn % self.turn_print_interval == 0:
                 print('\nTracking turn {}'.format(turn))            
             
-            ########## ----- Exert TUNE RIPPLE if desired ----- ##########
-            if add_tune_ripple:
-                line.vars['kqf'] = kqf_vals[turn-1]
-                line.vars['kqd'] = kqd_vals[turn-1]
-
             # ----- Track and update records for tracked particles ----- #
             line.track(particles, num_turns=1)
 
