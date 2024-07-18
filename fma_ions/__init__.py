@@ -15,6 +15,7 @@ from .submitter import Submitter
 from .longitudinal import generate_parabolic_distribution
 from .longitudinal import generate_binomial_distribution
 from .longitudinal import generate_binomial_distribution_from_PS_extr
+from .longitudinal import generate_particles_transverse_gaussian, build_particles_linear_in_zeta, return_separatrix_coordinates
 
 from .plotting import SPS_Plotting
 
