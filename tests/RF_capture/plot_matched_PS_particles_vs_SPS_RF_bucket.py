@@ -8,6 +8,8 @@ import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 from scipy.stats import gaussian_kde
 
+also_plot_PS_separatrix = True
+
 plt.rcParams.update(
     {
         "font.family": "serif",
@@ -40,7 +42,8 @@ num_part = 80_000#_000
 particles  = fma_ions.generate_particles_transverse_gaussian(beamParams, line, longitudinal_distribution_type, num_part,
                                                              matched_for_PS_extraction=True)
 zeta_separatrix, delta_separatrix  = fma_ions.return_separatrix_coordinates(beamParams, line, longitudinal_distribution_type)
-
+zeta_separatrix_PS, delta_separatrix_PS  = fma_ions.return_separatrix_coordinates(beamParams, line, longitudinal_distribution_type,
+                                                                                  matched_for_PS_extraction=True)
 
 # Make histograms in all planes to inspect distribution
 bin_heights, bin_borders = np.histogram(particles.zeta, bins=60)
@@ -97,12 +100,19 @@ lns3 = ax3[1].plot(zeta_separatrix, delta_separatrix * 1e3, '-', color='red', li
 ax3[1].plot(zeta_separatrix, -delta_separatrix * 1e3, '-', color='red', linewidth=3, label=None)
 ax3[1].axvline(x=max_zeta, color='r', linestyle='dashed', label='Max SPS $\zeta$ for RF bucket')
 ax3[1].axvline(x=-max_zeta, color='r', linestyle='dashed', label=None)
+if also_plot_PS_separatrix:
+    lns4 = ax3[1].plot(zeta_separatrix_PS, delta_separatrix_PS * 1e3, '-', color='blue', linewidth=3, label='PS RF separatrix')
+    ax3[1].plot(zeta_separatrix_PS, -delta_separatrix_PS * 1e3, '-', color='blue', linewidth=3, label=None)
 ax3[1].set_xlabel(r'$\zeta$ [m]')
 ax3[1].set_ylabel(r'$\delta$ [1e-3]')
-lns = [lns1[0], lns2, lns3[0]]
-labs = [l.get_label() for l in lns]
-ax3[0].legend(lns, labs, fontsize=12.5, loc=6)
-ax3[0].set_xlim(-max_zeta-0.15, max_zeta+0.15)
+if also_plot_PS_separatrix:
+    ax3[1].legend(fontsize=10.5, loc='upper right')
+    ax3[0].set_xlim(-max_zeta-0.85, max_zeta+0.85)
+else:
+    lns = [lns1[0], lns2, lns3[0]]
+    labs = [l.get_label() for l in lns]
+    ax3[0].legend(lns, labs, fontsize=12.5, loc=6)
+    ax3[0].set_xlim(-max_zeta-0.15, max_zeta+0.15)
 plt.tight_layout()
 fig3.savefig('PS_extraction_reconstructed_particles_vs_SPS_separatrix.png', dpi=250)
 
