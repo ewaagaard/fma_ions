@@ -4,7 +4,7 @@ SPS lattice with beta-beat and SC - with GPUs
 import fma_ions
 output_dir = './'
 
-n_turns = 60_000 
+n_turns = 40_000 
 num_part = 10_000
 
 beamParams = fma_ions.BeamParameters_SPS_Binomial_2016()
