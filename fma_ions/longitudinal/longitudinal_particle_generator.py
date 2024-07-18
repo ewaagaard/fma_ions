@@ -123,7 +123,8 @@ def build_particles_linear_in_zeta(beamParams, line, num_particles_linear_in_zet
 
 
 
-def return_separatrix_coordinates(beamParams, line, longitudinal_distribution_type, num_part=1000):
+def return_separatrix_coordinates(beamParams, line, longitudinal_distribution_type, num_part=1000,
+                                  matched_for_PS_extraction=False):
     """
     Generate zeta, delta coordinates of RF bucket separatrix
 
@@ -138,19 +139,25 @@ def return_separatrix_coordinates(beamParams, line, longitudinal_distribution_ty
         'gaussian', 'qgaussian', 'binomial' or 'parabolic'
     num_part : int
         Number of dummy macroparticles. The default is 1000.
-
+    matched_for_PS_extraction : bool
+        whether to generate separatrix coordinates for PS
+        
     Returns
     -------
     zeta_separatrix : np.ndarray
     delta_separatrix : np.ndarray
     """
+    # If particles are matched for PS, use this line for separatrix
+    if matched_for_PS_extraction:
+        ps = PS_sequence_maker()
+        line, _ = ps.load_xsuite_line_and_twiss(at_injection_energy=False)
     
     # Get separatrix coordinates from matcher
     _, _, matcher = generate_longitudinal_coordinates(line=line, distribution=longitudinal_distribution_type, 
-                                                             num_particles=num_part, 
-                                                             engine='single-rf-harmonic', sigma_z=beamParams.sigma_z,
-                                                             particle_ref=line.particle_ref, return_matcher=True, 
-                                                             m=beamParams.m, q=beamParams.q)
+                                                        num_particles=num_part, 
+                                                        engine='single-rf-harmonic', sigma_z=beamParams.sigma_z,
+                                                        particle_ref=line.particle_ref, return_matcher=True, 
+                                                        m=beamParams.m, q=beamParams.q)
     
 
     ufp = matcher.get_unstable_fixed_point()

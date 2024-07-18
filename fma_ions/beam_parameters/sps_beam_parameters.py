@@ -20,7 +20,7 @@ class BeamParameters_SPS_Binomial_2016:
     Data Container for SPS Pb longitudinally binomial/qgaussian beam parameters, from 2016 measurements,
     after RF capture at SPS injection
     """
-    Nb: float = 3.536e8 * 0.95 # injected intensity, after initial spill out of RF bucket
+    Nb: float = 3.536e8 # injected intensity, after initial spill out of RF bucket
     sigma_z: float = 0.213 # RMS bunch length of binomial, after initial spill out of RF bucket #0.213 measured, but takes ~30 turns to stabilze
     m : float = 2.98 # binomial parameter to determine tail of parabolic distribution, after initial spill out of RF bucket
     q : float = 0.59 # q-Gaussian parameter after RF spill (third profile)
@@ -33,7 +33,7 @@ class BeamParameters_SPS_Binomial_2016_before_RF_capture:
     Data Container for SPS Pb longitudinally binomial beam parameters, from 2016 measurements, 
     before RF capture, matched to PS extraction
     """
-    Nb:  float = 3.536e8  # injected bunch intensity measured with Wall Current Monitor (WCM)
+    Nb:  float = 3.722e8  # injected bunch intensity measured with Wall Current Monitor (WCM)
     sigma_z: float = 0.286 # RMS bunch length of binomial, measured before RF spill
     m : float = 6.124 # binomial parameter to determine tail of parabolic distribution
     q : float = 0.82 # q-Gaussian parameter
