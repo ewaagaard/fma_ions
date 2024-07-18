@@ -41,6 +41,8 @@ heights2.append(bin_heights2)
 print('\nBunch length before spill: {:.3f}'.format(np.std(particles.zeta[particles.state > 0])))
 print('Bunch length after spill: {:.3f}'.format(np.std(particles2.zeta[particles2.state > 0])))
 
+
+"""
 # Track particles
 for turn in range(1, 50):            
     print('\nTracking turn {}'.format(turn))       
@@ -69,14 +71,16 @@ widths2.append(bin_widths2)
 centers2.append(bin_centers2)
 heights2.append(bin_heights2)
 string = ['', 'after_tracking']
+"""
+string = ['']
 
 # Load injection data
 sps_plot = fma_ions.SPS_Plotting()
 zeta_SPS_inj, zeta_SPS_final, zeta_PS_BSM, data_SPS_inj, data_SPS_final, data_PS_BSM = sps_plot.load_longitudinal_profile_data()
 zeta_SPS_inj_after_RF_spill, data_SPS_inj_after_RF_spill = sps_plot.load_longitudinal_profile_after_SPS_injection_RF_spill()
 
-for i in range(2):
 
+for i in range(1):
     # Plot longitudinal phase space, initial and final state
     fig = plt.figure(figsize = (8, 7.5))
     gs = fig.add_gridspec(2, hspace=0, height_ratios= [1, 1])

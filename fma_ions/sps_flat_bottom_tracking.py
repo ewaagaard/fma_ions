@@ -100,7 +100,7 @@ class SPS_Flat_Bottom_Tracker:
                   ibs_step = 5000,
                   minimum_aperture_to_remove=0.025,
                   matched_for_PS_extraction=False,
-                  plane_for_beta_beat='Y',
+                  plane_for_beta_beat='both',
                   num_spacecharge_interactions=1080,
                   voltage=3.0e6,
                   scale_factor_Qs=None,
@@ -281,18 +281,23 @@ class SPS_Flat_Bottom_Tracker:
         particles = self.generate_particles(line=line, context=context, distribution_type=distribution_type,
                                             beamParams=beamParams, scale_factor_Qs=scale_factor_Qs, 
                                             matched_for_PS_extraction=matched_for_PS_extraction)
-        particles.reorganize()
-
+        
+        # Initialize the dataclasses and store the initial values
+        tbt = Records.init_zeroes(self.num_turns)  # only emittances and bunch intensity
+        tbt.update_at_turn(0, particles, twiss)
+        
+        # Track particles for one turn         
+        if matched_for_PS_extraction:
+            line.track(particles, num_turns=1)
+            print('Distribution matched for PS extraction - pre-tracked 1 turn, {} particles killed'.format(len(particles.state[particles.state <= 0])))
+        # particles.reorganize() # needed?
 
         ######### IBS kinetic kicks #########
         if apply_kinetic_IBS_kicks:
-            # For the kinetic formalism: kicks are computed based on the
-            # friction and diffusion terms of the kinetic theory of gases
+            #  friction and diffusion terms of the kinetic theory of gases
             ibs_kick = xf.IBSKineticKick(num_slices=50)
 
-            # By default the element is off until configuration. Let's install
-            # the kick at the end of the line and configure it. This internally
-            # provides the necessary information to the element
+            # Install the IBS kinetic kick element
             line.configure_intrabeam_scattering(
                 element=ibs_kick, name="ibskick", index=-1, update_every=ibs_step
             )
@@ -311,10 +316,6 @@ class SPS_Flat_Bottom_Tracker:
                                                    z_kick_num_integ_per_sigma=z_kick_num_integ_per_sigma)
             print('Installed {} space charge interactions with {} z kick intergrations per sigma on line\n'.format(num_spacecharge_interactions,
                                                                                                                    z_kick_num_integ_per_sigma))
-
-        # Initialize the dataclasses and store the initial values
-        tbt = Records.init_zeroes(self.num_turns)  # only emittances and bunch intensity
-        tbt.update_at_turn(0, particles, twiss)
         
         # Install longitudinal beam profile monitor if desired
         if install_beam_monitors:
