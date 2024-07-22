@@ -7,17 +7,17 @@ import pathlib
 
 # Find path of script being run
 dir_path = pathlib.Path(__file__).parent.absolute()
-script_names = ['sps_ideal_lattice_only_ibs_qgaussian_before_RF_spill.py', 'sps_ideal_lattice_only_ibs_qgaussian.py',
+script_names = ['sps_ideal_lattice_qgaussian_before_RF_spill.py', 'sps_ideal_lattice_only_ibs_qgaussian_before_RF_spill.py', 'sps_ideal_lattice_only_ibs_qgaussian.py',
                 'sps_ideal_lattice_only_ibs_gaussian.py', 'sps_10percBB_sc_qgaussian.py', 'sps_10percBB_sc_ibs_qgaussian.py',
                 'sps_10percBB_only_ibs_qgaussian.py', 'sps_5percBB_sc_qgaussian.py', 'sps_5percBB_sc_ibs_qgaussian.py',
                 'sps_5percBB_sc_ibs_gaussian.py', 'sps_5percBB_only_ibs_qgaussian.py', 'sps_2percBB_sc_qgaussian.py',
                 'sps_2percBB_sc_ibs_qgaussian.py', 'sps_2percBB_only_ibs_qgaussian.py']
-folder_names = ['sps_ideal_lattice_only_ibs_qgaussian_before_RF_spill', 'sps_ideal_lattice_only_ibs_qgaussian',
+folder_names = ['sps_ideal_lattice_qgaussian_before_RF_spill', 'sps_ideal_lattice_only_ibs_qgaussian_before_RF_spill', 'sps_ideal_lattice_only_ibs_qgaussian',
                 'sps_ideal_lattice_only_ibs_gaussian', 'sps_10percBB_sc_qgaussian', 'sps_10percBB_sc_ibs_qgaussian',
                 'sps_10percBB_only_ibs_qgaussian', 'sps_5percBB_sc_qgaussian', 'sps_5percBB_sc_ibs_qgaussian',
                 'sps_5percBB_sc_ibs_gaussian', 'sps_5percBB_only_ibs_qgaussian', 'sps_2percBB_sc_qgaussian',
                 'sps_2percBB_sc_ibs_qgaussian', 'sps_2percBB_only_ibs_qgaussian']
-string_array = ['sps_ideal_lattice_only_ibs_qgaussian_before_RF_spill', 'sps_ideal_lattice_only_ibs_qgaussian',
+string_array = ['sps_ideal_lattice_qgaussian_before_RF_spill', 'sps_ideal_lattice_only_ibs_qgaussian_before_RF_spill', 'sps_ideal_lattice_only_ibs_qgaussian',
                 'sps_ideal_lattice_only_ibs_gaussian', 'sps_10percBB_sc_qgaussian', 'sps_10percBB_sc_ibs_qgaussian',
                 'sps_10percBB_only_ibs_qgaussian', 'sps_5percBB_sc_qgaussian', 'sps_5percBB_sc_ibs_qgaussian',
                 'sps_5percBB_sc_ibs_gaussian', 'sps_5percBB_only_ibs_qgaussian', 'sps_2percBB_sc_qgaussian',
