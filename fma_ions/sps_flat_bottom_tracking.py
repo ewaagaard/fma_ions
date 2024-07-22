@@ -109,7 +109,7 @@ class SPS_Flat_Bottom_Tracker:
                   nturns_profile_accumulation_interval = 100,
                   nbins = 140,
                   z_kick_num_integ_per_sigma=10,
-                  cycle_mode_to_minimize_dx_dpx=None,
+                  cycle_mode_to_minimize_dx_dpx='dx',
                   target_dx_and_dpx=None
                   ):
         """
@@ -168,7 +168,8 @@ class SPS_Flat_Bottom_Tracker:
             number of longitudinal kicks per sigma
         cycle_mode_to_minimize_dx_dpx : str
             options: None, 'dx', 'dpx', 'both' and 'custum' --> whether to cycle line to minimum Dx at the start, 
-            minimum D'x or minimize both. None will not perform any cycling
+            minimum D'x or minimize both. None will not perform any cycling. Default is to minimize initial dispersion,
+            where IBS kicks are applied
         target_dx_and_dpx : list
             if cycle_mode chosen to be 'custom' above, provide list [dx_target, dpx_target] to cycle sequence as close as possible 
             to these values
