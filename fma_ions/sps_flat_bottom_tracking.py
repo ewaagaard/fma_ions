@@ -293,18 +293,6 @@ class SPS_Flat_Bottom_Tracker:
             print('Distribution matched for PS extraction - pre-tracked 1 turn, {} particles killed'.format(len(particles.state[particles.state <= 0])))
         # particles.reorganize() # needed?
 
-        ######### IBS kinetic kicks #########
-        if apply_kinetic_IBS_kicks:
-            #  friction and diffusion terms of the kinetic theory of gases
-            ibs_kick = xf.IBSKineticKick(num_slices=50)
-
-            # Install the IBS kinetic kick element
-            line.configure_intrabeam_scattering(
-                element=ibs_kick, name="ibskick", index=-1, update_every=ibs_step
-            )
-            print('\nFixed IBS coefficient recomputation at interval = {} steps\n'.format(ibs_step))
-
-
         # Install SC and build tracker - optimize line if line variables for tune ripple not needed
         if install_SC_on_line:
             fma_sps = FMA(num_spacecharge_interactions=num_spacecharge_interactions)
@@ -317,6 +305,17 @@ class SPS_Flat_Bottom_Tracker:
                                                    z_kick_num_integ_per_sigma=z_kick_num_integ_per_sigma)
             print('Installed {} space charge interactions with {} z kick intergrations per sigma on line\n'.format(num_spacecharge_interactions,
                                                                                                                    z_kick_num_integ_per_sigma))
+            
+        ######### IBS kinetic kicks #########
+        if apply_kinetic_IBS_kicks:
+            #  friction and diffusion terms of the kinetic theory of gases
+            ibs_kick = xf.IBSKineticKick(num_slices=50)
+
+            # Install the IBS kinetic kick element
+            line.configure_intrabeam_scattering(
+                element=ibs_kick, name="ibskick", index=-1, update_every=ibs_step
+            )
+            print('\nFixed IBS coefficient recomputation at interval = {} steps\n'.format(ibs_step))
         
         # Install longitudinal beam profile monitor if desired
         if install_beam_monitors:

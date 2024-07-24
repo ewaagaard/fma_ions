@@ -15,7 +15,7 @@ from scipy.signal import savgol_filter
 import xobjects as xo
 import xtrack as xt
 
-from ..beam_parameters import BeamParameters_SPS, BeamParameters_SPS_Oxygen, BeamParameters_SPS_Proton
+from ..beam_parameters import BeamParameters_SPS, BeamParameters_SPS_Oxygen, BeamParameters_SPS_Proton, BeamParameters_SPS_Binomial_2016_before_RF_capture
 from ..sequences import SPS_sequence_maker
 from ..longitudinal import generate_parabolic_distribution
 from ..longitudinal import generate_binomial_distribution_from_PS_extr
@@ -79,7 +79,6 @@ class SPS_Plotting:
                            also_plot_sigma_delta=False,
                            also_plot_WCM_Nb_data=False,
                            also_plot_DCBCT_Nb_data=False,
-                           adjusting_factor_Nb_for_initial_drop=0.95,
                            plot_emittances_separately=False,
                            also_plot_particle_std_BL=False):
         """
@@ -107,8 +106,6 @@ class SPS_Plotting:
             whether to also plot Wall current monitor data
         also_plot_DCBCT_Nb_data : bool
             whether to also plot DCBCT data
-        adjusting_factor_Nb_for_initial_drop : float
-            factor by which to multiply WCM data (normalized) times the simulated intensity. A factor 1.0 means that simulations
             started without considering initial RF spill, 0.95 means that the beam parameters were adjusted to after the spill
         also_plot_particle_std_BL : bool
             whether to also plot the standard deviation of particle zeta, i.e. discrete bunch length
@@ -170,7 +167,8 @@ class SPS_Plotting:
         if also_plot_DCBCT_Nb_data:
             ax3.plot(time_units_DCBCT, Nb_BCT_normalized, label='DC-BCT', alpha=0.8, color='b')
         if also_plot_WCM_Nb_data:
-            ax3.plot(time_units_WCM, Nb_WCM / adjusting_factor_Nb_for_initial_drop * tbt_dict['Nb'][0],  alpha=0.8,
+            beamParams = BeamParameters_SPS_Binomial_2016_before_RF_capture() # load nominal bunch intensity before RF capture
+            ax3.plot(time_units_WCM, Nb_WCM * beamParams.Nb,  alpha=0.8,
                       label='Measured', color='r')
 
         # Find min and max emittance values - set window limits 
