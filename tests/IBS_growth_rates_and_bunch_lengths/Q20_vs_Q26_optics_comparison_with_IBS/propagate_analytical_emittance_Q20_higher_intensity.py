@@ -100,7 +100,7 @@ tbt_dict['exn'] = tbt_dict['ex'] * twiss.beta0 * twiss.gamma0
 tbt_dict['eyn'] = tbt_dict['ey'] * twiss.beta0 * twiss.gamma0
 tbt_dict['ctime'] = ctime
 
-with open('analytical_Q20.pickle', 'wb') as handle:
+with open('analytical_Q20_higher_intensity.pickle', 'wb') as handle:
     pickle.dump(tbt_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 # Plot the results
