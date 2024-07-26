@@ -80,7 +80,8 @@ class SPS_Plotting:
                            also_plot_WCM_Nb_data=False,
                            also_plot_DCBCT_Nb_data=False,
                            plot_emittances_separately=False,
-                           also_plot_particle_std_BL=False):
+                           also_plot_particle_std_BL=False,
+                           return_fig=False):
         """
         Generates emittance plots from turn-by-turn (TBT) data class from simulations,
         compare with emittance measurements (default 2023-10-16) if desired.
@@ -109,6 +110,8 @@ class SPS_Plotting:
             started without considering initial RF spill, 0.95 means that the beam parameters were adjusted to after the spill
         also_plot_particle_std_BL : bool
             whether to also plot the standard deviation of particle zeta, i.e. discrete bunch length
+        return_fig : bool
+            whether to return figure and axis object - if False, will do plt.show()
         """
         os.makedirs('output_plots', exist_ok=True)
         
@@ -264,7 +267,10 @@ class SPS_Plotting:
         f3.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
         f3.savefig('output_plots/sigma_rms_and_qvalues.png', dpi=250)
 
-        plt.show()
+        if return_fig:
+            return f, (ax1, ax2, ax3) 
+        else:
+            plt.show()
 
 
     def fit_bunch_lengths_to_data(self, 
