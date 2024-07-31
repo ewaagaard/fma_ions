@@ -457,7 +457,7 @@ class SPS_sequence_maker:
                                            line=None,
                                            use_symmetric_lattice=False,
                                            add_non_linear_magnet_errors=False,
-                                           plane='Y',
+                                           plane='both',
                                            add_aperture=False,
                                            voltage=3.0e6
                                            ):
