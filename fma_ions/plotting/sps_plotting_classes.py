@@ -981,6 +981,7 @@ class SPS_Plotting:
         ax0.legend(loc='upper left', fontsize=14)
         plt.tight_layout()
         fig0.savefig('output_plots/SPS_Zeta_Beam_Profile.png', dpi=250)
+        plt.show()
         
         #### Also generate plots comparing with profile measurements
         if also_compare_with_profile_data:
@@ -1092,6 +1093,88 @@ class SPS_Plotting:
         ax0.legend(loc='upper left', fontsize=14)
         plt.tight_layout()
         fig0.savefig('output_plots/SPS_Delta_Beam_Profile.png', dpi=250)
+        plt.show()
+
+        # Fit q-values to delta profiles 
+        output_folder_str = output_folder + '/' if output_folder is not None else ''
+        n_profiles = len(tbt_dict['delta_bin_heights'][0]) 
+        nturns_per_profile = tbt_dict['nturns_profile_accumulation_interval']
+
+        sigmas_q_gaussian = np.zeros(n_profiles)
+        q_vals = np.zeros(n_profiles)
+        q_errors = np.zeros(n_profiles)
+        
+        # Create time array with
+        turns_per_s = tbt_dict['Turns'][-1] / tbt_dict['Seconds'][-1]
+        turn_array = np.arange(0, tbt_dict['Turns'][-1], step=nturns_per_profile)
+        time_array = turn_array.copy() / turns_per_s
+
+        # Initiate fit function
+        fits = Fit_Functions()
+
+        # Try loading already fitted profiles - otherwise fit them!
+        try:
+            with open('{}saved_delta_fits.pickle'.format(output_folder_str), 'rb') as handle:
+                delta_dict = pickle.load(handle)
+                sigmas_q_gaussian, q_vals, q_errors = delta_dict['sigmas_q_gaussian'], delta_dict['q_vals'], delta_dict['q_errors']
+        except FileNotFoundError: 
+            
+            print('Fitting q-values to deltas')
+            # Fit q-gaussian to delta profiles
+            for i in range(n_profiles):
+                delta_bin_heights_sorted = np.array(sorted(tbt_dict['delta_bin_heights'][:, i], reverse=True))
+                delta_height_max_avg = np.mean(delta_bin_heights_sorted[:5]) # take average of top 5 values
+                xdata, ydata = tbt_dict['delta_bin_centers'], tbt_dict['delta_bin_heights'][:, i] / delta_height_max_avg
+                            
+                # Fit q-Gaussian
+                popt_Q, pcov_Q = fits.fit_Q_Gaussian(xdata, ydata, starting_guess_from_Gaussian=True)
+                q_vals[i] = popt_Q[1]
+                q_errors[i] = np.sqrt(np.diag(pcov_Q))[1] # error from covarance_matrix
+                sigmas_q_gaussian[i] = fits.get_sigma_RMS_from_qGaussian_fit(popt_Q)
+                print('Profile {}: q-Gaussian fit q={:.3f} +/- {:.2f}, sigma_RMS = {:.3f} m'.format(i, q_vals[i], q_errors[i], 
+                                                                                                            sigmas_q_gaussian[i]))
+
+            # Create dictionary 
+            delta_dict = {'sigmas_q_gaussian': sigmas_q_gaussian, 'q_vals': q_vals, 'q_errors': q_errors, }
+
+            # Dump saved fits in dictionary, then pickle file
+            with open('{}saved_delta_fits.pickle'.format(output_folder_str), 'wb') as handle:
+                pickle.dump(delta_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+            print('Dictionary with saved delta fits dumped')               
+        
+
+        ######### Plot fitted sigma_delta and q-values #########
+        f3, ax22 = plt.subplots(1, 1, figsize = (8,6))
+        ax22.plot(time_array, sigmas_q_gaussian * 1e3, color='cyan', ls='--', alpha=0.95, label='Simulated delta profiles')
+        ax22.set_ylabel(r'$\sigma_{{\delta, RMS}}$ [m] of fitted q-gaussian [$\times 10^{3}$]')
+        ax22.set_xlabel('Time [s]')
+        ax22.legend()
+        
+        # Insert extra box with fitted m-value of profiles - plot every 10th value
+        ax23 = ax22.inset_axes([0.7,0.5,0.25,0.25])
+        
+        # Select only reasonable q-values (above 0), then plot only every nth interval
+        n_interval = 200
+        q_ind = q_vals>0
+        q = q_vals[q_ind]
+        q_error = q_errors[q_ind]
+        time_array_q = time_array[q_ind]
+    
+        ax23.errorbar(time_array_q[::n_interval], q[::n_interval], yerr=q_error[::n_interval], 
+                        color='cyan', alpha=0.85, markerfacecolor='cyan', 
+                        ls='None', marker='o', ms=5.1, label='Simulated')
+
+
+        ax23.set_ylabel('Fitted $q$-value', fontsize=13.5) #, color='green')
+            #ax23.legend(fontsize=11, loc='upper left')
+            
+        ax23.tick_params(axis="both", labelsize=12)
+        #ax23.tick_params(colors='green', axis='y')
+        #ax23.set_ylim(min(q)-0.2, max(q)+0.2)
+        ax23.set_xlabel('Time [s]', fontsize=13.5)
+        
+        f3.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+        f3.savefig('output_plots/sigma_delta_rms_and_qvalues.png', dpi=250)
         plt.show()
 
 

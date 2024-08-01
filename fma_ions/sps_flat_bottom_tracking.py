@@ -375,7 +375,8 @@ class SPS_Flat_Bottom_Tracker:
 
         # If beam profile monitors have been active
         if install_beam_monitors:
-            tbt.append_profile_monitor_data(monitorH, monitorV, zeta_monitor, seconds_array)
+            tbt.append_profile_monitor_data(monitorH, monitorV, zeta_monitor, seconds_array, 
+                                            also_keep_delta_profiles=also_keep_delta_profiles)
             
         return tbt
 
