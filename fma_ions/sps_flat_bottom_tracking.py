@@ -104,13 +104,13 @@ class SPS_Flat_Bottom_Tracker:
                   num_spacecharge_interactions=1080,
                   voltage=3.0e6,
                   scale_factor_Qs=None,
-                  only_one_zeta=False,
                   install_beam_monitors=True,
                   nturns_profile_accumulation_interval = 100,
                   nbins = 140,
                   z_kick_num_integ_per_sigma=10,
                   cycle_mode_to_minimize_dx_dpx='dx',
-                  target_dx_and_dpx=None
+                  target_dx_and_dpx=None,
+                  also_keep_delta_profiles=False
                   ):
         """
         Run full tracking at SPS flat bottom
@@ -156,8 +156,6 @@ class SPS_Flat_Bottom_Tracker:
             RF voltage in V
         scale_factor_Qs : float
             if not None, factor by which we scale Qs (V_RF, h) and divide sigma_z and Nb for similar space charge effects
-        only_one_zeta : bool
-            for 'linear_in_zeta' distribution, whether to select only one particle in zeta (penultimate in amplitude) or not
         install_beam_monitors : bool
             whether to install beam profile monitors at H and V Wire Scanner locations in SPS, that will record beam profiles
         nturns_profile_accumulation_interval : int
@@ -173,7 +171,9 @@ class SPS_Flat_Bottom_Tracker:
         target_dx_and_dpx : list
             if cycle_mode chosen to be 'custom' above, provide list [dx_target, dpx_target] to cycle sequence as close as possible 
             to these values
-
+        also_keep_delta_profiles : bool
+            whether to keep aggregated delta coordinates in Zeta_Container or not
+            
         Returns:
         --------
         tbt : Records
@@ -327,6 +327,7 @@ class SPS_Flat_Bottom_Tracker:
             zeta_monitor = Longitudinal_Monitor.init_monitor(num_z_bins=nbins, n_turns_tot=self.num_turns, 
                                                              nturns_profile_accumulation_interval=nturns_profile_accumulation_interval)
             zmin_hist, zmax_hist = -0.55*bucket_length, 0.55*bucket_length
+            delta_min_hist, delta_max_hist = 1.3 * min(particles.delta), 1.3 * max(particles.delta)
 
         # Start tracking 
         time00 = time.time()
@@ -347,7 +348,8 @@ class SPS_Flat_Bottom_Tracker:
             if (turn+1) % nturns_profile_accumulation_interval == 0 and install_beam_monitors:
                 
                 # Generate and stack histogram
-                zeta_monitor.convert_zetas_and_stack_histogram(zetas, num_z_bins=nbins, z_range=(zmin_hist, zmax_hist))
+                zeta_monitor.convert_zetas_and_stack_histogram(zetas, num_z_bins=nbins, z_range=(zmin_hist, zmax_hist),
+                                                               delta_range=(delta_min_hist, delta_max_hist))
 
                 # Initialize new zeta containers
                 del zetas

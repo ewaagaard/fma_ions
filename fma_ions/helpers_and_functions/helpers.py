@@ -84,7 +84,8 @@ class Records:
                                     monitorH, 
                                     monitorV, 
                                     monitorZ, 
-                                    seconds_array=None):
+                                    seconds_array=None,
+                                    also_keep_delta_profiles=False):
         """
         If tracking has been done with installed beam profile monitors, 
         append data to class
@@ -97,6 +98,8 @@ class Records:
             longitudinal beam monitor
         seconds_array : np.ndarray
             array containing seconds (instead of turns) of tracking
+        also_keep_delta_profiles : bool
+            whether to keep aggregated delta coordinates in Zeta_Container or not
         """
 
         # Append X and Y WS monitors - convert to lists to save to json        
@@ -109,6 +112,12 @@ class Records:
         self.nturns_profile_accumulation_interval = monitorZ.nturns_profile_accumulation_interval
         self.z_bin_centers = monitorZ.z_bin_centers.tolist()
         self.z_bin_heights = monitorZ.z_bin_heights.tolist()
+
+        # Whether to keep delta profiles or not
+        if also_keep_delta_profiles:
+            self.delta_bin_centers = monitorZ.delta_bin_centers.tolist()
+            self.delta_bin_heights = monitorZ.delta_bin_heights.tolist()
+        self.also_keep_delta_profiles = also_keep_delta_profiles
 
         # Append seconds from tracking 
         if seconds_array is not None:
@@ -140,6 +149,9 @@ class Records:
             data['nturns_profile_accumulation_interval'] = self.nturns_profile_accumulation_interval
             data['z_bin_centers'] = self.z_bin_centers
             data['z_bin_heights'] = self.z_bin_heights
+            if self.also_keep_delta_profiles:
+                data['delta_bin_centers'] = self.delta_bin_centers
+                data['delta_bin_heights'] = self.delta_bin_heights                
         if self.includes_seconds_array:
             data['Seconds'] = self.seconds_array
 
@@ -186,9 +198,10 @@ class Records:
 @dataclass
 class Zeta_Container:
     """
-    Data class to store longitudinal zeta coordinates
+    Data class to store longitudinal zeta and delta coordinates
     """
     zeta: np.ndarray
+    delta: np.ndarray
     state: np.ndarray
     which_context : str
 
@@ -197,9 +210,11 @@ class Zeta_Container:
         # Depending on context, save individual particle values
         if self.which_context=='cpu':
             self.zeta[:, turn] = parts.zeta
+            self.delta[:, turn] = parts.delta
             self.state[:, turn] = parts.state
         elif self.which_context=='gpu':
             self.zeta[:, turn] = parts.zeta.get()
+            self.delta[:, turn] = parts.delta.get()
             self.state[:, turn] = parts.state.get()
 
     @classmethod
@@ -207,6 +222,7 @@ class Zeta_Container:
         """Initialize the dataclass with arrays of zeroes, also with full_data_ind at which turns data is saved"""
         return cls(
             zeta=np.zeros([num_part, n_turns], dtype=float),
+            delta=np.zeros([num_part, n_turns], dtype=float),
             state=np.zeros([num_part, n_turns], dtype=float),
             which_context=which_context,
         )
@@ -215,10 +231,12 @@ class Zeta_Container:
 @dataclass
 class Longitudinal_Monitor:
     """
-    Data class to store histogram of longitudinal zeta coordinate 
+    Data class to store histogram of longitudinal zeta coordinate and delta
     """
     z_bin_centers : np.ndarray
     z_bin_heights : np.ndarray
+    delta_bin_centers : np.ndarray
+    delta_bin_heights : np.ndarray
     n_turns_tot : int 
     nturns_profile_accumulation_interval : int
     index : int = 0 # index to keep track on where to append
@@ -233,6 +251,8 @@ class Longitudinal_Monitor:
         return cls(
             z_bin_centers = np.zeros(num_z_bins, dtype=float),
             z_bin_heights = np.zeros([num_z_bins, n_profiles], dtype=float),
+            delta_bin_centers = np.zeros(num_z_bins, dtype=float),
+            delta_bin_heights = np.zeros([num_z_bins, n_profiles], dtype=float),
             n_turns_tot = n_turns_tot,
             nturns_profile_accumulation_interval = nturns_profile_accumulation_interval
         )
@@ -240,9 +260,11 @@ class Longitudinal_Monitor:
     def convert_zetas_and_stack_histogram(self, 
                                           zetas : Zeta_Container, 
                                           num_z_bins : int, 
-                                          z_range : tuple):
+                                          z_range : tuple,
+                                          delta_range : tuple):
         # Convert data class of particles to histogram
         z = zetas.zeta.flatten()
+        delta = zetas.delta.flatten()
         s = zetas.state.flatten()
 
         # Aggregate longitudinal coordinates of particles still alive
@@ -251,14 +273,24 @@ class Longitudinal_Monitor:
         bin_widths = np.diff(bin_borders)
         bin_centers = bin_borders[:-1] + bin_widths / 2
 
+        # Aggregate delta coordinates of particles still alive
+        deltas_accumulated = delta[s>0]
+        bin_heights_delta, bin_borders_delta = np.histogram(deltas_accumulated, bins=num_z_bins, range=(delta_range[0], delta_range[1]),)
+        bin_widths_delta = np.diff(bin_borders_delta)
+        bin_centers_delta = bin_borders_delta[:-1] + bin_widths_delta / 2
+
         # Append zeta bin centers and width only once
         if self.index == 0:
             self.z_bin_centers = bin_centers
             self.z_bin_widths = bin_widths
+            self.delta_bin_centers = bin_centers_delta
+            self.delta_bin_widths = bin_widths_delta
+
 
         # Append bin heights, if index is good
         if self.index < len(self.z_bin_heights[0]):
             self.z_bin_heights[:, self.index] = bin_heights
+            self.delta_bin_heights[:, self.index] = bin_heights_delta
             #print(f'\nFilled in zeta profile number {self.index + 1} out of {len(self.z_bin_heights[0])}')
         else:
             print(f'\nIndex {self.index} above pre-specified number of profiles {len(self.z_bin_heights[0])}!\n')
