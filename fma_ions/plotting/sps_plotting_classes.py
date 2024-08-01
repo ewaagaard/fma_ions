@@ -980,7 +980,7 @@ class SPS_Plotting:
         ax0.set_ylabel('Normalized counts')
         ax0.legend(loc='upper left', fontsize=14)
         plt.tight_layout()
-        fig0.savefig('output_plots/SPS_Zeta_Beam_Profile_WS.png', dpi=250)
+        fig0.savefig('output_plots/SPS_Zeta_Beam_Profile.png', dpi=250)
         
         #### Also generate plots comparing with profile measurements
         if also_compare_with_profile_data:
@@ -1032,6 +1032,67 @@ class SPS_Plotting:
                 fig.savefig('output_plots/SPS_Pb_longitudinal_profiles_vs_data.png', dpi=250)
         plt.show()
 
+
+    def plot_delta_monitor_data(self,
+                                tbt_dict=None,
+                                output_folder=None,
+                                index_to_plot=None
+                                ):
+        """
+        Use longitudinal data from tracking to plot beam profile of zeta
+        
+        Parameters:
+        -----------
+        tbt_dict : dict
+            dictionary containing turn-by-turn data. If None, will load json file
+        output_folder : str
+            path to data. default is 'None', assuming then that data is in the same directory
+        index_to_plot : list
+            which profiles in time to plot. If None, then automatically plot second and second-last profile
+        also_compare_with_profile_data : bool
+            whether to include profile measurements
+        inj_profile_is_after_RF_spill : bool
+            whether SPS injection profile is after the initial spill out of the RF bucket
+        """
+        os.makedirs('output_plots', exist_ok=True)
+        
+        if tbt_dict is None:
+            tbt_dict = self.load_records_dict_from_json(output_folder=output_folder)
+
+        # If index not provided, select second and second-to-last sets of 100 turns
+        if index_to_plot is None:
+            index_to_plot = [1, -2]
+            
+        # Find total number of stacked profiles and turns per profiles
+        stack_index = np.arange(len(tbt_dict['delta_bin_heights'][0]))    
+        nturns_per_profile = tbt_dict['nturns_profile_accumulation_interval']
+        
+        # Show time stamp if seconds are available
+        if 'Seconds' in tbt_dict:
+            turns_per_s = tbt_dict['Turns'][-1] / tbt_dict['Seconds'][-1]
+            plot_str =  ['At time = {:.2f} s'.format(nturns_per_profile * (1 + stack_index[index_to_plot[0]]) / turns_per_s), 
+                        'At time = {:.2f} s'.format(nturns_per_profile * (1 + stack_index[index_to_plot[1]]) / turns_per_s)]
+        else:
+            plot_str = ['At turn {}'.format(nturns_per_profile * (1 + stack_index[index_to_plot[0]])), 
+                        'At turn {}'.format(nturns_per_profile * (1 + stack_index[index_to_plot[1]]))]
+
+        #### First plot initial and final simulated profile
+        fig0, ax0 = plt.subplots(1, 1, figsize = (8, 6))
+        j = 0
+        delta_heights_avg = []
+        for i in index_to_plot:
+            # Normalize bin heights
+            delta_bin_heights_sorted = np.array(sorted(tbt_dict['delta_bin_heights'][:, i], reverse=True))
+            delta_height_max_avg = np.mean(delta_bin_heights_sorted[:5]) # take average of top 5 values
+            delta_heights_avg.append(delta_height_max_avg)
+            ax0.plot(tbt_dict['delta_bin_centers'], tbt_dict['delta_bin_heights'][:, i] / delta_height_max_avg, label=plot_str[j])
+            j += 1
+        ax0.set_xlabel('$\delta$ [-]')
+        ax0.set_ylabel('Normalized counts')
+        ax0.legend(loc='upper left', fontsize=14)
+        plt.tight_layout()
+        fig0.savefig('output_plots/SPS_Delta_Beam_Profile.png', dpi=250)
+        plt.show()
 
 
     def load_tbt_data_and_plot(self, include_emittance_measurements=False, x_unit_in_turns=True, show_plot=False, output_folder=None,

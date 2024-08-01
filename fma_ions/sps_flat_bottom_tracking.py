@@ -327,7 +327,7 @@ class SPS_Flat_Bottom_Tracker:
             zeta_monitor = Longitudinal_Monitor.init_monitor(num_z_bins=nbins, n_turns_tot=self.num_turns, 
                                                              nturns_profile_accumulation_interval=nturns_profile_accumulation_interval)
             zmin_hist, zmax_hist = -0.55*bucket_length, 0.55*bucket_length
-            delta_min_hist, delta_max_hist = 1.3 * min(particles.delta), 1.3 * max(particles.delta)
+            delta_min_hist, delta_max_hist = 1.2 * min(particles.delta), 1.2 * max(particles.delta)
 
         # Start tracking 
         time00 = time.time()
