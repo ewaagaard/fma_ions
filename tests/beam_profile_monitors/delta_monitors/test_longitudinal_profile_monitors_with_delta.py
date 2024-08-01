@@ -14,6 +14,6 @@ tbt.to_json(output_dir)
 
 # Load data and plot
 sps_plot = fma_ions.SPS_Plotting()
-sps_plot.plot_tracking_data()
+#sps_plot.plot_tracking_data()
 sps_plot.plot_longitudinal_monitor_data()
 sps_plot.plot_WS_profile_monitor_data()
