@@ -925,7 +925,8 @@ class SPS_Plotting:
                                        output_folder=None,
                                        index_to_plot=None,
                                        also_compare_with_profile_data=True,
-                                       inj_profile_is_after_RF_spill=True
+                                       inj_profile_is_after_RF_spill=True,
+                                       normalize_to_integral_area=False
                                        ):
         """
         Use longitudinal data from tracking to plot beam profile of zeta
@@ -942,6 +943,8 @@ class SPS_Plotting:
             whether to include profile measurements
         inj_profile_is_after_RF_spill : bool
             whether SPS injection profile is after the initial spill out of the RF bucket
+        normalize_to_integral_area: bool
+            whether to normalize simulated profiles to integral of measurements, rather than height. Default is False.
         """
         os.makedirs('output_plots', exist_ok=True)
         
@@ -981,34 +984,66 @@ class SPS_Plotting:
         ax0.legend(loc='upper left', fontsize=14)
         plt.tight_layout()
         fig0.savefig('output_plots/SPS_Zeta_Beam_Profile.png', dpi=250)
-        plt.show()
         
         #### Also generate plots comparing with profile measurements
         if also_compare_with_profile_data:
-            # Load data, also after the RF spill
+            
+            # Load data, also after the RF spill - already normalized
             zeta_SPS_inj, zeta_SPS_final, zeta_PS_BSM, data_SPS_inj, data_SPS_final, data_PS_BSM = self.load_longitudinal_profile_data()
             zeta_SPS_inj_after_RF_spill, data_SPS_inj_after_RF_spill = self.load_longitudinal_profile_after_SPS_injection_RF_spill()
-    
+
             # Plot longitudinal phase space, initial and final state
-            fig, ax = plt.subplots(2, 1, figsize = (8, 10), sharex=True)
-            
-            #### Simulated initial distribution
-            ax[0].plot(tbt_dict['z_bin_centers'], tbt_dict['z_bin_heights'][:, index_to_plot[0]] / z_heights_avg[0], 
-                       alpha=0.8, color='darkturquoise', label='Simulated inital')
-            
-            ### Measured injection profile, after or before initial RF spill
+            fig, ax = plt.subplots(1, 2, figsize = (12, 6), sharey=True)
+
+            ##### MEASURED PROFILES PROFILES ##### 
+            ### Injection profile, after or before initial RF spill
             if inj_profile_is_after_RF_spill:
                 ax[0].plot(zeta_SPS_inj_after_RF_spill, data_SPS_inj_after_RF_spill, label='SPS wall current\nmonitor data\nafter RF capture')  
             else:
                 ax[0].plot(zeta_SPS_inj, data_SPS_inj, label='SPS wall current\nmonitor data at inj')  
                 ax[0].plot(zeta_PS_BSM, data_PS_BSM, label='PS BSM data \nat extraction')
-                
-            #### Simulated final distribution
-            ax[1].plot(tbt_dict['z_bin_centers'], tbt_dict['z_bin_heights'][:, index_to_plot[1]] / z_heights_avg[1], 
-                      alpha=0.8, color='lime', label='Simulated final')
-            
+
             #### Measured final distribution
             ax[1].plot(zeta_SPS_final, data_SPS_final, color='darkgreen', label='SPS wall current\nmonitor data\n(at ~22 s)')
+
+            ##### SIMULATED PROFILES ##### 
+            if normalize_to_integral_area and inj_profile_is_after_RF_spill:
+
+                # Find area of measured profile until artificial ringing
+                integral_limits = [tbt_dict['z_bin_centers'][0], 0.22] #tbt_dict['z_bin_centers'][-1]] # upper point in zeta is from where we 
+                #integral_limits = [-np.infty, np.infty] 
+                index_data = np.where((zeta_SPS_inj_after_RF_spill > integral_limits[0]) & (zeta_SPS_inj_after_RF_spill < integral_limits[1]))
+                area_measured_profiles = np.trapz(data_SPS_inj_after_RF_spill[index_data], zeta_SPS_inj_after_RF_spill[index_data])
+
+                # Find area of simulated profile until same area
+                index_simulations = np.where((tbt_dict['z_bin_centers'] > integral_limits[0]) \
+                                             & (tbt_dict['z_bin_centers'] < integral_limits[1]))
+                
+                # Find area of final, initial
+                str_array = ['initial', 'final']
+                color_array = ['darkturquoise', 'lime']
+                for j in [0, 1]:
+                    area_simulated_profiles = np.trapz(tbt_dict['z_bin_heights'][:, index_to_plot[j]][index_simulations],
+                                                    tbt_dict['z_bin_centers'][index_simulations])
+                    
+                    area_ratio = area_measured_profiles / area_simulated_profiles
+                    print('Ratio measured / simulated {}: {:4f}'.format(str_array[j], area_ratio))
+
+                    ### Plot simulated initial distribution - normalize to same area as 
+                    ax[j].plot(tbt_dict['z_bin_centers'], tbt_dict['z_bin_heights'][:, index_to_plot[j]] * area_ratio, 
+                            alpha=0.8, color=color_array[j], label='Simulated {}'.format(str_array[j]))
+
+            else:
+            
+                #### Plot simulated initial distribution - normalize height to 1
+                ax[0].plot(tbt_dict['z_bin_centers'], tbt_dict['z_bin_heights'][:, index_to_plot[0]] / z_heights_avg[0], 
+                        alpha=0.8, color='darkturquoise', label='Simulated inital')
+            
+                #### Simulated final distribution - normalize height to 1
+                ax[1].plot(tbt_dict['z_bin_centers'], tbt_dict['z_bin_heights'][:, index_to_plot[1]] / z_heights_avg[1], 
+                        alpha=0.8, color='lime', label='Simulated final')
+            
+ 
             
             ax[0].legend(loc='upper right', fontsize=13)
             ax[1].legend(loc='upper right', fontsize=13)
@@ -1020,11 +1055,10 @@ class SPS_Plotting:
             ax[0].text(0.02, 0.91, plot_str[0], fontsize=15, transform=ax[0].transAxes)
             ax[1].text(0.02, 0.91, plot_str[1], fontsize=15, transform=ax[1].transAxes)
             #ax[1].text(0.02, 0.85, 'Time = {:.2f} s'.format(full_data_turns_seconds_index[ind_final]), fontsize=12, transform=ax[1].transAxes)
-                
+
+            ax[0].set_xlabel(r'$\zeta$ [m]')    
             ax[1].set_xlabel(r'$\zeta$ [m]')
-            ax[1].set_ylabel('Counts')
             ax[0].set_ylabel('Normalized count')
-            ax[1].set_ylabel('Normalized count')
             plt.tight_layout()
             
             if inj_profile_is_after_RF_spill:
