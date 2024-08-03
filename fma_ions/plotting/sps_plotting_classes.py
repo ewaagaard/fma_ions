@@ -1127,7 +1127,6 @@ class SPS_Plotting:
         ax0.legend(loc='upper left', fontsize=14)
         plt.tight_layout()
         fig0.savefig('output_plots/SPS_Delta_Beam_Profile.png', dpi=250)
-        plt.show()
 
         # Fit q-values to delta profiles 
         output_folder_str = output_folder + '/' if output_folder is not None else ''
@@ -1178,8 +1177,12 @@ class SPS_Plotting:
         
 
         ######### Plot fitted sigma_delta and q-values #########
+
+        index_plot = np.where(sigmas_q_gaussian * 1e3 < 0.9) # otherwise unreasonable values
+
         f3, ax22 = plt.subplots(1, 1, figsize = (8,6))
-        ax22.plot(time_array, sigmas_q_gaussian * 1e3, color='cyan', ls='--', alpha=0.95, label='Simulated delta profiles')
+        ax22.plot(time_array[index_plot], sigmas_q_gaussian[index_plot] * 1e3, color='cyan', ls='--', 
+                  alpha=0.95, label='Simulated delta profiles')
         ax22.set_ylabel(r'$\sigma_{{\delta, RMS}}$ [m] of fitted q-gaussian [$\times 10^{3}$]')
         ax22.set_xlabel('Time [s]')
         ax22.legend()
@@ -1189,7 +1192,7 @@ class SPS_Plotting:
         
         # Select only reasonable q-values (above 0), then plot only every nth interval
         n_interval = 200
-        q_ind = q_vals>0
+        q_ind = np.where((q_vals>0) & (q_vals<1.8) & (q_errors < 3.0))
         q = q_vals[q_ind]
         q_error = q_errors[q_ind]
         time_array_q = time_array[q_ind]
