@@ -5,6 +5,7 @@ import fma_ions
 import os
 import pathlib
 import numpy as np
+import datetime
 
 # Find path of script being run
 dir_path = pathlib.Path(__file__).parent.absolute()
@@ -35,7 +36,7 @@ n_turns = {}
 num_part = 20_000
 
 
-# Test default tracking with space charge on CPU context - then test plotting
+# Tracking on GPU context
 sps = fma_ions.SPS_Flat_Bottom_Tracker(qx0={:.3f}, qy0={:.3f}, num_turns=n_turns, num_part=num_part)
 tbt = sps.track_SPS(ion_type='proton', which_context='gpu', install_SC_on_line=False, beta_beat=0.1, 
                 add_non_linear_magnet_errors=True, apply_kinetic_IBS_kicks=False)
@@ -46,11 +47,12 @@ tbt.to_json(output_dir)
     
     
 # Instantiate the submitter class and launch the jobs
-sub = fma_ions.Submitter() 
+sub = fma_ions.Submitter()
+master_job_name = '{:%Y_%m_%d__%H_%M}'.format(datetime.datetime.now())
 
 # Launch the Python scripts in this folder
 for i, script in enumerate(script_names):
     file_name = os.path.join(dir_path, script)
     print(f"Submitting {file_name}")
-    sub.submit_GPU(file_name, extra_output_name_str=folder_names[i], number_of_turn_string='')
+    sub.submit_GPU(file_name, master_job_name=master_job_name, extra_output_name_str=folder_names[i])
 sub.copy_master_plot_script(folder_names, string_array)
