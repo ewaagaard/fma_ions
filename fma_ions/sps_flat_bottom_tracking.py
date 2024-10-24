@@ -14,7 +14,7 @@ import xobjects as xo
 from .beam_parameters import BeamParameters_SPS, BeamParameters_SPS_Binomial_2016, BeamParameters_SPS_Binomial_2016_before_RF_capture, BeamParameters_SPS_Oxygen, BeamParameters_SPS_Proton
 
 from .sequences import SPS_sequence_maker
-
+from .tune_ripple import Tune_Ripple_SPS
 from .fma_ions import FMA
 from .helpers_and_functions import Records, Zeta_Container, Longitudinal_Monitor, Records_Growth_Rates
 from .longitudinal import generate_particles_transverse_gaussian, build_particles_linear_in_zeta, return_separatrix_coordinates
@@ -95,6 +95,10 @@ class SPS_Flat_Bottom_Tracker:
                   install_SC_on_line=True, 
                   SC_mode='frozen',
                   distribution_type='gaussian',
+                  add_tune_ripple=False,
+                  ripple_plane='both',
+                  dq=0.01,
+                  ripple_freq=50,
                   apply_kinetic_IBS_kicks=False,
                   harmonic_nb = 4653,
                   ibs_step = 5000,
@@ -135,6 +139,14 @@ class SPS_Flat_Bottom_Tracker:
             type of space charge - 'frozen' (recommended), 'quasi-frozen' or 'PIC'
         distribution_type : str
             'gaussian' or 'qgaussian' or 'parabolic' or 'binomial': particle distribution for tracking
+        add_tune_ripple : bool
+            whether to add external tune ripple from the Tune_Ripple_SPS class
+        ripple_plane : str
+            plane in which to add the tune ripple: 'X', 'Y' or 'both'
+        dq : float
+            amplitude for tune ripple, if applied
+        ripple_freq : float
+            ripple frequency in Hz
         add_kinetic_IBS_kicks : bool
             whether to apply kinetic kicks from xibs 
         harmonic_nb : int
@@ -208,9 +220,13 @@ class SPS_Flat_Bottom_Tracker:
         else:
             raise ValueError('Only Pb and O ions implemented so far!')
             
+        # Deferred expressions only needed for tune ripple
+        load_line_with_deferred_expressions = True if add_tune_ripple else False
+            
         # Extract line with aperture, beta-beat and non-linear magnet errors if desired
         line, twiss = sps.load_xsuite_line_and_twiss(add_aperture=add_aperture, beta_beat=beta_beat,
                                                    add_non_linear_magnet_errors=add_non_linear_magnet_errors, 
+                                                   deferred_expressions=load_line_with_deferred_expressions,
                                                    plane=plane_for_beta_beat, voltage=voltage)
         print('{} optics: Qx = {:.3f}, Qy = {:.3f}'.format(self.proton_optics, twiss['qx'], twiss['qy']))
         
@@ -304,6 +320,13 @@ class SPS_Flat_Bottom_Tracker:
             print('Installed {} space charge interactions with {} z kick intergrations per sigma on line\n'.format(num_spacecharge_interactions,
                                                                                                                    z_kick_num_integ_per_sigma))
             
+        # Add tune ripple
+        if add_tune_ripple:
+            turns_per_sec = 1/twiss['T_rev0']
+            ripple_period = int(turns_per_sec/ripple_freq)  # number of turns particle makes during one ripple oscillation
+            ripple = Tune_Ripple_SPS(beta_beat=beta_beat, num_turns=self.num_turns, ripple_period=ripple_period)
+            kqf_vals, kqd_vals, _ = ripple.load_k_from_xtrack_matching(dq=dq, plane=ripple_plane)
+            
         ######### IBS kinetic kicks #########
         if apply_kinetic_IBS_kicks:
             #  friction and diffusion terms of the kinetic theory of gases
@@ -334,6 +357,11 @@ class SPS_Flat_Bottom_Tracker:
             
             if turn % self.turn_print_interval == 0:
                 print('\nTracking turn {}'.format(turn))            
+            
+            ########## ----- Exert TUNE RIPPLE if desired ----- ##########
+            if add_tune_ripple:
+                line.vars['kqf'] = kqf_vals[turn-1]
+                line.vars['kqd'] = kqd_vals[turn-1]
             
             # ----- Track and update records for tracked particles ----- #
             line.track(particles, num_turns=1)
