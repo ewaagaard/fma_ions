@@ -48,7 +48,7 @@ tbt.to_json(output_dir)
     
 # Instantiate the submitter class and launch the jobs
 sub = fma_ions.Submitter() 
-master_job_name = '{:%Y_%m_%d__%H_%M}'.format(datetime.datetime.now())
+master_job_name = '{:%Y_%m_%d__%H_%M_%S}'.format(datetime.datetime.now())
 
 # Launch the Python scripts in this folder
 for i, script in enumerate(script_names):
