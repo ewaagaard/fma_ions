@@ -30,11 +30,11 @@ class Submitter:
 
         # Initiate settings for output
         settings = {}
-        settings['output_directory_afs'] = '/afs/cern.ch/work/e/elwaagaa/public/output_logs/{:%Y_%m_%d__%H_%M}{}'.format(datetime.datetime.now(), 
+        settings['output_directory_afs'] = '/afs/cern.ch/work/e/elwaagaa/public/output_logs/{:%Y_%m_%d__%H_%M_%S}{}'.format(datetime.datetime.now(), 
                                                                                                                                                   extra_str)
-        settings['output_directory_eos'] = '{}/{:%Y_%m_%d__%H_%M}_{}_cpu{}'.format(output_folder_eos, datetime.datetime.now(), 
+        settings['output_directory_eos'] = '{}/{:%Y_%m_%d__%H_%M_%S}_{}_cpu{}'.format(output_folder_eos, datetime.datetime.now(), 
                                                                                 number_of_turn_string, extra_str)
-        self.output_folder_eos = '{}/{:%Y_%m_%d__%H_%M}_{}_cpu'.format(output_folder_eos, datetime.datetime.now(), 
+        self.output_folder_eos = '{}/{:%Y_%m_%d__%H_%M_%S}_{}_cpu'.format(output_folder_eos, datetime.datetime.now(), 
                                                                                 number_of_turn_string)
         os.makedirs(settings['output_directory_afs'], exist_ok=True)
         os.makedirs(settings['output_directory_eos'], exist_ok=True)
@@ -114,11 +114,11 @@ queue'''
 
         # Initiate settings for output
         settings = {}
-        settings['output_directory_afs'] = '/afs/cern.ch/work/e/elwaagaa/public/output_logs/{:%Y_%m_%d__%H_%M}{}'.format(datetime.datetime.now(), 
+        settings['output_directory_afs'] = '/afs/cern.ch/work/e/elwaagaa/public/output_logs/{:%Y_%m_%d__%H_%M_%S}{}'.format(datetime.datetime.now(), 
                                                                                                                                                   extra_str)
-        settings['output_directory_eos'] = '{}/{:%Y_%m_%d__%H_%M}_{}_gpu{}'.format(output_folder_eos, datetime.datetime.now(), 
+        settings['output_directory_eos'] = '{}/{:%Y_%m_%d__%H_%M_%S}_{}_gpu{}'.format(output_folder_eos, datetime.datetime.now(), 
                                                                                 number_of_turn_string, extra_str)
-        self.output_folder_eos = '{}/{:%Y_%m_%d__%H_%M}_{}_gpu'.format(output_folder_eos, datetime.datetime.now(), 
+        self.output_folder_eos = '{}/{:%Y_%m_%d__%H_%M_%S}_{}_gpu'.format(output_folder_eos, datetime.datetime.now(), 
                                                                                 number_of_turn_string)
         os.makedirs(settings['output_directory_afs'], exist_ok=True)
         os.makedirs(settings['output_directory_eos'], exist_ok=True)
