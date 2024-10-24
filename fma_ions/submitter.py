@@ -4,15 +4,17 @@ Class container for batch submission to HTCondor
 import os, stat, datetime, pathlib
 
 class Submitter:
-    """Class to submit jobs to HTCondor more easliy"""
+    """
+    Class to submit jobs to HTCondor more easliy
+    """
     
     def submit_CPU(self, 
                    python_script_source_path : str,
                    output_folder_eos: str = '/eos/user/e/elwaagaa/PhD/Projects/fma_ions/htcondor_submission/output',
-                   extra_output_name_str : str = None,
+                   master_job_name = None,
+                   job_name = None,
                    nr_of_CPUs_to_request : int = 8,
                    change_to_best_node : bool = True,
-                   number_of_turn_string : str = '',
                    copy_plot_scripts_to_output : bool = True,
                    output_format : str = 'json'
                    ):
@@ -25,17 +27,20 @@ class Submitter:
         # Specify which line from fma_ions
         python_script_name = os.path.basename(python_script_source_path)
 
-        # Whether to create extra subfolder or not
-        extra_str = '/{}'.format(extra_output_name_str) if extra_output_name_str is not None else ''
+        #### MASTER JOB NAME #### - if many jobs are run together, which folder should be located in
+        if master_job_name is None:
+            master_job_name = '{:%Y_%m_%d__%H_%M}'.format(datetime.datetime.now())
+
+        #### JOB NAME #### -  Whether to create extra subfolder or not for job
+        extra_str = '/{}'.format(job_name) if job_name is not None else ''
 
         # Initiate settings for output
         settings = {}
-        settings['output_directory_afs'] = '/afs/cern.ch/work/e/elwaagaa/public/output_logs/{:%Y_%m_%d__%H_%M}{}'.format(datetime.datetime.now(), 
-                                                                                                                                                  extra_str)
-        settings['output_directory_eos'] = '{}/{:%Y_%m_%d__%H_%M}_{}_cpu{}'.format(output_folder_eos, datetime.datetime.now(), 
-                                                                                number_of_turn_string, extra_str)
-        self.output_folder_eos = '{}/{:%Y_%m_%d__%H_%M}_{}_cpu'.format(output_folder_eos, datetime.datetime.now(), 
-                                                                                number_of_turn_string)
+        settings['output_directory_afs'] = '/afs/cern.ch/work/e/elwaagaa/public/output_logs/{}{}'.format(master_job_name, extra_str)
+        settings['output_directory_eos'] = '{}/{}_cpu_{}'.format(output_folder_eos, master_job_name, extra_str)
+        self.output_folder_eos = '{}/{}_cpu'.format(output_folder_eos, master_job_name)
+        
+        # Make folder for output
         os.makedirs(settings['output_directory_afs'], exist_ok=True)
         os.makedirs(settings['output_directory_eos'], exist_ok=True)
         print('\nSaving EOS data to {}'.format(settings['output_directory_eos']))
@@ -94,9 +99,9 @@ queue'''
     def submit_GPU(self, 
                    python_script_source_path : str,
                    output_folder_eos : str = '/eos/user/e/elwaagaa/PhD/Projects/fma_ions/htcondor_submission/output',
-                   extra_output_name_str : str = None,
+                   master_job_name = None,
+                   job_name = None,
                    change_to_best_node : bool = True,
-                   number_of_turn_string : str = '',
                    copy_plot_scripts_to_output : bool = True,
                    output_format : str = 'json'
                    ):
@@ -109,17 +114,20 @@ queue'''
         # Specify which line from fma_ions
         python_script_name = os.path.basename(python_script_source_path)
         
-        # Whether to create extra subfolder or not
-        extra_str = '/{}'.format(extra_output_name_str) if extra_output_name_str is not None else ''
+        #### MASTER JOB NAME #### - if many jobs are run together, which folder should be located in
+        if master_job_name is None:
+            master_job_name = '{:%Y_%m_%d__%H_%M}'.format(datetime.datetime.now())
+
+        #### JOB NAME #### -  Whether to create extra subfolder or not for job
+        extra_str = '/{}'.format(job_name) if job_name is not None else ''
 
         # Initiate settings for output
         settings = {}
-        settings['output_directory_afs'] = '/afs/cern.ch/work/e/elwaagaa/public/output_logs/{:%Y_%m_%d__%H_%M}{}'.format(datetime.datetime.now(), 
-                                                                                                                                                  extra_str)
-        settings['output_directory_eos'] = '{}/{:%Y_%m_%d__%H_%M}_{}_gpu{}'.format(output_folder_eos, datetime.datetime.now(), 
-                                                                                number_of_turn_string, extra_str)
-        self.output_folder_eos = '{}/{:%Y_%m_%d__%H_%M}_{}_gpu'.format(output_folder_eos, datetime.datetime.now(), 
-                                                                                number_of_turn_string)
+        settings['output_directory_afs'] = '/afs/cern.ch/work/e/elwaagaa/public/output_logs/{}{}'.format(master_job_name, extra_str)
+        settings['output_directory_eos'] = '{}/{}_cpu_{}'.format(output_folder_eos, master_job_name, extra_str)
+        self.output_folder_eos = '{}/{}_cpu'.format(output_folder_eos, master_job_name)
+        
+        # Make settings for output
         os.makedirs(settings['output_directory_afs'], exist_ok=True)
         os.makedirs(settings['output_directory_eos'], exist_ok=True)
         print('\nSaving EOS data to {}'.format(settings['output_directory_eos']))
