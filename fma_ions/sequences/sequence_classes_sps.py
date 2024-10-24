@@ -15,7 +15,7 @@ from scipy import constants
 from cpymad.madx import Madx
 import json
 
-from ..beam_parameters import BeamParameters_SPS, BeamParameters_SPS_Binomial_2016, BeamParameters_SPS_Binomial_2016_before_RF_capture, BeamParameters_SPS_Oxygen, BeamParameters_SPS_Proton
+from ..beam_parameters import BeamParameters_SPS, BeamParameters_SPS_Oxygen, BeamParameters_SPS_Proton
 
 
 optics =  Path(__file__).resolve().parent.joinpath('../../data/acc-models-sps').absolute()
@@ -27,13 +27,23 @@ error_file_path = Path(__file__).resolve().parent.joinpath('../../data/sps_seque
 class SPS_sequence_maker:
     """ 
     Data class to generate Xsuite line from SPS optics repo, selecting
-    - qx0, qy0: horizontal and vertical tunes
-    - dq1, dq2: X and Y chroma values 
-    - Q_PS: ion charge state in PS
-    - Q_SPS: ion charge state in SPS 
-    - m_ion: ion mass in atomic units
-    - Brho: magnetic rigidity in T*m at injection
-    - optics: absolute path to optics repository -> cloned from https://gitlab.cern.ch/acc-models
+    
+    Parameters:
+    -----------
+    qx0, qy0: float
+        horizontal and vertical tunes
+    dq1, dq2: float
+        X and Y chroma values 
+    Q_PS: int
+        ion charge state in PS
+    Q_SPS: int
+        ion charge state in SPS 
+    m_ion: float
+        ion mass in atomic units
+    Brho: float
+        magnetic rigidity in T*m at injection
+    optics: str 
+        absolute path to optics repository -> cloned from https://gitlab.cern.ch/acc-models
     """
     qx0: float = 26.30
     qy0: float = 26.25
@@ -1034,3 +1044,30 @@ class SPS_sequence_maker:
         print('Minimum Y aperture is y_min={} m at s={} m'.format(y_ap[np.argmin(y_ap)], s_ap[np.argmin(y_ap)]))
 
         return x_ap, y_ap, a
+    
+    
+    def _set_LSE_sextupolar_values(self, line):
+        """
+        Add sextupolar component to the extraction LSE sextupole in SPS (normally zero-valued) to
+        mimic residual sextupolar components of machine - from measurements done with Kostas Paraschou 
+        on 2024-10-10 in the SPS (see elogbook)
+        
+        Parameters:
+        -----------
+        line : xtrack.line
+            xtrack line object to search through
+
+        Returns:
+        --------
+        line : xtrack.line
+            xtrack line object with new sextupole values
+        """
+        lse_names = []
+        k2_values = np.array([0.02295123,  0.03247354, -0.0141614 , -0.0314969 , -0.01139423])
+        
+        # Adjust knob for sextupolar value
+        line.vars['klse10602'] = k2_value
+        twiss = line.twiss() # check stability in twiss command
+        
+        return line
+    
