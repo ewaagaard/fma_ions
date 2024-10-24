@@ -37,7 +37,7 @@ class Submitter:
         # Initiate settings for output
         settings = {}
         settings['output_directory_afs'] = '/afs/cern.ch/work/e/elwaagaa/public/output_logs/{}{}'.format(master_job_name, extra_str)
-        settings['output_directory_eos'] = '{}/{}_cpu_{}'.format(output_folder_eos, master_job_name, extra_str)
+        settings['output_directory_eos'] = '{}/{}_cpu{}'.format(output_folder_eos, master_job_name, extra_str)
         self.output_folder_eos = '{}/{}_cpu'.format(output_folder_eos, master_job_name)
         
         # Make folder for output
@@ -124,8 +124,8 @@ queue'''
         # Initiate settings for output
         settings = {}
         settings['output_directory_afs'] = '/afs/cern.ch/work/e/elwaagaa/public/output_logs/{}{}'.format(master_job_name, extra_str)
-        settings['output_directory_eos'] = '{}/{}_cpu_{}'.format(output_folder_eos, master_job_name, extra_str)
-        self.output_folder_eos = '{}/{}_cpu'.format(output_folder_eos, master_job_name)
+        settings['output_directory_eos'] = '{}/{}_gpu{}'.format(output_folder_eos, master_job_name, extra_str)
+        self.output_folder_eos = '{}/{}_gpu'.format(output_folder_eos, master_job_name)
         
         # Make settings for output
         os.makedirs(settings['output_directory_afs'], exist_ok=True)
