@@ -15,7 +15,7 @@ def generate_binomial_distribution_from_PS_extr(_context=None,
                                                 return_separatrix_coord=False,
                                                 m=None):
     """
-    Function to generate a parabolic longitudinal distribution from PS extraction
+    Function to generate a binomial longitudinal distribution from PS extraction
     intended for SPS injection
     
     Parameters:

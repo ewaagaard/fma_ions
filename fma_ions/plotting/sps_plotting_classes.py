@@ -15,7 +15,8 @@ from scipy.signal import savgol_filter
 import xobjects as xo
 import xtrack as xt
 
-from ..sequences import SPS_sequence_maker, BeamParameters_SPS, BeamParameters_SPS_Oxygen, BeamParameters_SPS_Proton
+from ..beam_parameters import BeamParameters_SPS, BeamParameters_SPS_Oxygen, BeamParameters_SPS_Proton, BeamParameters_SPS_Binomial_2016_before_RF_capture
+from ..sequences import SPS_sequence_maker
 from ..longitudinal import generate_parabolic_distribution
 from ..longitudinal import generate_binomial_distribution_from_PS_extr
 from ..helpers_and_functions import Records, Records_Growth_Rates, Full_Records, _bunch_length, _geom_epsx, _geom_epsy, _sigma_delta
@@ -72,15 +73,15 @@ class SPS_Plotting:
                            output_folder=None,
                            include_emittance_measurements=False,
                            x_unit_in_turns=False,
-                           plot_bunch_length_measurements=True,
+                           plot_bunch_length_measurements=False,
                            distribution_type='qgaussian',
                            inj_profile_is_after_RF_spill=True,
                            also_plot_sigma_delta=False,
-                           also_plot_WCM_Nb_data=True,
+                           also_plot_WCM_Nb_data=False,
                            also_plot_DCBCT_Nb_data=False,
-                           adjusting_factor_Nb_for_initial_drop=0.95,
                            plot_emittances_separately=False,
-                           also_plot_particle_std_BL=False):
+                           also_plot_particle_std_BL=False,
+                           return_fig=False):
         """
         Generates emittance plots from turn-by-turn (TBT) data class from simulations,
         compare with emittance measurements (default 2023-10-16) if desired.
@@ -106,11 +107,11 @@ class SPS_Plotting:
             whether to also plot Wall current monitor data
         also_plot_DCBCT_Nb_data : bool
             whether to also plot DCBCT data
-        adjusting_factor_Nb_for_initial_drop : float
-            factor by which to multiply WCM data (normalized) times the simulated intensity. A factor 1.0 means that simulations
             started without considering initial RF spill, 0.95 means that the beam parameters were adjusted to after the spill
         also_plot_particle_std_BL : bool
             whether to also plot the standard deviation of particle zeta, i.e. discrete bunch length
+        return_fig : bool
+            whether to return figure and axis object - if False, will do plt.show()
         """
         os.makedirs('output_plots', exist_ok=True)
         
@@ -169,7 +170,8 @@ class SPS_Plotting:
         if also_plot_DCBCT_Nb_data:
             ax3.plot(time_units_DCBCT, Nb_BCT_normalized, label='DC-BCT', alpha=0.8, color='b')
         if also_plot_WCM_Nb_data:
-            ax3.plot(time_units_WCM, Nb_WCM / adjusting_factor_Nb_for_initial_drop * tbt_dict['Nb'][0],  alpha=0.8,
+            beamParams = BeamParameters_SPS_Binomial_2016_before_RF_capture() # load nominal bunch intensity before RF capture
+            ax3.plot(time_units_WCM, Nb_WCM * beamParams.Nb,  alpha=0.8,
                       label='Measured', color='r')
 
         # Find min and max emittance values - set window limits 
@@ -265,7 +267,10 @@ class SPS_Plotting:
         f3.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
         f3.savefig('output_plots/sigma_rms_and_qvalues.png', dpi=250)
 
-        plt.show()
+        if return_fig:
+            return f, (ax1, ax2, ax3) 
+        else:
+            plt.show()
 
 
     def fit_bunch_lengths_to_data(self, 
@@ -417,7 +422,8 @@ class SPS_Plotting:
                                             distribution_type='qgaussian',
                                             also_plot_particle_std_BL=False,
                                             bunch_length_in_log_scale=False,
-                                            ylim_bunch_length=None):
+                                            ylim_bunch_length=None, 
+                                            return_fig=False):
         """
         If multiple runs with turn-by-turn (tbt) data has been made, provide list with Records class objects and list
         of explaining string to generate comparative plots of emittances, bunch intensities, etc
@@ -457,6 +463,8 @@ class SPS_Plotting:
             whether to plot standard deviation of particle zeta ("discrete" bunch length)
         ylim_bunch_length : list
             lower and upper bounds for emittance plots, if None (default), automatic limits are set
+        return_fig : bool
+            whether to return figure and axis object - if False, will do plt.show()
         """
         os.makedirs('main_plots', exist_ok=True)
         plt.rcParams.update(
@@ -582,7 +590,6 @@ class SPS_Plotting:
             
             f.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
             f.savefig('main_plots/result_multiple_trackings_compact{}.png'.format(extra_str), dpi=250)
-            plt.show()
             
         else:
             # Emittances and bunch intensity 
@@ -658,6 +665,10 @@ class SPS_Plotting:
             f3.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
             f3.savefig('main_plots/sigma_multiple_trackings{}.png'.format(extra_str), dpi=250)
             
+            
+        if return_fig:
+            return f, (ax1, ax2, ax3) 
+        else:
             plt.show()
 
     def plot_tracking_vs_analytical(self,
@@ -723,6 +734,8 @@ class SPS_Plotting:
             ax1.set_ylim(ylim[0], ylim[1])
             ax2.set_ylim(ylim[0], ylim[1])
             ax3.set_ylim(Nb_limit[0], Nb_limit[1])
+        ax1.set_xlim(time_units[0] - time_units[-1] * 0.05, time_units[-1] * 1.1)
+        ax2.set_xlim(time_units[0] - time_units[-1] * 0.05, time_units[-1] * 1.1)
         f.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
 
         plt.show()
@@ -912,7 +925,8 @@ class SPS_Plotting:
                                        output_folder=None,
                                        index_to_plot=None,
                                        also_compare_with_profile_data=True,
-                                       inj_profile_is_after_RF_spill=True
+                                       inj_profile_is_after_RF_spill=True,
+                                       normalize_to_integral_area=False
                                        ):
         """
         Use longitudinal data from tracking to plot beam profile of zeta
@@ -929,6 +943,8 @@ class SPS_Plotting:
             whether to include profile measurements
         inj_profile_is_after_RF_spill : bool
             whether SPS injection profile is after the initial spill out of the RF bucket
+        normalize_to_integral_area: bool
+            whether to normalize simulated profiles to integral of measurements, rather than height. Default is False.
         """
         os.makedirs('output_plots', exist_ok=True)
         
@@ -967,34 +983,67 @@ class SPS_Plotting:
         ax0.set_ylabel('Normalized counts')
         ax0.legend(loc='upper left', fontsize=14)
         plt.tight_layout()
-        fig0.savefig('output_plots/SPS_Zeta_Beam_Profile_WS.png', dpi=250)
+        fig0.savefig('output_plots/SPS_Zeta_Beam_Profile.png', dpi=250)
         
         #### Also generate plots comparing with profile measurements
         if also_compare_with_profile_data:
-            # Load data, also after the RF spill
+            
+            # Load data, also after the RF spill - already normalized
             zeta_SPS_inj, zeta_SPS_final, zeta_PS_BSM, data_SPS_inj, data_SPS_final, data_PS_BSM = self.load_longitudinal_profile_data()
             zeta_SPS_inj_after_RF_spill, data_SPS_inj_after_RF_spill = self.load_longitudinal_profile_after_SPS_injection_RF_spill()
-    
+
             # Plot longitudinal phase space, initial and final state
-            fig, ax = plt.subplots(2, 1, figsize = (8, 10), sharex=True)
-            
-            #### Simulated initial distribution
-            ax[0].plot(tbt_dict['z_bin_centers'], tbt_dict['z_bin_heights'][:, index_to_plot[0]] / z_heights_avg[0], 
-                       alpha=0.8, color='darkturquoise', label='Simulated inital')
-            
-            ### Measured injection profile, after or before initial RF spill
+            fig, ax = plt.subplots(1, 2, figsize = (12, 6), sharey=True)
+
+            ##### MEASURED PROFILES PROFILES ##### 
+            ### Injection profile, after or before initial RF spill
             if inj_profile_is_after_RF_spill:
                 ax[0].plot(zeta_SPS_inj_after_RF_spill, data_SPS_inj_after_RF_spill, label='SPS wall current\nmonitor data\nafter RF capture')  
             else:
                 ax[0].plot(zeta_SPS_inj, data_SPS_inj, label='SPS wall current\nmonitor data at inj')  
                 ax[0].plot(zeta_PS_BSM, data_PS_BSM, label='PS BSM data \nat extraction')
-                
-            #### Simulated final distribution
-            ax[1].plot(tbt_dict['z_bin_centers'], tbt_dict['z_bin_heights'][:, index_to_plot[1]] / z_heights_avg[1], 
-                      alpha=0.8, color='lime', label='Simulated final')
-            
+
             #### Measured final distribution
             ax[1].plot(zeta_SPS_final, data_SPS_final, color='darkgreen', label='SPS wall current\nmonitor data\n(at ~22 s)')
+
+            ##### SIMULATED PROFILES ##### 
+            if normalize_to_integral_area and inj_profile_is_after_RF_spill:
+
+                # Find area of measured profile until artificial ringing
+                integral_limits = [tbt_dict['z_bin_centers'][0], 0.22] #tbt_dict['z_bin_centers'][-1]] # upper point in zeta is from where we 
+                #integral_limits = [-np.infty, np.infty] 
+                index_data = np.where((zeta_SPS_inj_after_RF_spill > integral_limits[0]) & (zeta_SPS_inj_after_RF_spill < integral_limits[1]))
+                area_measured_profiles = np.trapz(data_SPS_inj_after_RF_spill[index_data], zeta_SPS_inj_after_RF_spill[index_data])
+
+                # Find area of simulated profile until same area
+                index_simulations = np.where((tbt_dict['z_bin_centers'] > integral_limits[0]) \
+                                             & (tbt_dict['z_bin_centers'] < integral_limits[1]))
+                
+                # Find area of final, initial
+                str_array = ['initial', 'final']
+                color_array = ['darkturquoise', 'lime']
+                for j in [0, 1]:
+                    area_simulated_profiles = np.trapz(tbt_dict['z_bin_heights'][:, index_to_plot[j]][index_simulations],
+                                                    tbt_dict['z_bin_centers'][index_simulations])
+                    
+                    area_ratio = area_measured_profiles / area_simulated_profiles
+                    print('Ratio measured / simulated {}: {:4f}'.format(str_array[j], area_ratio))
+
+                    ### Plot simulated initial distribution - normalize to same area as 
+                    ax[j].plot(tbt_dict['z_bin_centers'], tbt_dict['z_bin_heights'][:, index_to_plot[j]] * area_ratio, 
+                            alpha=0.8, color=color_array[j], label='Simulated {}'.format(str_array[j]))
+
+            else:
+            
+                #### Plot simulated initial distribution - normalize height to 1
+                ax[0].plot(tbt_dict['z_bin_centers'], tbt_dict['z_bin_heights'][:, index_to_plot[0]] / z_heights_avg[0], 
+                        alpha=0.8, color='darkturquoise', label='Simulated inital')
+            
+                #### Simulated final distribution - normalize height to 1
+                ax[1].plot(tbt_dict['z_bin_centers'], tbt_dict['z_bin_heights'][:, index_to_plot[1]] / z_heights_avg[1], 
+                        alpha=0.8, color='lime', label='Simulated final')
+            
+ 
             
             ax[0].legend(loc='upper right', fontsize=13)
             ax[1].legend(loc='upper right', fontsize=13)
@@ -1006,11 +1055,10 @@ class SPS_Plotting:
             ax[0].text(0.02, 0.91, plot_str[0], fontsize=15, transform=ax[0].transAxes)
             ax[1].text(0.02, 0.91, plot_str[1], fontsize=15, transform=ax[1].transAxes)
             #ax[1].text(0.02, 0.85, 'Time = {:.2f} s'.format(full_data_turns_seconds_index[ind_final]), fontsize=12, transform=ax[1].transAxes)
-                
+
+            ax[0].set_xlabel(r'$\zeta$ [m]')    
             ax[1].set_xlabel(r'$\zeta$ [m]')
-            ax[1].set_ylabel('Counts')
             ax[0].set_ylabel('Normalized count')
-            ax[1].set_ylabel('Normalized count')
             plt.tight_layout()
             
             if inj_profile_is_after_RF_spill:
@@ -1019,6 +1067,152 @@ class SPS_Plotting:
                 fig.savefig('output_plots/SPS_Pb_longitudinal_profiles_vs_data.png', dpi=250)
         plt.show()
 
+
+    def plot_delta_monitor_data(self,
+                                tbt_dict=None,
+                                output_folder=None,
+                                index_to_plot=None
+                                ):
+        """
+        Use longitudinal data from tracking to plot beam profile of zeta
+        
+        Parameters:
+        -----------
+        tbt_dict : dict
+            dictionary containing turn-by-turn data. If None, will load json file
+        output_folder : str
+            path to data. default is 'None', assuming then that data is in the same directory
+        index_to_plot : list
+            which profiles in time to plot. If None, then automatically plot second and second-last profile
+        also_compare_with_profile_data : bool
+            whether to include profile measurements
+        inj_profile_is_after_RF_spill : bool
+            whether SPS injection profile is after the initial spill out of the RF bucket
+        """
+        os.makedirs('output_plots', exist_ok=True)
+        
+        if tbt_dict is None:
+            tbt_dict = self.load_records_dict_from_json(output_folder=output_folder)
+
+        # If index not provided, select second and second-to-last sets of 100 turns
+        if index_to_plot is None:
+            index_to_plot = [1, -2]
+            
+        # Find total number of stacked profiles and turns per profiles
+        stack_index = np.arange(len(tbt_dict['delta_bin_heights'][0]))    
+        nturns_per_profile = tbt_dict['nturns_profile_accumulation_interval']
+        
+        # Show time stamp if seconds are available
+        if 'Seconds' in tbt_dict:
+            turns_per_s = tbt_dict['Turns'][-1] / tbt_dict['Seconds'][-1]
+            plot_str =  ['At time = {:.2f} s'.format(nturns_per_profile * (1 + stack_index[index_to_plot[0]]) / turns_per_s), 
+                        'At time = {:.2f} s'.format(nturns_per_profile * (1 + stack_index[index_to_plot[1]]) / turns_per_s)]
+        else:
+            plot_str = ['At turn {}'.format(nturns_per_profile * (1 + stack_index[index_to_plot[0]])), 
+                        'At turn {}'.format(nturns_per_profile * (1 + stack_index[index_to_plot[1]]))]
+
+        #### First plot initial and final simulated profile
+        fig0, ax0 = plt.subplots(1, 1, figsize = (8, 6))
+        j = 0
+        delta_heights_avg = []
+        for i in index_to_plot:
+            # Normalize bin heights
+            delta_bin_heights_sorted = np.array(sorted(tbt_dict['delta_bin_heights'][:, i], reverse=True))
+            delta_height_max_avg = np.mean(delta_bin_heights_sorted[:5]) # take average of top 5 values
+            delta_heights_avg.append(delta_height_max_avg)
+            ax0.plot(tbt_dict['delta_bin_centers'], tbt_dict['delta_bin_heights'][:, i] / delta_height_max_avg, label=plot_str[j])
+            j += 1
+        ax0.set_xlabel('$\delta$ [-]')
+        ax0.set_ylabel('Normalized counts')
+        ax0.legend(loc='upper left', fontsize=14)
+        plt.tight_layout()
+        fig0.savefig('output_plots/SPS_Delta_Beam_Profile.png', dpi=250)
+
+        # Fit q-values to delta profiles 
+        output_folder_str = output_folder + '/' if output_folder is not None else ''
+        n_profiles = len(tbt_dict['delta_bin_heights'][0]) 
+        nturns_per_profile = tbt_dict['nturns_profile_accumulation_interval']
+
+        sigmas_q_gaussian = np.zeros(n_profiles)
+        q_vals = np.zeros(n_profiles)
+        q_errors = np.zeros(n_profiles)
+        
+        # Create time array with
+        turns_per_s = tbt_dict['Turns'][-1] / tbt_dict['Seconds'][-1]
+        turn_array = np.arange(0, tbt_dict['Turns'][-1], step=nturns_per_profile)
+        time_array = turn_array.copy() / turns_per_s
+
+        # Initiate fit function
+        fits = Fit_Functions()
+
+        # Try loading already fitted profiles - otherwise fit them!
+        try:
+            with open('{}saved_delta_fits.pickle'.format(output_folder_str), 'rb') as handle:
+                delta_dict = pickle.load(handle)
+                sigmas_q_gaussian, q_vals, q_errors = delta_dict['sigmas_q_gaussian'], delta_dict['q_vals'], delta_dict['q_errors']
+        except FileNotFoundError: 
+            
+            print('Fitting q-values to deltas')
+            # Fit q-gaussian to delta profiles
+            for i in range(n_profiles):
+                delta_bin_heights_sorted = np.array(sorted(tbt_dict['delta_bin_heights'][:, i], reverse=True))
+                delta_height_max_avg = np.mean(delta_bin_heights_sorted[:5]) # take average of top 5 values
+                xdata, ydata = tbt_dict['delta_bin_centers'], tbt_dict['delta_bin_heights'][:, i] / delta_height_max_avg
+                            
+                # Fit q-Gaussian
+                popt_Q, pcov_Q = fits.fit_Q_Gaussian(xdata, ydata, starting_guess_from_Gaussian=True)
+                q_vals[i] = popt_Q[1]
+                q_errors[i] = np.sqrt(np.diag(pcov_Q))[1] # error from covarance_matrix
+                sigmas_q_gaussian[i] = fits.get_sigma_RMS_from_qGaussian_fit(popt_Q)
+                print('Profile {}: q-Gaussian fit q={:.3f} +/- {:.2f}, sigma_RMS = {:.3f} m'.format(i, q_vals[i], q_errors[i], 
+                                                                                                            sigmas_q_gaussian[i]))
+
+            # Create dictionary 
+            delta_dict = {'sigmas_q_gaussian': sigmas_q_gaussian, 'q_vals': q_vals, 'q_errors': q_errors, }
+
+            # Dump saved fits in dictionary, then pickle file
+            with open('{}saved_delta_fits.pickle'.format(output_folder_str), 'wb') as handle:
+                pickle.dump(delta_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+            print('Dictionary with saved delta fits dumped')               
+        
+
+        ######### Plot fitted sigma_delta and q-values #########
+
+        index_plot = np.where(sigmas_q_gaussian * 1e3 < 0.9) # otherwise unreasonable values
+
+        f3, ax22 = plt.subplots(1, 1, figsize = (8,6))
+        ax22.plot(time_array[index_plot], sigmas_q_gaussian[index_plot] * 1e3, color='cyan', ls='--', 
+                  alpha=0.95, label='Simulated delta profiles')
+        ax22.set_ylabel(r'$\sigma_{{\delta, RMS}}$ [m] of fitted q-gaussian [$\times 10^{3}$]')
+        ax22.set_xlabel('Time [s]')
+        ax22.legend()
+        
+        # Insert extra box with fitted m-value of profiles - plot every 10th value
+        ax23 = ax22.inset_axes([0.7,0.5,0.25,0.25])
+        
+        # Select only reasonable q-values (above 0), then plot only every nth interval
+        n_interval = 200
+        q_ind = np.where((q_vals>0) & (q_vals<1.8) & (q_errors < 3.0))
+        q = q_vals[q_ind]
+        q_error = q_errors[q_ind]
+        time_array_q = time_array[q_ind]
+    
+        ax23.errorbar(time_array_q[::n_interval], q[::n_interval], yerr=q_error[::n_interval], 
+                        color='cyan', alpha=0.85, markerfacecolor='cyan', 
+                        ls='None', marker='o', ms=5.1, label='Simulated')
+
+
+        ax23.set_ylabel('Fitted $q$-value', fontsize=13.5) #, color='green')
+            #ax23.legend(fontsize=11, loc='upper left')
+            
+        ax23.tick_params(axis="both", labelsize=12)
+        #ax23.tick_params(colors='green', axis='y')
+        #ax23.set_ylim(min(q)-0.2, max(q)+0.2)
+        ax23.set_xlabel('Time [s]', fontsize=13.5)
+        
+        f3.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+        f3.savefig('output_plots/sigma_delta_rms_and_qvalues.png', dpi=250)
+        plt.show()
 
 
     def load_tbt_data_and_plot(self, include_emittance_measurements=False, x_unit_in_turns=True, show_plot=False, output_folder=None,

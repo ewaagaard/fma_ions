@@ -7,12 +7,9 @@ import pathlib
 
 # Find path of script being run
 dir_path = pathlib.Path(__file__).parent.absolute()
-script_names = ['sps_BB_sc_binomial_Q20.py', 'sps_BB_sc_binomial_Q26.py', 
-                'sps_ideal_lattice_sc_binomial_Q20.py', 'sps_ideal_lattice_sc_binomial_Q26.py']
-folder_names = ['sps_BB_sc_binomial_Q20', 'sps_BB_sc_binomial_Q26',
-                'sps_ideal_lattice_sc_binomial_Q20', 'sps_ideal_lattice_sc_binomial_Q26']
-string_array = ['BB: SC binomial Q20', 'BB: SC binomial Q26', 
-                'Ideal lattice: SC binomial Q20', 'Ideal lattice: SC binomial Q26']    
+script_names = ['sps_ideal_lattice_ibs_delta_monitor.py']
+folder_names = ['sps_ideal_lattice_ibs_delta_monitor']
+string_array = ['sps_ideal_lattice_ibs_delta_monitor']    
 
 # Instantiate the submitter class and launch the two jobs
 sub = fma_ions.Submitter() 

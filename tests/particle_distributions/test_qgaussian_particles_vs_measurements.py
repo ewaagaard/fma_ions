@@ -9,12 +9,12 @@ import xobjects as xo
 # Generate SPS sequence
 sps_maker = fma_ions.SPS_sequence_maker()
 line, twiss = sps_maker.load_xsuite_line_and_twiss()
-context = xo.ContextCpu()
+context = xo.ContextCpu(omp_num_threads='auto')
 
 # Test default tracking with space charge on GPU context - then test plotting
-sps = fma_ions.SPS_Flat_Bottom_Tracker(num_part=50_000, num_turns=100, turn_print_interval=10)
-particles = sps.generate_particles(line, context, distribution_type='binomial', use_binomial_dist_after_RF_spill=False)
-particles2 = sps.generate_particles(line, context, distribution_type='binomial', use_binomial_dist_after_RF_spill=True)
+sps = fma_ions.SPS_Flat_Bottom_Tracker(num_part=50_000, num_turns=50, turn_print_interval=10)
+particles = sps.generate_particles(line, context, distribution_type='qgaussian', matched_for_PS_extraction=True)
+particles2 = sps.generate_particles(line, context, distribution_type='qgaussian', matched_for_PS_extraction=False)
 
 # Make histograms of particles
 widths, centers, heights = [], [], []
@@ -41,6 +41,8 @@ heights2.append(bin_heights2)
 print('\nBunch length before spill: {:.3f}'.format(np.std(particles.zeta[particles.state > 0])))
 print('Bunch length after spill: {:.3f}'.format(np.std(particles2.zeta[particles2.state > 0])))
 
+
+"""
 # Track particles
 for turn in range(1, 50):            
     print('\nTracking turn {}'.format(turn))       
@@ -69,14 +71,16 @@ widths2.append(bin_widths2)
 centers2.append(bin_centers2)
 heights2.append(bin_heights2)
 string = ['', 'after_tracking']
+"""
+string = ['']
 
 # Load injection data
 sps_plot = fma_ions.SPS_Plotting()
 zeta_SPS_inj, zeta_SPS_final, zeta_PS_BSM, data_SPS_inj, data_SPS_final, data_PS_BSM = sps_plot.load_longitudinal_profile_data()
 zeta_SPS_inj_after_RF_spill, data_SPS_inj_after_RF_spill = sps_plot.load_longitudinal_profile_after_SPS_injection_RF_spill()
 
-for i in range(2):
 
+for i in range(1):
     # Plot longitudinal phase space, initial and final state
     fig = plt.figure(figsize = (8, 7.5))
     gs = fig.add_gridspec(2, hspace=0, height_ratios= [1, 1])
@@ -100,8 +104,8 @@ for i in range(2):
     ax[0].set_ylabel('Amplitude [a.u.]')
     ax[1].set_ylabel('Amplitude [a.u.]')
     
-    ax[0].text(0.6, 0.91, 'At injection, before RF spill', fontsize=13, transform=ax[0].transAxes)
-    ax[1].text(0.6, 0.91, 'At injection, after RF spill', fontsize=13, transform=ax[1].transAxes)
+    ax[0].text(0.6, 0.91, 'At injection, before RF capture', fontsize=13, transform=ax[0].transAxes)
+    ax[1].text(0.6, 0.91, 'At injection, after RF capture', fontsize=13, transform=ax[1].transAxes)
     fig.tight_layout()
     fig.savefig('SPS_simulated_particles_vs_before_and_after_RF_spill{}.png'.format(string[i]), dpi=250)
     plt.show()

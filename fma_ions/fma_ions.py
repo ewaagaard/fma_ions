@@ -29,8 +29,9 @@ plt.rcParams.update(
 
 
 import NAFFlib
-from .sequences import PS_sequence_maker, BeamParameters_PS
-from .sequences import SPS_sequence_maker, BeamParameters_SPS
+from .sequences import PS_sequence_maker
+from .sequences import SPS_sequence_maker
+from .beam_parameters import BeamParameters_SPS
 from .resonance_lines import resonance_lines
 
 @dataclass
@@ -137,9 +138,7 @@ class FMA:
         line.discard_tracker()
         
         # Extract Twiss table from before installing space charge
-        line.build_tracker(_context=context, compile=False)
-        if optimize_for_tracking:
-            line.optimize_for_tracking()
+        #line.build_tracker(_context=context, compile=False)
         twiss_xtrack = line.twiss()
 
         print('\nInstalling space charge on line...')
@@ -194,9 +193,10 @@ class FMA:
         else:
             raise ValueError(f'Invalid mode: {mode}')
 
-        # Build tracker for line
+        # Build tracker for line, optimize elements if desired
         line.build_tracker(_context = context)
-        #twiss_xtrack_with_sc = line.twiss()  # --> better to do Twiss before installing SC, if enough SC interactions
+        if optimize_for_tracking:
+            line.optimize_for_tracking()
 
         # Install longitudinal kick for frozen and quasi-frozen
         if add_Z_kick_for_SC and (mode != 'PIC'):

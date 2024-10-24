@@ -25,6 +25,7 @@ __pycache__/
 # MADX files
 internal_mag_pot.txt
 err.out
+*Zone.Identifier*
 
 # Distribution / packaging
 .Python
