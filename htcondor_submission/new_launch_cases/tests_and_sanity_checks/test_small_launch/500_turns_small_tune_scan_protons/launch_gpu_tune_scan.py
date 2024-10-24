@@ -4,34 +4,49 @@ Launcher script to HTCondor for GPU - generate python scripts for tune scan
 import fma_ions
 import os
 import pathlib
+import numpy as np
 
 # Find path of script being run
 dir_path = pathlib.Path(__file__).parent.absolute()
 
-        run_file = open('plot_tbt.py','w')
-        run_file.write(
-        '''import fma_ions
-import pandas as pd
+# Define run files and which parameters to change
+Qy_range = np.arange(26.13, 26.25, 0.01)
+run_files = ['sps_run_{}_tbt.py'.format(i+1) for i in range(len(Qy_range))]
+
+# Define script and folder names
+script_names = run_files.copy()
+folder_names = ['sps_Qy_{:.2f}_IBS_BB'.format(Qy_range[i]) for i in range(len(Qy_range))]
+string_array = ['Qy = {:.2f}, IBS with BB'.format(Qy_range[i]) for i in range(len(Qy_range))]    
+
+# Generate the scripts to be submitted
+for i, run_file in enumerate(run_files):
+
+    # Write run file for given tune
+    run_file = open(run_file, 'w')
+    run_file.write(
+    '''import fma_ions
 output_dir = './'
 
 n_turns = 500
 num_part = 20_000
 
-# Instantiate beam parameters, custom made to compare with 2016 measurements
-beamParams = fma_ions.BeamParameters_SPS()
-beamParams.Nb = 3.536e8 * 0.95  # loss factor from first turn observed with wall current monitor
-beamParams.exn = 1.3e-6 # in m
-beamParams.eyn = 0.8e-6 # in m
-beamParams.sigma_z_binomial = 0.215 # what we measure after initial losses out of the RF bucket
-beamParams.m = 2.8 # meausred for binomial after SPS injection
-Qy_frac = 25 # old fractional tune
 
 # Test default tracking with space charge on CPU context - then test plotting
 sps = fma_ions.SPS_Flat_Bottom_Tracker(num_turns=n_turns, num_part=num_part)
-tbt = sps.track_SPS(which_context='gpu', Qy_frac=Qy_frac, beamParams=beamParams, install_SC_on_line=False, beta_beat=0.1, 
-                    add_non_linear_magnet_errors=True, apply_kinetic_IBS_kicks=True, ibs_step = 5000)
+tbt = sps.track_SPS(qy0={:.4f}, which_context='gpu', install_SC_on_line=False, beta_beat=0.1, 
+                add_non_linear_magnet_errors=True, apply_kinetic_IBS_kicks=True)
 tbt.to_json(output_dir)
+    '''.format(Qy_range[i])
+    )
+    run_file.close()
+    
+    
+# Instantiate the submitter class and launch the jobs
+sub = fma_ions.Submitter() 
 
-        '''
-        )
-        plot_file.close()
+# Launch the Python scripts in this folder
+for i, script in enumerate(script_names):
+    file_name = os.path.join(dir_path, script)
+    print(f"Submitting {file_name}")
+    sub.submit_GPU(file_name, extra_output_name_str=folder_names[i], number_of_turn_string='')
+sub.copy_master_plot_script(folder_names, string_array)
