@@ -14,7 +14,7 @@ dir_path = pathlib.Path(__file__).parent.absolute()
 num_turns = 20 
 Qx = 26.13
 Qy_range = np.arange(26.15, 26.30, 0.01)
-run_files = ['sps_run_{}_tbt_qx_26dot13.py'.format(i+1) for i in range(len(Qy_range))]
+run_files = ['sps_run_{}_tbt_qx_26dot13_cpu.py'.format(i+1) for i in range(len(Qy_range))]
 
 # Define script and folder names
 script_names = run_files.copy()
