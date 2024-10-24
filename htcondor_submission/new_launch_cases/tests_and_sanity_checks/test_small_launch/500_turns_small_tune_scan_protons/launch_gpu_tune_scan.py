@@ -33,7 +33,7 @@ num_part = 20_000
 
 # Test default tracking with space charge on CPU context - then test plotting
 sps = fma_ions.SPS_Flat_Bottom_Tracker(num_turns=n_turns, num_part=num_part)
-tbt = sps.track_SPS(qy0={:.4f}, which_context='gpu', install_SC_on_line=False, beta_beat=0.1, 
+tbt = sps.track_SPS(qy0={:.4f}, ion_type='proton', which_context='gpu', install_SC_on_line=False, beta_beat=0.1, 
                 add_non_linear_magnet_errors=True, apply_kinetic_IBS_kicks=True)
 tbt.to_json(output_dir)
     '''.format(Qy_range[i])
