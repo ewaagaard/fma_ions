@@ -9,7 +9,6 @@ class Submitter:
     def submit_CPU(self, 
                    python_script_source_path : str,
                    output_folder_eos: str = '/eos/user/e/elwaagaa/PhD/Projects/fma_ions/htcondor_submission/output',
-                   job_flavour: str = 'nextweek',
                    extra_output_name_str : str = None,
                    nr_of_CPUs_to_request : int = 8,
                    change_to_best_node : bool = True,
@@ -17,7 +16,11 @@ class Submitter:
                    copy_plot_scripts_to_output : bool = True,
                    output_format : str = 'json'
                    ):
-        """Method to submit .py script to HTCondor using CPUs"""
+        """
+        Method to submit .py script to HTCondor using CPUs
+        
+        Instead of +JobFlavour = 'nextweek', use +MaxRuntime = 1209500 (two weeks)
+        """
 
         # Specify which line from fma_ions
         python_script_name = os.path.basename(python_script_source_path)
@@ -73,7 +76,7 @@ output                = {os.path.join(settings['output_directory_afs'],"$(Cluste
 error                 = {os.path.join(settings['output_directory_afs'],"$(ClusterId).$(ProcId).err")}
 log                   = {os.path.join(settings['output_directory_afs'],"$(ClusterId).$(ProcId).log")}
 request_CPUs = {nr_of_CPUs_to_request}
-+JobFlavour = "{job_flavour}"
++MaxRuntime = 1209500
 queue'''
         )
         job_file.close()
@@ -91,14 +94,17 @@ queue'''
     def submit_GPU(self, 
                    python_script_source_path : str,
                    output_folder_eos : str = '/eos/user/e/elwaagaa/PhD/Projects/fma_ions/htcondor_submission/output',
-                   job_flavour : str ='nextweek',
                    extra_output_name_str : str = None,
                    change_to_best_node : bool = True,
                    number_of_turn_string : str = '',
                    copy_plot_scripts_to_output : bool = True,
                    output_format : str = 'json'
                    ):
-        """Method to submit .py script to HTCondor with GPUs"""        
+        """
+        Method to submit .py script to HTCondor with GPUs
+        
+        Instead of +JobFlavour = 'nextweek', use +MaxRuntime = 1209500 (two weeks)
+        """        
 
         # Specify which line from fma_ions
         python_script_name = os.path.basename(python_script_source_path)
@@ -154,7 +160,7 @@ output                = {os.path.join(settings['output_directory_afs'],"$(Cluste
 error                 = {os.path.join(settings['output_directory_afs'],"$(ClusterId).$(ProcId).err")}
 log                   = {os.path.join(settings['output_directory_afs'],"$(ClusterId).$(ProcId).log")}
 request_GPUs = 1
-+JobFlavour = "{job_flavour}"
++MaxRuntime = 1209500
 queue'''
         )
         # previously also included "requirements = regexp("V100", TARGET.CUDADeviceName) || regexp("A100", TARGET.CUDADeviceName)"
