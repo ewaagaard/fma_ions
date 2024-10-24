@@ -223,7 +223,10 @@ class SPS_Flat_Bottom_Tracker:
             raise ValueError('Only Pb and O ions implemented so far!')
             
         # Deferred expressions only needed for tune ripple and if re-matching after cycling sequence
-        load_line_with_deferred_expressions = True if add_tune_ripple or cycle_mode_to_minimize_dx_dpx else False
+        if add_tune_ripple or (cycle_mode_to_minimize_dx_dpx is not None): 
+            load_line_with_deferred_expressions = True 
+        else:
+            load_line_with_deferred_expressions = False
             
         # Extract line with aperture, beta-beat and non-linear magnet errors if desired
         line, twiss = sps.load_xsuite_line_and_twiss(add_aperture=add_aperture, beta_beat=beta_beat,
