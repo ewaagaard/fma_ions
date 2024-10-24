@@ -13,7 +13,7 @@ dir_path = pathlib.Path(__file__).parent.absolute()
 num_turns = 150_000 # corresponds to about 3.46 s for protons
 Qx = 26.30
 Qy_range = np.arange(26.15, 26.30, 0.01)
-run_files = ['sps_run_{}_tbt_qx_26dot13.py'.format(i+1) for i in range(len(Qy_range))]
+run_files = ['sps_run_{}_tbt_qx_26dot30.py'.format(i+1) for i in range(len(Qy_range))]
 
 # Define script and folder names
 script_names = run_files.copy()
