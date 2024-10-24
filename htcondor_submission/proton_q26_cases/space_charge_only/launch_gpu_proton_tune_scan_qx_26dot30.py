@@ -17,7 +17,7 @@ run_files = ['sps_run_{}_tbt_qx_26dot30.py'.format(i+1) for i in range(len(Qy_ra
 
 # Define script and folder names
 script_names = run_files.copy()
-folder_names = ['sps_Qx_{:.2d}_Qy_{:.2f}'.format(Qx, Qy_range[i]) for i in range(len(Qy_range))]
+folder_names = ['sps_Qx_{:.2f}_Qy_{:.2f}'.format(Qx, Qy_range[i]) for i in range(len(Qy_range))]
 string_array = ['Qy = {:.2f}, Qx = {:.2f} space charge'.format(Qy_range[i], Qx) for i in range(len(Qy_range))]    
 
 # Generate the scripts to be submitted
