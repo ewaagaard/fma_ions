@@ -32,7 +32,7 @@ class SPS_Flat_Bottom_Tracker:
     """
     Container to track xp.Particles at SPS flat bottom and store beam parameter results
     """
-    num_part: int = 10_000
+    num_part: int = 20_000
     num_turns: int = 1000
     output_folder : str = "output" 
     turn_print_interval : int = 10_000
@@ -111,7 +111,6 @@ class SPS_Flat_Bottom_Tracker:
                   install_beam_monitors=True,
                   nturns_profile_accumulation_interval = 100,
                   nbins = 140,
-                  z_kick_num_integ_per_sigma=10,
                   cycle_mode_to_minimize_dx_dpx='dx',
                   target_dx_and_dpx=None,
                   also_keep_delta_profiles=False
@@ -202,6 +201,9 @@ class SPS_Flat_Bottom_Tracker:
             if distribution_type in ['binomial', 'qgaussian']:
                 beamParams = BeamParameters_SPS_Binomial_2016_before_RF_capture if matched_for_PS_extraction else BeamParameters_SPS_Binomial_2016()
         print('Beam parameters:', beamParams)
+
+        # Decide if longitudinal space charge kick is needed - for proton typically not needed, but required for ion synchrotron tune
+        z_kick_num_integ_per_sigma=0 if ion_type == 'proton' else 10
 
         # Select relevant context
         if which_context=='gpu':
@@ -321,6 +323,11 @@ class SPS_Flat_Bottom_Tracker:
 
         # Install SC and build tracker - optimize line if line variables for tune ripple not needed
         if install_SC_on_line:
+            
+            # Whether the longitudinal space charge kick should be included or not
+            add_Z_kick_for_SC = True if z_kick_num_integ_per_sigma > 0 else False
+            print('\nParticle type is {}, number of longitudinal SC kicks: {}'.format(ion_type, z_kick_num_integ_per_sigma))
+            
             fma_sps = FMA(num_spacecharge_interactions=num_spacecharge_interactions)
             line = fma_sps.install_SC_and_get_line(line=line,
                                                    beamParams=beamParams, 
@@ -328,6 +335,7 @@ class SPS_Flat_Bottom_Tracker:
                                                    optimize_for_tracking=True, 
                                                    distribution_type=distribution_type, 
                                                    context=context,
+                                                   add_Z_kick_for_SC=add_Z_kick_for_SC,
                                                    z_kick_num_integ_per_sigma=z_kick_num_integ_per_sigma)
             print('Installed {} space charge interactions with {} z kick intergrations per sigma on line\n'.format(num_spacecharge_interactions,
                                                                                                                    z_kick_num_integ_per_sigma))
