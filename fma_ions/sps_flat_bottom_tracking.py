@@ -332,7 +332,7 @@ class SPS_Flat_Bottom_Tracker:
             line = fma_sps.install_SC_and_get_line(line=line,
                                                    beamParams=beamParams, 
                                                    mode=SC_mode, 
-                                                   optimize_for_tracking=True, 
+                                                   optimize_for_tracking=(not add_tune_ripple), 
                                                    distribution_type=distribution_type, 
                                                    context=context,
                                                    add_Z_kick_for_SC=add_Z_kick_for_SC,
