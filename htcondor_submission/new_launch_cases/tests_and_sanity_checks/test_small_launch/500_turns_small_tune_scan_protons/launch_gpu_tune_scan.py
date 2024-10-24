@@ -20,8 +20,9 @@ string_array = ['Qy = {:.2f}, IBS with BB'.format(Qy_range[i]) for i in range(le
 
 # Generate the scripts to be submitted
 for i, run_file in enumerate(run_files):
-
+    
     # Write run file for given tune
+    print('Generating launch script {}\n'.format(run_file))
     run_file = open(run_file, 'w')
     run_file.write(
     '''import fma_ions
