@@ -141,8 +141,6 @@ class SPS_Flat_Bottom_Tracker:
             harmonic used for SPS RF system
         ibs_step : int
             Turn interval at which to recalculate IBS growth rates
-        Qy_frac : int
-            fractional part of vertical tune, e.g. "19" for 26.19
         minimum_aperture_to_remove : float 
             minimum threshold of horizontal SPS aperture to remove, default is 0.025 (can also be set to None)
             as faulty IPM aperture has 0.01 m, which is too small
