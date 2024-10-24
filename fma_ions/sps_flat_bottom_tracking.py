@@ -221,19 +221,33 @@ class SPS_Flat_Bottom_Tracker:
             sps = SPS_sequence_maker(ion_type='O', Q_PS=4., Q_SPS=8., m_ion=15.9949, proton_optics=self.proton_optics, qx0=self.qx0, qy0=self.qy0) 
         else:
             raise ValueError('Only Pb and O ions implemented so far!')
-            
+        
+        '''
         # Deferred expressions only needed for tune ripple and if re-matching after cycling sequence
         if add_tune_ripple or (cycle_mode_to_minimize_dx_dpx is not None): 
             load_line_with_deferred_expressions = True 
         else:
             load_line_with_deferred_expressions = False
-            
+        print('\nLoaded line with deferred expression: {}'.format(load_line_with_deferred_expressions))
+        '''  
+        
         # Extract line with aperture, beta-beat and non-linear magnet errors if desired
         line, twiss = sps.load_xsuite_line_and_twiss(add_aperture=add_aperture, beta_beat=beta_beat,
                                                    add_non_linear_magnet_errors=add_non_linear_magnet_errors, 
-                                                   deferred_expressions=load_line_with_deferred_expressions,
+                                                   deferred_expressions=True, # needed for tune matching
                                                    plane=plane_for_beta_beat, voltage=voltage)
         print('{} optics: Qx = {:.3f}, Qy = {:.3f}'.format(self.proton_optics, twiss['qx'], twiss['qy']))
+        
+        # Rematch tunes to ensure correct values
+        line.match(
+            vary=[
+                xt.Vary('kqf', step=1e-8),
+                xt.Vary('kqd', step=1e-8),
+            ],
+            targets = [
+                xt.Target('qx', self.qx0, tol=1e-8),
+                xt.Target('qy', self.qy0, tol=1e-8),
+            ])
         
         # Remove unrealistic aperture below limit
         if minimum_aperture_to_remove is not None and add_aperture:
@@ -253,20 +267,9 @@ class SPS_Flat_Bottom_Tracker:
                 raise ValueError("No valid cycling mode - choose 'dx', 'dpx' or 'both'")
             line = line.cycle(index_first_element=np.argmin(penalty))
             del twiss # delete old twiss table
-            
-            # Rematch tunes to correct values
-            line.match(
-                vary=[
-                    xt.Vary('kqf', step=1e-8),
-                    xt.Vary('kqd', step=1e-8),
-                ],
-                targets = [
-                    xt.Target('qx', self.qx0, tol=1e-7),
-                    xt.Target('qy', self.qy0, tol=1e-7),
-                ])
-            
+                        
             twiss = line.twiss()
-            print('Cycled sequence: Qx = {:.3f}, Qy = {:.3f}, starting Dx = {:3f} m, starting Dxprime = {:.3f}m\n'.format(twiss['qx'], twiss['qy'], twiss.dx[0], twiss.dpx[0]))
+            print('Cycled sequence: Qx = {:.4f}, Qy = {:.4f}, starting Dx = {:3f} m, starting Dxprime = {:.3f}m\n'.format(twiss['qx'], twiss['qy'], twiss.dx[0], twiss.dpx[0]))
 
 
         # If scaling synchrotron tune
