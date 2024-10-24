@@ -248,6 +248,18 @@ class SPS_Flat_Bottom_Tracker:
                 raise ValueError("No valid cycling mode - choose 'dx', 'dpx' or 'both'")
             line = line.cycle(index_first_element=np.argmin(penalty))
             del twiss # delete old twiss table
+            
+            # Rematch tunes to correct values
+            line.match(
+                vary=[
+                    xt.Vary('kqf', step=1e-8),
+                    xt.Vary('kqd', step=1e-8),
+                ],
+                targets = [
+                    xt.Target('qx', self.qx0, tol=1e-7),
+                    xt.Target('qy', self.qy0, tol=1e-7),
+                ])
+            
             twiss = line.twiss()
             print('Cycled sequence: Qx = {:.3f}, Qy = {:.3f}, starting Dx = {:3f} m, starting Dxprime = {:.3f}m\n'.format(twiss['qx'], twiss['qy'], twiss.dx[0], twiss.dpx[0]))
 
@@ -324,7 +336,7 @@ class SPS_Flat_Bottom_Tracker:
         if add_tune_ripple:
             turns_per_sec = 1/twiss['T_rev0']
             ripple_period = int(turns_per_sec/ripple_freq)  # number of turns particle makes during one ripple oscillation
-            ripple = Tune_Ripple_SPS(beta_beat=beta_beat, num_turns=self.num_turns, ripple_period=ripple_period)
+            ripple = Tune_Ripple_SPS(beta_beat=beta_beat, num_turns=self.num_turns, ripple_period=ripple_period, qx0=self.qx0, qy0=self.qy0)
             kqf_vals, kqd_vals, _ = ripple.load_k_from_xtrack_matching(dq=dq, plane=ripple_plane)
             
         ######### IBS kinetic kicks #########

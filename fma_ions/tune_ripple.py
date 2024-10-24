@@ -30,8 +30,10 @@ class Tune_Ripple_SPS:
     
     Parameters:
     -----------
-    Qy_fractional: int
-        fractional vertical tune. "19"" means fractional tune Qy = 0.19
+    qx0 : float
+        horizontal tune
+    qy0 : float
+        vertical tune
     beta_beat: float
         relative beta beat, i.e. relative difference between max beta function and max original beta function
     use_symmetric_lattice: bool
@@ -49,7 +51,8 @@ class Tune_Ripple_SPS:
     output_folder : str
         location to save data
     """
-    Qy_frac: float = 25
+    qx0: float = 26.30
+    qy0: float = 26.25
     beta_beat: float = None
     use_symmetric_lattice: bool = True
     ripple_period: int = 2000 
@@ -119,7 +122,7 @@ class Tune_Ripple_SPS:
             range over turns the amplitude modulation corresponds to 
         """
         # Load MADX line of SPS and define quad knobs
-        sps_seq = SPS_sequence_maker()
+        sps_seq = SPS_sequence_maker(qx0=self.qx0, qy0=self.qy0)
         madx = sps_seq.load_madx_SPS()
         madx.exec('sps_define_quad_knobs')
         
@@ -162,8 +165,7 @@ class Tune_Ripple_SPS:
         return kqf_vals, kqd_vals, turns
         
       
-    def find_k_from_xtrack_matching(self, dq=0.05, nr_matches=10, use_symmetric_lattice=False, plane='X', Qy_frac=25,
-                                    show_plot=False):
+    def find_k_from_xtrack_matching(self, dq=0.05, nr_matches=10, use_symmetric_lattice=False, plane='both', show_plot=False):
         """
         Find desired tune amplitude modulation dQx or dQy by matching the global
         variable kqf and kqd
@@ -178,8 +180,6 @@ class Tune_Ripple_SPS:
             flag to use symmetric lattice without QFA and QDA
         plane : str
             'X' or 'Y' or 'both' (default is 'X')
-        Qy_frac : int
-            fractional vertical tune. "19"" means fractional tune Qy = 0.19
         
         Returns:
         --------
@@ -191,13 +191,12 @@ class Tune_Ripple_SPS:
             range over turns the amplitude modulation corresponds to 
         """
         # Load Xsuite line with deferred expressions from MADx
-        sps = SPS_sequence_maker()
+        sps = SPS_sequence_maker(qx0=self.qx0, qy0=self.qy0)
         
         if use_symmetric_lattice:
-            line, twiss = sps.load_SPS_line_with_deferred_madx_expressions(use_symmetric_lattice=use_symmetric_lattice,
-                                                                            Qy_frac=Qy_frac)
+            line, twiss = sps.load_SPS_line_with_deferred_madx_expressions(use_symmetric_lattice=use_symmetric_lattice)
         else:
-            line, twiss = sps.load_xsuite_line_and_twiss(Qy_frac=Qy_frac, deferred_expressions=True)
+            line, twiss = sps.load_xsuite_line_and_twiss(deferred_expressions=True)
         
         # Empty arrays of quadrupolar strenghts:
         kqfs = np.zeros(nr_matches)
@@ -271,9 +270,9 @@ class Tune_Ripple_SPS:
         
         # Save dictionary to json file
         sym_string = '_symmetric_lattice' if use_symmetric_lattice else '_nominal_lattice'
-        k_val_path = '{}/qy_dot{}/k_knobs'.format(sequence_path, self.Qy_frac)
+        k_val_path = '{}/qx_{}_qy_{}/k_knobs'.format(sequence_path, self.qx0, self.qy0)
         os.makedirs(k_val_path, exist_ok=True)
-        print('\nSaving k strengths to dq{}percent.json"\n'.format(int(100*dq)))
+        print('\nSaving k strengths to \n{}dq{}percent.json"\n'.format(k_val_path, int(100*dq)))
         
         with open("{}/k_vals_{}{}_dq{}percent.json".format(k_val_path, plane, sym_string, int(100*dq)), "w") as fp:
             json.dump(k_dict , fp) 
@@ -281,7 +280,7 @@ class Tune_Ripple_SPS:
         return kqf_vals, kqd_vals, turns
         
         
-    def load_k_from_xtrack_matching(self, dq=0.05, use_symmetric_lattice=False, plane='X'):
+    def load_k_from_xtrack_matching(self, dq=0.05, use_symmetric_lattice=False, plane='both'):
         """
         Parameters:
         -----------
@@ -306,7 +305,7 @@ class Tune_Ripple_SPS:
         # Trying loading knobs if exist already
         try:
             sym_string = '_symmetric_lattice' if use_symmetric_lattice else '_nominal_lattice'
-            k_val_path = '{}/qy_dot{}/k_knobs'.format(sequence_path, self.Qy_frac)
+            k_val_path = '{}/qx_{}_qy_{}/k_knobs'.format(sequence_path, self.qx0, self.qy0)
             
             with open("{}/k_vals_{}{}_dq{}percent.json".format(k_val_path, plane, sym_string, int(100*dq)), "r") as fp:
                 k_dict = json.load(fp) 
@@ -353,7 +352,7 @@ class Tune_Ripple_SPS:
         """
         
         # Get SPS Pb line with deferred expressions
-        sps = SPS_sequence_maker()
+        sps = SPS_sequence_maker(qx0=self.qx0, qy0=self.qy0)
         line, twiss = sps.load_xsuite_line_and_twiss(deferred_expressions=True)
         if use_xtrack_matching:
             kqf_vals, kqd_vals, turns = self.load_k_from_xtrack_matching(dq=dq, plane=plane)
@@ -406,7 +405,6 @@ class Tune_Ripple_SPS:
                    use_symmetric_lattice=False,
                    install_SC_on_line = True,
                    sextupolar_value_to_add=None,
-                   Qy_frac=25,
                    beta_beat=None,
                    add_non_linear_magnet_errors=False,
                    plane_beta_beat='Y',
@@ -435,8 +433,6 @@ class Tune_Ripple_SPS:
             flag to install space charge on line with FMA ions
         sextupolar_value_to_add : float, optional
             k2 value of one extraction sextupole in SPS, if not None
-        Qy_frac : int 
-            fractional vertical tune. "19"" means fractional tune Qy = 0.19
         beta_beat : float 
             relative difference in beta functions (Y for SPS)
         add_non_linear_magnet_errors : bool
@@ -452,9 +448,9 @@ class Tune_Ripple_SPS:
             numpy arrays with turn-by-turn data
         """
         # Get SPS Pb line with deferred expressions
-        sps = SPS_sequence_maker()
+        sps = SPS_sequence_maker(qx0=self.qx0, qy0=self.qy0)
         line, twiss = sps.load_SPS_line_with_deferred_madx_expressions(use_symmetric_lattice=use_symmetric_lattice, 
-                                                                        Qy_frac=Qy_frac, add_non_linear_magnet_errors=add_non_linear_magnet_errors)
+                                                                       add_non_linear_magnet_errors=add_non_linear_magnet_errors)
         
         # If sextupolar value is set, set this value
         if sextupolar_value_to_add is not None:
@@ -628,7 +624,6 @@ class Tune_Ripple_SPS:
                    action_limits=None,
                    use_symmetric_lattice=False,
                    install_SC_on_line=True,
-                   Qy_frac=25,
                    beta_beat=None,
                    add_non_linear_magnet_errors=False,
                    num_particles_to_plot=10,
@@ -661,8 +656,6 @@ class Tune_Ripple_SPS:
             flag to use symmetric lattice without QFA and QDA
         install_SC_on_line : bool
             flag to install space charge on line with FMA ions
-        Qy_frac : int
-            fractional vertical tune. "19"" means fractional tune Qy = 0.19
         beta_beat : float 
             relative difference in beta functions (Y for SPS)
         add_non_linear_magnet_errors : bool
@@ -695,9 +688,8 @@ class Tune_Ripple_SPS:
                 
         # Load relevant SPS line and twiss
         self._get_initial_normalized_coord_at_start() # loads normalized coord of starting distribution
-        sps = SPS_sequence_maker()
-        line, twiss = sps.load_SPS_line_with_deferred_madx_expressions(use_symmetric_lattice=use_symmetric_lattice,
-                                                                        Qy_frac=Qy_frac)
+        sps = SPS_sequence_maker(qx0=self.qx0, qy0=self.qy0)
+        line, twiss = sps.load_SPS_line_with_deferred_madx_expressions(use_symmetric_lattice=use_symmetric_lattice)
         
         # If sextupolar value is set, set this value
         if sextupolar_value_to_add is not None:
@@ -775,7 +767,6 @@ class Tune_Ripple_SPS:
                    load_tbt_data=False,
                    use_symmetric_lattice=False,
                    install_SC_on_line=True,
-                   Qy_frac=25,
                    beta_beat=None,
                    add_non_linear_magnet_errors=False,
                    sextupolar_value_to_add=None,
@@ -797,8 +788,6 @@ class Tune_Ripple_SPS:
             flag to use symmetric lattice without QFA and QDA
         install_SC_on_line : bool
             flag to install space charge on line with FMA ions
-        Qy_frac : int
-            fractional vertical tune. "19"" means fractional tune Qy = 0.19
         beta_beat : float 
             relative difference in beta functions (Y for SPS)
         add_non_linear_magnet_errors : bool
@@ -818,16 +807,15 @@ class Tune_Ripple_SPS:
         if load_tbt_data:
             x, y, px, py = self.load_tracking_data()
         else:
-            x, y, px, py = self.run_ripple(dq=dq, Qy_frac=Qy_frac, plane=plane, use_Gaussian_beam=True, use_symmetric_lattice=use_symmetric_lattice,
+            x, y, px, py = self.run_ripple(dq=dq, plane=plane, use_Gaussian_beam=True, use_symmetric_lattice=use_symmetric_lattice,
                                            install_SC_on_line=install_SC_on_line, sextupolar_value_to_add=sextupolar_value_to_add,
                                            beta_beat=beta_beat, add_non_linear_magnet_errors=add_non_linear_magnet_errors,
                                            plane_beta_beat=plane_beta_beat, vary_tune=vary_tune)
         
         # Load relevant SPS line and twiss
         self._get_initial_normalized_coord_at_start() # loads normalized coord of starting distribution
-        sps = SPS_sequence_maker()
-        line, twiss = sps.load_SPS_line_with_deferred_madx_expressions(use_symmetric_lattice=use_symmetric_lattice,
-                                                                        Qy_frac=Qy_frac)
+        sps = SPS_sequence_maker(qx0=self.qx0, qy0=self.qy0)
+        line, twiss = sps.load_SPS_line_with_deferred_madx_expressions(use_symmetric_lattice=use_symmetric_lattice)
         
         # If sextupolar value is set, set this value
         if sextupolar_value_to_add is not None:
