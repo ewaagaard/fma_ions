@@ -11,6 +11,7 @@ import datetime
 dir_path = pathlib.Path(__file__).parent.absolute()
 
 # Define run files and which parameters to change
+master_name = '_Q26_protons_SC_frozen_BB_chromatic_magnet_errors_Qxdot13'
 num_turns = 150_000 # corresponds to about 3.46 s for protons
 Qx = 26.13
 Qy_range = np.arange(26.15, 26.30, 0.01)
@@ -38,7 +39,7 @@ num_part = 20_000
 
 # Tracking on GPU context
 sps = fma_ions.SPS_Flat_Bottom_Tracker(qx0={:.3f}, qy0={:.3f}, num_turns=n_turns, num_part=num_part)
-tbt = sps.track_SPS(ion_type='proton', which_context='gpu', install_SC_on_line=False, beta_beat=0.1, 
+tbt = sps.track_SPS(ion_type='proton', which_context='gpu', install_SC_on_line=True, beta_beat=0.1, 
                 add_non_linear_magnet_errors=True, apply_kinetic_IBS_kicks=False)
 tbt.to_json(output_dir)
     '''.format(num_turns, Qx, Qy_range[i])
@@ -48,7 +49,7 @@ tbt.to_json(output_dir)
     
 # Instantiate the submitter class and launch the jobs
 sub = fma_ions.Submitter()
-master_job_name = '{:%Y_%m_%d__%H_%M_%S}'.format(datetime.datetime.now())
+master_job_name = '{:%Y_%m_%d__%H_%M_%S}_{}'.format(datetime.datetime.now(), master_name)
 
 # Launch the Python scripts in this folder
 for i, script in enumerate(script_names):
