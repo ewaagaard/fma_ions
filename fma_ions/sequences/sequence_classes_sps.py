@@ -1072,8 +1072,9 @@ class SPS_sequence_maker:
 
                 # For each slice with name, multiply k2 value with length to get integrated B field strength
                 if type(line[key]) == xt.beam_elements.elements.Multipole and lse_name in key:
-                    line[key].knl[2] = line[key].length * k2_values[i]
-                    print('{}: set to knl = {}'.format(key, line[key].knl))
+                    k2 = line[key].length * k2_values[i]
+                    line.element_dict[key] = xt.Multipole(knl = [0, 0, k2], length=line[key].length)
+                    print('{}: replaced and set to knl = {}'.format(key, line[key].knl))
 
         return line
     
