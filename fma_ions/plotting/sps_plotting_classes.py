@@ -663,7 +663,11 @@ class SPS_Plotting:
     def plot_final_emittances_and_Nb_over_scan(self,
                                                scan_array_for_x_axis : np.ndarray,
                                                label_for_x_axis : str,
-                                               output_str_array):
+                                               output_str_array,
+                                               extra_text_string=None,
+                                               transmission_range=[0.975, 1.005],
+                                               emittance_range = [0.67, 0.75],
+                                               plot_starting_emittances=False) -> None:
         """
         Method to plot emittances and bunch intensities (final vs initial) for a 
 
@@ -674,6 +678,14 @@ class SPS_Plotting:
         label_for_x_axis : str
         output_str_array : [outfolder, outfolder, ...]
             List containing string for outfolder tbt data
+        extra_text_string : str
+            plot extra text in bottom left corner
+        transmission_range : list
+            in which range to plot transmission
+        emittance_range : list
+            in which range to plot emittances
+        plot_starting_emittances : bool
+            whether to plot flat line with starting emittances
         """
         os.makedirs('output', exist_ok=True)
         # Load TBT data and append bunch intensities and emittances
@@ -694,19 +706,26 @@ class SPS_Plotting:
             eyn[1, i] =  tbt_dict['eyn'][-1] # final
             Nb[0, i]  =  tbt_dict['Nb'][0] # initial
             Nb[1, i]  =  tbt_dict['Nb'][-1] # final
-            transmission[i] = Nb[0, i]/Nb[1, i]
+            transmission[i] = Nb[1, i]/Nb[0, i]
 
         # Plot transmission and final emittances
         # Plot the transmission with emittance - ion tunes
         fig, ax = plt.subplots(2, 1, figsize=(9,6), sharex=True, constrained_layout=True)
-        ax[0].plot(scan_array_for_x_axis, exn[1, :], marker="o", label="$\epsilon_{x, f}^n$")
-        ax[0].plot(scan_array_for_x_axis, eyn[1, :], marker="o", label="$\epsilon_{y, f}^n$")
-        ax[0].set_ylabel("$\epsilon^n$ growth")       
+        ax[0].plot(scan_array_for_x_axis, exn[1, :] * 1e6, c='b', marker="o", label="X - final")
+        ax[0].plot(scan_array_for_x_axis, eyn[1, :] * 1e6, c='darkorange', marker="o", label="Y - final")
+        if plot_starting_emittances:
+            ax[0].plot(scan_array_for_x_axis, exn[0, :] * 1e6, c='b', lw=1.0, alpha=0.75, marker=".", label="X - initial")
+            ax[0].plot(scan_array_for_x_axis, eyn[0, :] * 1e6, c='darkorange', lw=1.0, alpha=0.75, marker=".", label="Y - initial")
+
+        ax[0].set_ylabel("$\epsilon_{x, y}^n$ [$\mu$m]")       
         ax[1].plot(scan_array_for_x_axis, transmission, c='red', marker='o', label='Transmission')
         ax[1].set_ylabel("Transmission")
-        for a in ax:
-            a.legend(fontsize=13)
+        ax[0].legend(fontsize=13)
+        if extra_text_string is not None:
+            ax[1].text(0.024, 0.05, extra_text_string, transform=ax[1].transAxes, fontsize=12.8)
         ax[1].set_xlabel(label_for_x_axis)
+        ax[0].set_ylim(emittance_range[0], emittance_range[1])
+        ax[1].set_ylim(transmission_range[0], transmission_range[1])
         fig.savefig('output/scan_result_final_emittances_and_bunch_intensity.png', dpi=250)
         plt.show()
 
