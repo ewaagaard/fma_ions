@@ -1046,7 +1046,7 @@ class SPS_sequence_maker:
         return x_ap, y_ap, a
     
     
-    def _set_LSE_sextupolar_errors(self, line)->xt.Line:
+    def set_LSE_sextupolar_errors(self, line)->xt.Line:
         """
         Add sextupolar component to the extraction LSE sextupole in SPS (normally zero-valued) to
         mimic residual sextupolar components of machine - from measurements done with Kostas Paraschou 
