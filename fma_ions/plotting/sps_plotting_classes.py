@@ -467,18 +467,6 @@ class SPS_Plotting:
             whether to return figure and axis object - if False, will do plt.show()
         """
         os.makedirs('main_plots', exist_ok=True)
-        plt.rcParams.update(
-            {
-                "font.family": "serif",
-                "font.size": 16,
-                "axes.titlesize": 16,
-                "axes.labelsize": labelsize,
-                "xtick.labelsize": 14,
-                "ytick.labelsize": 14,
-                "legend.fontsize": legend_font_size,
-                "figure.titlesize": 18,
-            }
-        )
 
         # Load TBT data 
         tbt_array = []
@@ -671,6 +659,58 @@ class SPS_Plotting:
         else:
             plt.show()
 
+
+    def plot_final_emittances_and_Nb_over_scan(self,
+                                               scan_array_for_x_axis : np.ndarray,
+                                               label_for_x_axis : str,
+                                               output_str_array):
+        """
+        Method to plot emittances and bunch intensities (final vs initial) for a 
+
+        Parameters:
+        -----------
+        scan_array_for_x_axis : np.ndarray
+            numpy array with quantity scanned over (e.g. Qx, Qy)
+        label_for_x_axis : str
+        output_str_array : [outfolder, outfolder, ...]
+            List containing string for outfolder tbt data
+        """
+        os.makedirs('output', exist_ok=True)
+        # Load TBT data and append bunch intensities and emittances
+        exn = np.zeros([2, len(output_str_array)]) # rows are initial and final, columns for each run
+        eyn = np.zeros([2, len(output_str_array)])
+        Nb = np.zeros([2, len(output_str_array)])
+        transmission = np.zeros(len(output_str_array))
+
+        # Load dictionary and append values
+        for i, output_folder in enumerate(output_str_array):
+            self.output_folder = output_folder
+            tbt_dict = self.load_records_dict_from_json(output_folder=output_folder)
+
+            # Append emittance and intensity values, initial and final
+            exn[0, i] =  tbt_dict['exn'][0] # initial
+            exn[1, i] =  tbt_dict['exn'][-1] # final
+            eyn[0, i] =  tbt_dict['eyn'][0] # initial
+            eyn[1, i] =  tbt_dict['eyn'][-1] # final
+            Nb[0, i]  =  tbt_dict['Nb'][0] # initial
+            Nb[1, i]  =  tbt_dict['Nb'][-1] # final
+            transmission[i] = Nb[0, i]/Nb[1, i]
+
+        # Plot transmission and final emittances
+        # Plot the transmission with emittance - ion tunes
+        fig, ax = plt.subplots(2, 1, figsize=(9,6), sharex=True, constrained_layout=True)
+        ax[0].plot(scan_array_for_x_axis, exn[1, :], marker="o", label="$\epsilon_{x, f}^n$")
+        ax[0].plot(scan_array_for_x_axis, eyn[1, :], marker="o", label="$\epsilon_{y, f}^n$")
+        ax[0].set_ylabel("$\epsilon^n$ growth")       
+        ax[1].plot(scan_array_for_x_axis, transmission, c='red', marker='o', label='Transmission')
+        ax[1].set_ylabel("Transmission")
+        for a in ax:
+            a.legend()
+        ax[1].set_xlabel(label_for_x_axis)
+        fig.savefig('output/scan_result_final_emittances_and_bunch_intensity.png', dpi=250)
+        plt.show()
+
+
     def plot_tracking_vs_analytical(self,
                                     analytical_tbt,
                                     tbt_dict=None, 
@@ -772,18 +812,6 @@ class SPS_Plotting:
         """
         # Make plot directory and update plot parameters
         os.makedirs('main_plots', exist_ok=True)
-        plt.rcParams.update(
-            {
-                "font.family": "serif",
-                "font.size": 16,
-                "axes.titlesize": 16,
-                "axes.labelsize": 16,
-                "xtick.labelsize": 14,
-                "ytick.labelsize": 14,
-                "legend.fontsize": 10.4,
-                "figure.titlesize": 18,
-            }
-        )
 
         # Load TBT data 
         tbt_array = []
