@@ -705,7 +705,7 @@ class SPS_Plotting:
         ax[1].plot(scan_array_for_x_axis, transmission, c='red', marker='o', label='Transmission')
         ax[1].set_ylabel("Transmission")
         for a in ax:
-            a.legend()
+            a.legend(fontsize=13)
         ax[1].set_xlabel(label_for_x_axis)
         fig.savefig('output/scan_result_final_emittances_and_bunch_intensity.png', dpi=250)
         plt.show()
