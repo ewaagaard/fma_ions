@@ -1046,11 +1046,11 @@ class SPS_sequence_maker:
         return x_ap, y_ap, a
     
     
-    def _set_LSE_sextupolar_values(self, line):
+    def _set_LSE_sextupolar_errors(self, line)->xt.Line:
         """
         Add sextupolar component to the extraction LSE sextupole in SPS (normally zero-valued) to
         mimic residual sextupolar components of machine - from measurements done with Kostas Paraschou 
-        on 2024-10-10 in the SPS (see elogbook)
+        on 2024-10-10 in the SPS (see elogbook https://logbook.cern.ch/elogbook-server/GET/showEventInLogbook/4160116)
         
         Parameters:
         -----------
@@ -1062,12 +1062,34 @@ class SPS_sequence_maker:
         line : xtrack.line
             xtrack line object with new sextupole values
         """
-        lse_names = []
+        lse_names = ['lse.12402.', 'lse.20602', 'lsen.42402', 'lse.50602', 'lse.62402']
         k2_values = np.array([0.02295123,  0.03247354, -0.0141614 , -0.0314969 , -0.01139423])
         
-        # Adjust knob for sextupolar value
-        line.vars['klse10602'] = k2_value
-        twiss = line.twiss() # check stability in twiss command
-        
+        # Iterate over extraction sextupole, find in SPS sequence and set value
+        for i, lse_name in enumerate(lse_names):
+            # Iterate over SPS line
+            for key in line.element_names:
+
+                # For each slice with name, multiply k2 value with length to get integrated B field strength
+                if type(line[key]) == xt.beam_elements.elements.Multipole and lse_name in key:
+                    line[key].knl[2] = line[key].length * k2_values[i]
+                    print('{}: set to knl = {}'.format(key, line[key].knl))
+
         return line
+    
+
+    def _print_multipolar_elements_in_line(self, line, order=1)->None:
+        """
+        Print all quadrupolar elements for a given order (default 1, i.e. quadrupole)
+        
+        Parameters:
+        -----------
+        line : xtrack.line
+            xtrack line object to search through
+        order : int
+            multipolar order to print. Default "1" means quadrupolar components
+        """
+        for key in line.element_names:
+            if type(line[key]) == xt.beam_elements.elements.Multipole and line[key]._order == order:
+                print('{}: knl = {}'.format(key, line[key].knl))
     
