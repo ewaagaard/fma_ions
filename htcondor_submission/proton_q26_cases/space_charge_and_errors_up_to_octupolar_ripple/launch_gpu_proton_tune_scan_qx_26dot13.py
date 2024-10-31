@@ -11,7 +11,7 @@ import datetime
 dir_path = pathlib.Path(__file__).parent.absolute()
 
 # Define run files and which parameters to change
-master_name = 'Q26_protons_SC_frozen_up_to_octupolar_errors_Qxdot13'
+master_name = 'Q26_protons_SC_frozen_up_to_octupolar_errors_ripple_Qxdot13'
 num_turns = 150_000 # corresponds to about 3.46 s for protons
 Qx = 26.13
 Qy_range = np.arange(26.15, 26.30, 0.01)
