@@ -90,6 +90,7 @@ class SPS_Flat_Bottom_Tracker:
                   which_context='cpu',
                   add_non_linear_magnet_errors=False, 
                   add_sextupolar_errors=False,
+                  add_octupolar_errors=False,
                   add_aperture=True,
                   beta_beat=None, 
                   beamParams=None,
@@ -129,6 +130,8 @@ class SPS_Flat_Bottom_Tracker:
             whether to add line with non-linear chromatic errors
         add_sextupolar_errors : bool
             whether to add sextupolar LSE errors to reproduce machine errors
+        add_octupolar_errors : bool
+            whether to add octupolar LOE errors to reproduce machine errors
         add_aperture : bool
             whether to include aperture for SPS
         beta_beat : float
@@ -244,6 +247,10 @@ class SPS_Flat_Bottom_Tracker:
         # Add LSE errors, if desired
         if add_sextupolar_errors:
             line = sps.set_LSE_sextupolar_errors(line)
+
+        # Add LOE errors, if desired
+        if add_octupolar_errors:
+            line = sps.set_LOE_octupolar_errors(line)
 
         # Rematch tunes to ensure correct values
         line.match(
