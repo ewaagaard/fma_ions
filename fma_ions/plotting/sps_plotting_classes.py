@@ -667,7 +667,8 @@ class SPS_Plotting:
                                                extra_text_string=None,
                                                transmission_range=[0.975, 1.005],
                                                emittance_range = [0.67, 0.75],
-                                               plot_starting_emittances=False) -> None:
+                                               plot_starting_emittances=False,
+                                               master_job_name=None) -> None:
         """
         Method to plot emittances and bunch intensities (final vs initial) for a 
 
@@ -686,6 +687,8 @@ class SPS_Plotting:
             in which range to plot emittances
         plot_starting_emittances : bool
             whether to plot flat line with starting emittances
+        master_job_name : str
+            which name the plot should have. Default is None, then default name is given
         """
         os.makedirs('output', exist_ok=True)
         # Load TBT data and append bunch intensities and emittances
@@ -726,7 +729,9 @@ class SPS_Plotting:
         ax[1].set_xlabel(label_for_x_axis)
         ax[0].set_ylim(emittance_range[0], emittance_range[1])
         ax[1].set_ylim(transmission_range[0], transmission_range[1])
-        fig.savefig('output/scan_result_final_emittances_and_bunch_intensity.png', dpi=250)
+        if master_job_name is None:
+            master_job_name = 'scan_result_final_emittances_and_bunch_intensity'
+        fig.savefig('output/{}.png'.format(master_job_name), dpi=250)
         plt.show()
 
 
