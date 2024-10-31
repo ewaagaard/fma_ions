@@ -11,10 +11,10 @@ import datetime
 dir_path = pathlib.Path(__file__).parent.absolute()
 
 # Define run files and which parameters to change
-master_name = 'Q26_protons_SC_frozen_up_to_octupolar_errors_Qxdot30'
-num_turns = 150_000 # corresponds to about 3.46 s for protons
+master_name = 'Q26_Pb_ions_IBS_and_SC_frozen_up_to_octupolar_errors_Qxdot30'
+num_turns = 2_000_000 # corresponds to about 48 s for SPS ions at flat bottom
 Qx = 26.30
-Qy_range = np.arange(26.15, 26.30, 0.01)
+Qy_range = np.arange(26.13, 26.30, 0.01)
 run_files = ['sps_run_{}_tbt_qx_26dot30.py'.format(i+1) for i in range(len(Qy_range))]
 
 # Define script and folder names
@@ -39,8 +39,8 @@ num_part = 20_000
 
 # Tracking on GPU context
 sps = fma_ions.SPS_Flat_Bottom_Tracker(qx0={:.3f}, qy0={:.3f}, num_turns=n_turns, num_part=num_part)
-tbt = sps.track_SPS(ion_type='proton', which_context='gpu', install_SC_on_line=True, beta_beat=0.1, add_sextupolar_errors=True, add_octupolar_errors=True,
-                add_non_linear_magnet_errors=True, add_tune_ripple=False, apply_kinetic_IBS_kicks=False)
+tbt = sps.track_SPS(which_context='gpu', install_SC_on_line=True, beta_beat=0.1, add_sextupolar_errors=True, add_octupolar_errors=True,
+                add_non_linear_magnet_errors=True, add_tune_ripple=False, apply_kinetic_IBS_kicks=True)
 tbt.to_json(output_dir)
     '''.format(num_turns, Qx, Qy_range[i])
     )
@@ -59,4 +59,4 @@ for i, script in enumerate(script_names):
 sub.copy_master_plot_script(folder_names, string_array)
 sub.copy_plot_script_emittances_for_scan(master_name, folder_names, scan_array_for_x_axis=Qy_range,
                                              label_for_x_axis='$Q_{y}$', 
-                                             extra_text_string='$Q_{x}$ = 26.30\nFrozen SC, 10% $\\beta$-beat + up to octupolar\nmagnet errors')
+                                             extra_text_string='$Q_{x}$ = 26.30 - q-Gaussian beam\n IBS + Frozen SC, 10% $\\beta$-beat + up to octupolar\nmagnet errors')
