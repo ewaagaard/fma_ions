@@ -7,6 +7,15 @@ from dataclasses import dataclass
 
 @dataclass
 class BeamParameters_SPS:
+    """Data Container for SPS Pb default beam parameters 2024"""
+    Nb:  float = 3.85e8 # measured 2.46e8 ions per bunch on 2024-10-10
+    sigma_z: float = 0.215 # measured with WCM
+    exn: float = 2.0e-6 # measured on 2024-10-30 with intensity scan
+    eyn: float = 1.3e-6
+    q : float = 0.7 # q-Gaussian parameter after RF spill (third profile)
+
+@dataclass
+class BeamParameters_SPS_2023:
     """Data Container for SPS Pb default beam parameters (2023), assuming similar longitudinal to 2016"""
     Nb:  float = 2.46e8 # measured 2.46e8 ions per bunch on 2023-10-16
     sigma_z: float = 0.213 # 0.225 in m, is the old value (close to Isabelle's and  Hannes'), but then bucket is too full if Gaussian longitudinal. 0.19 also used
