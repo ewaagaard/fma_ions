@@ -11,16 +11,16 @@ import datetime
 dir_path = pathlib.Path(__file__).parent.absolute()
 
 # Define run files and which parameters to change
-master_name = '_Q26_protons_SC_frozen_ideal_lattice_Qxdot13'
-num_turns = 150_000 # corresponds to about 3.46 s for protons
-Qx = 26.13
-Qy_range = np.arange(26.15, 26.30, 0.01)
-run_files = ['sps_run_{}_tbt_qx_26dot13.py'.format(i+1) for i in range(len(Qy_range))]
+master_name = 'SPS_Q26_Pb_ibs_only_ideal_lattice'
+num_turns = 2_000_000 # corresponds to about 3.46 s for protons
+Qx = 26.30
+Qy = 26.19
+run_files = ['sps_run_1_tbt.py']
 
 # Define script and folder names
 script_names = run_files.copy()
-folder_names = ['sps_Qx_{:.2f}_Qy_{:.2f}'.format(Qx, Qy_range[i]) for i in range(len(Qy_range))]
-string_array = ['Qy = {:.2f}, Qx = {:.2f} space charge'.format(Qy_range[i], Qx) for i in range(len(Qy_range))]    
+folder_names = ['sps_Qx_{:.2f}_Qy_{:.2f}'.format(Qx, Qy)]
+string_array = ['Qy = {:.2f}, Qx = {:.2f} IBS'.format(Qy, Qx)]    
 
 # Generate the scripts to be submitted
 for i, run_file in enumerate(run_files):
@@ -39,10 +39,10 @@ num_part = 20_000
 
 # Tracking on GPU context
 sps = fma_ions.SPS_Flat_Bottom_Tracker(qx0={:.3f}, qy0={:.3f}, num_turns=n_turns, num_part=num_part)
-tbt = sps.track_SPS(ion_type='proton', which_context='gpu', install_SC_on_line=True, beta_beat=None, 
-                add_non_linear_magnet_errors=False, apply_kinetic_IBS_kicks=False)
+tbt = sps.track_SPS(which_context='gpu', distribution_type='qgaussian', install_SC_on_line=False, beta_beat=None, 
+                add_non_linear_magnet_errors=False, apply_kinetic_IBS_kicks=True)
 tbt.to_json(output_dir)
-    '''.format(num_turns, Qx, Qy_range[i])
+    '''.format(num_turns, Qx, Qy)
     )
     run_file.close()
     
