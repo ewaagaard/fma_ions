@@ -1078,6 +1078,38 @@ class SPS_sequence_maker:
 
         return line
     
+    def set_LOE_octupolar_errors(self, line)->xt.Line:
+        """
+        Add octupolar component to the extraction LOE octupoles in SPS (normally zero-valued) to
+        mimic residual sextupolar components of machine - from measurements done with Kostas Paraschou 
+        on 2023-10-05 in the SPS (see elogbook https://logbook.cern.ch/elogbook-server/GET/showEventInLogbook/3842235)
+        
+        Parameters:
+        -----------
+        line : xtrack.line
+            xtrack line object to search through
+
+        Returns:
+        --------
+        line : xtrack.line
+            xtrack line object with new octupolar values
+        """
+        loe_names = ['loe.12002', 'loe.10402']
+        k3_values = np.array([4.0, -2.0])
+        
+        # Iterate over extraction sextupole, find in SPS sequence and set value
+        for i, loe_name in enumerate(loe_names):
+            # Iterate over SPS line
+            for key in line.element_names:
+
+                # For each slice with name, multiply k3 value with length to get integrated B field strength
+                if type(line[key]) == xt.beam_elements.elements.Multipole and loe_name in key:
+                    k3 = line[key].length * k3_values[i]
+                    line.element_dict[key] = xt.Multipole(knl = [0, 0, 0, k3], length=line[key].length)
+                    print('{}: replaced and set to knl = {}'.format(key, line[key].knl))
+
+        return line
+    
 
     def _print_multipolar_elements_in_line(self, line, order=1)->None:
         """
