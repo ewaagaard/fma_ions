@@ -216,16 +216,16 @@ sps.plot_multiple_sets_of_tracking_data(output_str_array=folder_names, string_ar
 
     def copy_plot_script_emittances_for_scan(self, master_job_name, folder_names, scan_array_for_x_axis,
                                              label_for_x_axis, extra_text_string):
+        """After parameter scan as been submitted, copy plotting script to plot emittances and transmission"""
+
         
         plot_file = open('plot_emittances_and_Nb_from_scan.py','w')
         plot_file.write(        
-        """After parameter scan as been submitted, copy plotting script to plot emittances and transmission"""
-
         f'''import fma_ions
         sps = fma_ions.SPS_Plotting()
-        sps.plot_final_emittances_and_Nb_over_scan(scan_array_for_x_axis={scan_array_for_x_axis}, 
-                                                label_for_x_axis={label_for_x_axis},
-                                                extra_text_string={extra_text_string},
+        sps.plot_final_emittances_and_Nb_over_scan(scan_array_for_x_axis='{scan_array_for_x_axis}', 
+                                                label_for_x_axis='{label_for_x_axis}',
+                                                extra_text_string='{extra_text_string}',
                                                 output_str_array={folder_names},
                                                 master_job_name={master_job_name})
         '''
