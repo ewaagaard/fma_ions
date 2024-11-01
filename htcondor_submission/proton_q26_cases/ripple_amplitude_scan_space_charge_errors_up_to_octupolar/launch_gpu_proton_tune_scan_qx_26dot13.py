@@ -71,4 +71,4 @@ for j in range(len(dq_range)):
     dq_folder_names = ['sps_Qx_{:.2f}_Qy_{:.2f}_dq_{:.2f}'.format(Qx, Qy_range[k], dq_range[j]) for k in range(len(Qy_range))]
     sub.copy_plot_script_emittances_for_scan('{}_dq_{:.2f}'.format(master_name, dq_range[j]), dq_folder_names, scan_array_for_x_axis=Qy_range,
                                              label_for_x_axis='$Q_{y}$', 
-                                             extra_text_string='$Q_{x}$ = {:.2f}. Frozen SC, 10% $\\beta$-beat + up to octupolar magnet errors + ripple'.format(Qx))
+                                             extra_text_string='$Q_{{x}}$ = {:.2f}. Frozen SC, 10% $\\beta$-beat + up to octupolar magnet errors + ripple'.format(Qx))
