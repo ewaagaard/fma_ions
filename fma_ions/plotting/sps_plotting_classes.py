@@ -666,7 +666,7 @@ class SPS_Plotting:
                                                output_str_array,
                                                extra_text_string=None,
                                                transmission_range=[0.975, 1.005],
-                                               emittance_range = [0.67, 0.75],
+                                               emittance_range = [0.67, 1.3],
                                                plot_starting_emittances=False,
                                                master_job_name=None) -> None:
         """
@@ -727,7 +727,8 @@ class SPS_Plotting:
         if extra_text_string is not None:
             ax[1].text(0.024, 0.05, extra_text_string, transform=ax[1].transAxes, fontsize=12.8)
         ax[1].set_xlabel(label_for_x_axis)
-        ax[0].set_ylim(emittance_range[0], emittance_range[1])
+        if emittance_range is not None:
+            ax[0].set_ylim(emittance_range[0], emittance_range[1])
         ax[1].set_ylim(transmission_range[0], transmission_range[1])
         if master_job_name is None:
             master_job_name = 'scan_result_final_emittances_and_bunch_intensity'
