@@ -15,6 +15,18 @@ class BeamParameters_SPS:
     q : float = 0.7 # q-Gaussian parameter after RF spill (third profile)
 
 @dataclass
+class BeamParameters_SPS_2024_2b:
+    """
+    Data Container for SPS Pb 2b, with no PS splitting
+    Use https://be-op-logbook.web.cern.ch/elogbook-server/GET/showEventInLogbook/4174679 as reference event
+    """
+    Nb:  float = 6.46e8 # measured with FBCT on 2024-10-30 with FBCT 
+    sigma_z: float = 0.215 # assumed to be the same as with PS bunch splitting
+    exn: float = 2.38e-6 # measured on 2024-10-30, at 25 ms after injection
+    eyn: float = 1.39e-6
+    q : float = 0.7 # assumed q-Gaussian parameter to be identical
+
+@dataclass
 class BeamParameters_SPS_2023:
     """Data Container for SPS Pb default beam parameters (2023), assuming similar longitudinal to 2016"""
     Nb:  float = 2.46e8 # measured 2.46e8 ions per bunch on 2023-10-16
