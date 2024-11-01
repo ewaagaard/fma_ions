@@ -28,7 +28,7 @@ for j in range(len(dq_range)):
         run_file = 'sps_run_{}_tbt_qx_26dot13_dq_{}.py'.format(i+1, j+1)
         run_files.append(run_file)
         folder_name = 'sps_Qx_{:.2f}_Qy_{:.2f}_dq_{:.2f}'.format(Qx, Qy_range[i], dq_range[j])
-        folder_names.append(folder_names)
+        folder_names.append(folder_name)
         string_array = 'Qy = {:.2f}, Qx = {:.2f} space charge, dq = {:.2f}'.format(Qy_range[i], Qx, dq_range[j]) 
         string_arrays.append(string_array)
 
@@ -68,7 +68,7 @@ for i, script in enumerate(script_names):
     sub.submit_GPU(file_name, master_job_name=master_job_name, job_name=folder_names[i])
 sub.copy_master_plot_script(folder_names, string_array)
 for j in range(len(dq_range)):
-    dq_folder_name = ['sps_Qx_{:.2f}_Qy_{:.2f}_dq_{:.2f}'.format(Qx, Qy_range[k], dq_range[j]) for k in range(len(Qy_range))]
-    sub.copy_plot_script_emittances_for_scan('{}_dq_{:.2f}'.format(master_name, dq_range[j]), folder_names, scan_array_for_x_axis=Qy_range,
+    dq_folder_names = ['sps_Qx_{:.2f}_Qy_{:.2f}_dq_{:.2f}'.format(Qx, Qy_range[k], dq_range[j]) for k in range(len(Qy_range))]
+    sub.copy_plot_script_emittances_for_scan('{}_dq_{:.2f}'.format(master_name, dq_range[j]), dq_folder_names, scan_array_for_x_axis=Qy_range,
                                              label_for_x_axis='$Q_{y}$', 
                                              extra_text_string='$Q_{x}$ = {:.2f}. Frozen SC, 10% $\\beta$-beat + up to octupolar magnet errors + ripple'.format(Qx))
