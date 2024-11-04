@@ -403,6 +403,11 @@ class SPS_Flat_Bottom_Tracker:
                 line.vars['kqf'] = kqf_vals[turn-1]
                 line.vars['kqd'] = kqd_vals[turn-1]
             
+            if turn % 100:
+                tw = line.twiss()
+                qx, qy = tw['qx'], tw['qy']
+                print('Turn {}: Qx = {:.3f}, Qy = {:.3f}'.format(turn, qx, qy))    
+             
             # ----- Track and update records for tracked particles ----- #
             line.track(particles, num_turns=1)
 
