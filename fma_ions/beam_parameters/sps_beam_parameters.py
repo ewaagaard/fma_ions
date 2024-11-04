@@ -13,6 +13,7 @@ class BeamParameters_SPS:
     exn: float = 2.0e-6 # measured on 2024-10-30 with intensity scan
     eyn: float = 1.3e-6
     q : float = 0.7 # q-Gaussian parameter after RF spill (third profile)
+    m : float = 4.0 # binomial parameter to determine tail of parabolic distribution (approximate value)
 
 @dataclass
 class BeamParameters_SPS_2024_2b:
@@ -25,6 +26,7 @@ class BeamParameters_SPS_2024_2b:
     exn: float = 2.38e-6 # measured on 2024-10-30, at 25 ms after injection
     eyn: float = 1.39e-6
     q : float = 0.7 # assumed q-Gaussian parameter to be identical
+    m : float = 4.0 # binomial parameter to determine tail of parabolic distribution (approximate value)
 
 @dataclass
 class BeamParameters_SPS_2023:
