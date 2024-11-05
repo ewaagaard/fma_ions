@@ -15,6 +15,7 @@ ripple_freq=50 # Hz
 # Load line
 sps = fma_ions.SPS_sequence_maker()
 line, twiss = sps.load_xsuite_line_and_twiss(deferred_expressions=True)
+line.build_tracker()
 
 # Generate particles
 sps_tracker = fma_ions.SPS_Flat_Bottom_Tracker(num_part=num_part, num_turns=num_turns)
