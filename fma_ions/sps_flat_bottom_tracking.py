@@ -228,15 +228,6 @@ class SPS_Flat_Bottom_Tracker:
         else:
             raise ValueError('Only Pb and O ions implemented so far!')
         
-        '''
-        # Deferred expressions only needed for tune ripple and if re-matching after cycling sequence
-        if add_tune_ripple or (cycle_mode_to_minimize_dx_dpx is not None): 
-            load_line_with_deferred_expressions = True 
-        else:
-            load_line_with_deferred_expressions = False
-        print('\nLoaded line with deferred expression: {}'.format(load_line_with_deferred_expressions))
-        '''  
-        
         # Extract line with aperture, beta-beat and non-linear magnet errors if desired
         line, twiss = sps.load_xsuite_line_and_twiss(add_aperture=add_aperture, beta_beat=beta_beat,
                                                    add_non_linear_magnet_errors=add_non_linear_magnet_errors, 
@@ -252,6 +243,7 @@ class SPS_Flat_Bottom_Tracker:
         if add_octupolar_errors:
             line = sps.set_LOE_octupolar_errors(line)
 
+        
         # Rematch tunes to ensure correct values
         line.match(
             vary=[
@@ -263,10 +255,11 @@ class SPS_Flat_Bottom_Tracker:
                 xt.Target('qy', self.qy0, tol=1e-8),
             ])
         
+        '''
         # Remove unrealistic aperture below limit
         if minimum_aperture_to_remove is not None and add_aperture:
             line = sps.remove_aperture_below_threshold(line, minimum_aperture_to_remove)
-        
+        '''
         if cycle_mode_to_minimize_dx_dpx is not None:
             
             if cycle_mode_to_minimize_dx_dpx == 'dx':
@@ -284,8 +277,8 @@ class SPS_Flat_Bottom_Tracker:
                         
             twiss = line.twiss()
             print('Cycled sequence: Qx = {:.4f}, Qy = {:.4f}, starting Dx = {:3f} m, starting Dxprime = {:.3f}m\n'.format(twiss['qx'], twiss['qy'], twiss.dx[0], twiss.dpx[0]))
-
-
+        
+        
         # If scaling synchrotron tune
         if scale_factor_Qs is not None:
             line, sigma_z_new, Nb_new = sps.change_synchrotron_tune_by_factor(scale_factor_Qs, line, beamParams.sigma_z, beamParams.Nb)
@@ -294,7 +287,7 @@ class SPS_Flat_Bottom_Tracker:
             harmonic_nb *= scale_factor_Qs
             print('Updated beam parameters with new Qs:')
             print(beamParams)
-            
+
         ################# Longitudinal limit rect and Beam Profile Monitors (at Wire Scanner locations) #################
         # Add longitudinal limit rectangle - to kill particles that fall out of bucket
         bucket_length = line.get_length()/harmonic_nb
@@ -322,10 +315,10 @@ class SPS_Flat_Bottom_Tracker:
                 x_range=0.04,
                 y_range=0.04)
             line.insert_element(index='bwsrc.41677', element=monitorV, name='monitorV')
-        
+
         line.build_tracker(_context=context)
         #######################################################################################################################
-
+        
         # Generate particles object to track    
         particles = self.generate_particles(line=line, context=context, distribution_type=distribution_type,
                                             beamParams=beamParams, scale_factor_Qs=scale_factor_Qs, 
@@ -359,7 +352,7 @@ class SPS_Flat_Bottom_Tracker:
                                                    z_kick_num_integ_per_sigma=z_kick_num_integ_per_sigma)
             print('Installed {} space charge interactions with {} z kick intergrations per sigma on line\n'.format(num_spacecharge_interactions,
                                                                                                                    z_kick_num_integ_per_sigma))
-            
+        
         # Add tune ripple
         if add_tune_ripple:
             turns_per_sec = 1/twiss['T_rev0']
@@ -401,7 +394,7 @@ class SPS_Flat_Bottom_Tracker:
                 if add_tune_ripple:
                     tw = line.twiss()
                     qx, qy = tw['qx'], tw['qy']
-                    print('Turn {}, with tune ripple: Qx = {:.3f}, Qy = {:.3f}'.format(turn, qx, qy))    
+                    print('Tune ripple on: Qx = {:.3f}, Qy = {:.3f}'.format(qx, qy))    
             
             ########## ----- Exert TUNE RIPPLE if desired ----- ##########
             if add_tune_ripple:
