@@ -255,11 +255,11 @@ class SPS_Flat_Bottom_Tracker:
                 xt.Target('qy', self.qy0, tol=1e-8),
             ])
         
-        '''
+        #'''
         # Remove unrealistic aperture below limit
         if minimum_aperture_to_remove is not None and add_aperture:
             line = sps.remove_aperture_below_threshold(line, minimum_aperture_to_remove)
-        '''
+        #'''
         if cycle_mode_to_minimize_dx_dpx is not None:
             
             if cycle_mode_to_minimize_dx_dpx == 'dx':
@@ -355,11 +355,40 @@ class SPS_Flat_Bottom_Tracker:
         
         # Add tune ripple
         if add_tune_ripple:
-            turns_per_sec = 1/twiss['T_rev0']
-            ripple_period = int(turns_per_sec/ripple_freq)  # number of turns particle makes during one ripple oscillation
-            ripple = Tune_Ripple_SPS(beta_beat=beta_beat, num_turns=self.num_turns, ripple_period=ripple_period, qx0=self.qx0, qy0=self.qy0)
-            kqf_vals, kqd_vals, _ = ripple.load_k_from_xtrack_matching(dq=dq, plane=ripple_plane)
+
+            # OLD WAY with quadrupolar knobs
+            #turns_per_sec = 1/twiss['T_rev0']
+            #ripple_period = int(turns_per_sec/ripple_freq)  # number of turns particle makes during one ripple oscillation
+            #ripple = Tune_Ripple_SPS(beta_beat=beta_beat, num_turns=self.num_turns, ripple_period=ripple_period, qx0=self.qx0, qy0=self.qy0)
+            #kqf_vals, kqd_vals, _ = ripple.load_k_from_xtrack_matching(dq=dq, plane=ripple_plane)
             
+            # New way: install EXCITER ELEMENT
+            sampling_frequency = 10e4 # sampling frequency in Hz
+            A = 0.1 # amplitude    
+            t = np.arange(1000)/sampling_frequency # make vector with 1000 elements
+
+            f_ex = 50.0 # excitation frequency in Hz
+            signal_samples = A * np.sin(2*np.pi*f_ex*t)
+
+            # Initialize the exciter
+            exciter = xt.Exciter(
+                 _context=context,  # Assuming context is passed correctly
+                 samples=signal_samples,
+                 sampling_frequency=sampling_frequency,
+                 duration=self.num_turns * twiss['T_rev0'],
+                 frev=sampling_frequency,
+                 start_turn=0,
+                 knl=[1.]
+                 )
+            
+            # Rebuild tracker
+            line.discard_tracker()
+            line.insert_element(index=0, name='RF_KO_EXCITER', element=exciter)
+            line.build_tracker(_context = context)
+            line.optimize_for_tracking()
+            print('Tune ripple: installed exciter')
+            
+
         ######### IBS kinetic kicks #########
         if apply_kinetic_IBS_kicks:
             #  friction and diffusion terms of the kinetic theory of gases
@@ -397,9 +426,9 @@ class SPS_Flat_Bottom_Tracker:
                     print('Tune ripple on: Qx = {:.3f}, Qy = {:.3f}'.format(qx, qy))    
             
             ########## ----- Exert TUNE RIPPLE if desired ----- ##########
-            if add_tune_ripple:
-                line.vars['kqf'] = kqf_vals[turn-1]
-                line.vars['kqd'] = kqd_vals[turn-1]
+            #if add_tune_ripple:
+            #    line.vars['kqf'] = kqf_vals[turn-1]
+            #    line.vars['kqd'] = kqd_vals[turn-1]
             
 
              
