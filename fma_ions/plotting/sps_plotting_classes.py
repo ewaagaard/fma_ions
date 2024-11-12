@@ -71,14 +71,16 @@ class SPS_Plotting:
     def plot_tracking_data(self, 
                            tbt_dict=None, 
                            output_folder=None,
-                           include_emittance_measurements=False,
                            x_unit_in_turns=False,
-                           plot_bunch_length_measurements=False,
                            distribution_type='qgaussian',
+                           emittance_dict=None,
+                           fbct_dict=None,
                            inj_profile_is_after_RF_spill=True,
                            also_plot_sigma_delta=False,
-                           also_plot_WCM_Nb_data=False,
-                           also_plot_DCBCT_Nb_data=False,
+                           plot_2016_bunch_length_measurements=False,
+                           also_plot_2023_WCM_Nb_data=False,
+                           also_plot_2023_DCBCT_Nb_data=False,
+                           include_2023_emittance_measurements=False,
                            plot_emittances_separately=False,
                            also_plot_particle_std_BL=False,
                            return_fig=False):
@@ -91,23 +93,27 @@ class SPS_Plotting:
             dictionary containing the TBT data. If None, loads json file.
         output_folder : str
             path to data. default is 'None', assuming then that data is in the same directory
-        include_emittance_measurements : bool
-            whether to include measured emittance or not
         x_units_in_turns : bool
             if True, x axis units will be turn, otherwise in seconds
-        plot_bunch_length_measurements : bool
-            whether to include bunch length measurements from SPS wall current monitor from 2016 studies by Hannes and Tomas0
+        emittance_dict : dict
+            if not None, will plot measurement arrays with 'ctime', 'exn', 'dexn', 'eyn', 'deyn' with 'label'
+        fbct_dict : dict
+            if not None, will plot arrays with 'ctime', 'Nb' with 'label'
         distribution_type : str
             either 'qgaussian', 'gaussian' or 'binomial'
         inj_profile_is_after_RF_spill : bool
             whether SPS injection profile is after the initial spill out of the RF bucket
         also_plot_sigma_delta : bool
             whether also to plot sigma_delta
-        also_plot_WCM_Nb_data : bool
+        plot_2016_bunch_length_measurements : bool
+            whether to include bunch length measurements from SPS wall current monitor from 2016 studies by Hannes and Tomas
+        also_plot_2023_WCM_Nb_data : bool
             whether to also plot Wall current monitor data
-        also_plot_DCBCT_Nb_data : bool
+        also_plot_2023_DCBCT_Nb_data : bool
             whether to also plot DCBCT data
             started without considering initial RF spill, 0.95 means that the beam parameters were adjusted to after the spill
+        include_2023_emittance_measurements : bool
+            whether to include measured emittance or not
         also_plot_particle_std_BL : bool
             whether to also plot the standard deviation of particle zeta, i.e. discrete bunch length
         return_fig : bool
@@ -119,7 +125,7 @@ class SPS_Plotting:
             tbt_dict = self.load_records_dict_from_json(output_folder=output_folder)
 
         # If bunch length measurements present, need to plot in seconds
-        if plot_bunch_length_measurements:
+        if plot_2016_bunch_length_measurements:
             x_unit_in_turns = False
             
             # Load bunch length data
@@ -134,7 +140,7 @@ class SPS_Plotting:
             print('Set time units to seconds')
 
         # Load emittance and intensity measurements
-        if include_emittance_measurements:
+        if include_2023_emittance_measurements:
             if x_unit_in_turns:
                 sps = SPS_sequence_maker()
                 _, twiss = sps.load_xsuite_line_and_twiss()
@@ -156,43 +162,54 @@ class SPS_Plotting:
         time_units_DCBCT = (turns_per_sec * time_BCT) if x_unit_in_turns else time_BCT
 
         # Emittances and bunch intensity 
-        f, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize = (9.5, 3.6))
+        f, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize = (9.5, 3.6), constrained_layout=True)
         ax1.plot(time_units, tbt_dict['exn'] * 1e6, alpha=0.7, c='turquoise', lw=1.5, label='Simulated')
         ax2.plot(time_units, tbt_dict['eyn'] * 1e6, alpha=0.7, c='turquoise', lw=1.5, label='Simulated')
-        if include_emittance_measurements:
+        
+        # Include default 2023 measurements
+        if include_2023_emittance_measurements:
             ax1.errorbar(time_units_x, 1e6 * np.array(full_data['N_avg_emitX']), yerr=1e6 * full_data['N_emitX_error'], 
                        color='blue', fmt="o", label="Measured")
             ax2.errorbar(time_units_y, 1e6 * np.array(full_data['N_avg_emitY']), yerr=1e6 * full_data['N_emitY_error'], 
                        color='darkorange', fmt="o", label="Measured")
             
+        # Any custom emittance measurements
+        if emittance_dict is not None:
+            ax1.errorbar(emittance_dict['ctime'], emittance_dict['exn'], yerr = emittance_dict['dexn'], 
+                       color='red', fmt="o", label = emittance_dict['label'])
+            ax2.errorbar(emittance_dict['ctime'], emittance_dict['eyn'], yerr = emittance_dict['deyn'], 
+                       color='red', fmt="o", label = emittance_dict['label'])
+            
         # Plot bunch intensities, also with mme
         ax3.plot(time_units, tbt_dict['Nb'], alpha=0.7, lw=2.2, c='turquoise', label='Simulated')
-        if also_plot_DCBCT_Nb_data:
+        
+        # Any custom FBCT measurements
+        if fbct_dict is not None:
+            ax3.plot(fbct_dict['ctime'], fbct_dict['Nb'], label=fbct_dict['label'], alpha=0.8, color='r')
+        
+        # Possibly include 2023 data
+        if also_plot_2023_DCBCT_Nb_data:
             ax3.plot(time_units_DCBCT, Nb_BCT_normalized, label='DC-BCT', alpha=0.8, color='b')
-        if also_plot_WCM_Nb_data:
+        if also_plot_2023_WCM_Nb_data:
             beamParams = BeamParameters_SPS_Binomial_2016_before_RF_capture() # load nominal bunch intensity before RF capture
             ax3.plot(time_units_WCM, Nb_WCM * beamParams.Nb,  alpha=0.8,
                       label='Measured', color='r')
 
         # Find min and max emittance values - set window limits 
         all_emit = np.concatenate((tbt_dict['exn'], tbt_dict['eyn']))
-        if include_emittance_measurements:
+        if include_2023_emittance_measurements:
             all_emit = np.concatenate((all_emit, np.array(full_data['N_avg_emitX']), np.array(full_data['N_avg_emitY'])))
-        min_emit = 1e6 * np.min(all_emit)
-        max_emit = 1e6 * np.max(all_emit)
 
-        ax1.set_xlabel('Turns' if x_unit_in_turns else 'Time [s]')
-        ax2.set_xlabel('Turns' if x_unit_in_turns else 'Time [s]')
-        ax3.set_xlabel('Turns' if   x_unit_in_turns else 'Time [s]')
-        #plt.setp(ax2.get_yticklabels(), visible=False)
+
+        for a in [ax1, ax2, ax3]:
+            a.set_xlabel('Turns' if x_unit_in_turns else 'Time [s]')
         ax1.set_ylabel(r'$\varepsilon_{x}^{n}$ [$\mu$m]')
         ax2.set_ylabel(r'$\varepsilon_{y}^{n}$ [$\mu$m]')
         ax3.set_ylabel(r'Ions per bunch $N_{b}$')
-        ax3.set_xlabel('Turns' if x_unit_in_turns else 'Time [s]')
-        ax3.legend(fontsize=12.1, loc='upper right')
-        ax1.set_ylim(min_emit-0.08, max_emit+0.1)
-        ax2.set_ylim(min_emit-0.08, max_emit+0.1)
-        f.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+
+        ax1.legend(fontsize=12.1)
+        ax1.set_ylim(0.0, 3.0)
+        ax2.set_ylim(0.0, 3.0)
         f.savefig('output_plots/epsilon_Nb.png', dpi=250)
         
         # Sigma_delta and bunch length
@@ -219,18 +236,18 @@ class SPS_Plotting:
         if distribution_type=='gaussian':
             ax22.plot(turn_array if x_unit_in_turns else time_array, sigmas_gaussian, color='cyan', ls='--', alpha=0.95,
                       label='Simulated profiles')
-            if plot_bunch_length_measurements:
+            if plot_2016_bunch_length_measurements:
                 ax22.plot(ctime, sigma_RMS_Gaussian_in_m, color='darkorange', label='Measured profiles')
 
         elif distribution_type=='binomial':
             ax22.plot(turn_array if x_unit_in_turns else time_array, sigmas_binomial, color='cyan', ls='--', alpha=0.95,
                       label='Simulated profiles')
-            if plot_bunch_length_measurements:
+            if plot_2016_bunch_length_measurements:
                 ax22.plot(ctime, sigma_RMS_Binomial_in_m, color='darkorange', alpha=0.95, label='Measured profiles')
         elif distribution_type=='qgaussian':
             ax22.plot(turn_array if x_unit_in_turns else time_array, sigmas_q_gaussian, color='cyan', ls='--', alpha=0.95,
                       label='Simulated profiles')
-            if plot_bunch_length_measurements:
+            if plot_2016_bunch_length_measurements:
                 ax22.plot(ctime, sigma_RMS_qGaussian_in_m, color='darkorange', alpha=0.95, label='Measured profiles')
                     
         ax22.set_ylabel(r'$\sigma_{{z, RMS}}$ [m] of fitted {}'.format(distribution_type))
@@ -253,7 +270,7 @@ class SPS_Plotting:
                           color='cyan', alpha=0.85, markerfacecolor='cyan', 
                           ls='None', marker='o', ms=5.1, label='Simulated')
             start_ind = 2 if inj_profile_is_after_RF_spill else 0
-            if plot_bunch_length_measurements:
+            if plot_2016_bunch_length_measurements:
                 ax23.errorbar(ctime[start_ind::15], q_measured[start_ind::15], yerr=dq_measured[start_ind::15], markerfacecolor='darkorange', color='darkorange', alpha=0.65, ls='None', marker='o', ms=5.1, label='Measured')
             ax23.set_ylabel('Fitted $q$-value', fontsize=13.5) #, color='green')
             #ax23.legend(fontsize=11, loc='upper left')
@@ -417,7 +434,7 @@ class SPS_Plotting:
                                             ylim=None, 
                                             legend_font_size=11.4,
                                             extra_str='',
-                                            also_plot_WCM_Nb_data=True,
+                                            also_plot_WCM_Nb_data=False,
                                             adjusting_factor_Nb_for_initial_drop=0.95,
                                             distribution_type='qgaussian',
                                             also_plot_particle_std_BL=False,
