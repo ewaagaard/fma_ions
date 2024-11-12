@@ -204,7 +204,8 @@ class SPS_Flat_Bottom_Tracker:
             if ion_type=='proton':
                 beamParams = BeamParameters_SPS_Proton()
                 harmonic_nb = 4620 # update harmonic number
-            if distribution_type in ['binomial', 'qgaussian']:
+            # If 2016 SPS Pb set-up is used
+            if distribution_type in ['binomial']:
                 beamParams = BeamParameters_SPS_Binomial_2016_before_RF_capture if matched_for_PS_extraction else BeamParameters_SPS_Binomial_2016()
         print('Beam parameters:', beamParams)
 
