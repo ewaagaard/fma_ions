@@ -244,7 +244,7 @@ class SPS_Flat_Bottom_Tracker:
         if add_octupolar_errors:
             line = sps.set_LOE_octupolar_errors(line)
 
-        
+
         # Rematch tunes to ensure correct values
         line.match(
             vary=[
@@ -260,8 +260,9 @@ class SPS_Flat_Bottom_Tracker:
         #if minimum_aperture_to_remove is not None and add_aperture:
         #    line = sps.remove_aperture_below_threshold(line, minimum_aperture_to_remove)
         #
-
-        if cycle_mode_to_minimize_dx_dpx is not None:
+        
+        # Not compatible with tune ripple, as the kqf and kqd disappear
+        if (cycle_mode_to_minimize_dx_dpx is not None) and not add_tune_ripple:
             
             if cycle_mode_to_minimize_dx_dpx == 'dx':
                 penalty = np.abs(twiss.dx)
@@ -278,7 +279,7 @@ class SPS_Flat_Bottom_Tracker:
                         
             twiss = line.twiss()
             print('Cycled sequence: Qx = {:.4f}, Qy = {:.4f}, starting Dx = {:3f} m, starting Dxprime = {:.3f}m\n'.format(twiss['qx'], twiss['qy'], twiss.dx[0], twiss.dpx[0]))
-        
+
         
         # If scaling synchrotron tune
         if scale_factor_Qs is not None:
@@ -358,11 +359,12 @@ class SPS_Flat_Bottom_Tracker:
         if add_tune_ripple:
 
             # OLD WAY with quadrupolar knobs
-            #turns_per_sec = 1/twiss['T_rev0']
-            #ripple_period = int(turns_per_sec/ripple_freq)  # number of turns particle makes during one ripple oscillation
-            #ripple = Tune_Ripple_SPS(beta_beat=beta_beat, num_turns=self.num_turns, ripple_period=ripple_period, qx0=self.qx0, qy0=self.qy0)
-            #kqf_vals, kqd_vals, _ = ripple.load_k_from_xtrack_matching(dq=dq, plane=ripple_plane)
+            turns_per_sec = 1/twiss['T_rev0']
+            ripple_period = int(turns_per_sec/ripple_freq)  # number of turns particle makes during one ripple oscillation
+            ripple = Tune_Ripple_SPS(beta_beat=beta_beat, num_turns=self.num_turns, ripple_period=ripple_period, qx0=self.qx0, qy0=self.qy0)
+            kqf_vals, kqd_vals, _ = ripple.load_k_from_xtrack_matching(dq=dq, plane=ripple_plane)
             
+            '''
             # New way: install EXCITER ELEMENT
             sampling_frequency = 10e4 # sampling frequency in Hz
             A = 0.1 # amplitude    
@@ -388,7 +390,7 @@ class SPS_Flat_Bottom_Tracker:
             line.build_tracker(_context = context)
             line.optimize_for_tracking()
             print('Tune ripple: installed exciter')
-            
+            '''
 
         ######### IBS kinetic kicks #########
         if apply_kinetic_IBS_kicks:
@@ -424,12 +426,13 @@ class SPS_Flat_Bottom_Tracker:
                 if add_tune_ripple:
                     tw = line.twiss()
                     qx, qy = tw['qx'], tw['qy']
+                    print('kqf = {:.3f}, kqf = {:.3f}'.format(line.vars['kqf']._value, line.vars['kqd']._value))
                     print('Tune ripple on: Qx = {:.3f}, Qy = {:.3f}'.format(qx, qy))    
             
             ########## ----- Exert TUNE RIPPLE if desired ----- ##########
-            #if add_tune_ripple:
-            #    line.vars['kqf'] = kqf_vals[turn-1]
-            #    line.vars['kqd'] = kqd_vals[turn-1]
+            if add_tune_ripple:
+                line.vars['kqf'] = kqf_vals[turn-1]
+                line.vars['kqd'] = kqd_vals[turn-1]
             
 
              

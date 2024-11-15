@@ -7,15 +7,16 @@ import matplotlib.pyplot as plt
 import xtrack as xt
 import time
 
-num_turns = 500
-turn_range = np.arange(500)
-num_part = 100
-ripple_freq=50 # Hz
+num_turns = 100
+turn_range = np.arange(100)
+num_part = 30
+ripple_freq = 500 # Hz
 
 # Load line
 sps = fma_ions.SPS_sequence_maker()
-line, twiss = sps.load_xsuite_line_and_twiss(deferred_expressions=True)
+line = sps.generate_xsuite_seq(deferred_expressions=True, add_aperture=True)
 line.build_tracker()
+twiss = line.twiss()
 
 # Generate particles
 sps_tracker = fma_ions.SPS_Flat_Bottom_Tracker(num_part=num_part, num_turns=num_turns)
@@ -54,3 +55,7 @@ ax.set_xlabel('Turn')
 ax.set_ylabel('Tune')
 ax.legend()
 plt.show()
+
+# Check that aperture actually is installed
+line.check_aperture()
+x_ap, y_ap, a = sps.print_smallest_aperture(line)

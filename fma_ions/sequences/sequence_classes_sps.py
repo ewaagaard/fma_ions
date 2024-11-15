@@ -73,8 +73,8 @@ class SPS_sequence_maker:
                                    beta_beat=None, 
                                    use_symmetric_lattice=False,
                                    add_non_linear_magnet_errors=False, 
-                                   save_new_xtrack_line=True,
-                                   deferred_expressions=False, 
+                                   save_new_xtrack_line=False,
+                                   deferred_expressions=True, 
                                    add_aperture=False, 
                                    plane='Y',
                                    voltage=3.0e6):
