@@ -255,12 +255,12 @@ class SPS_Flat_Bottom_Tracker:
                 xt.Target('qx', self.qx0, tol=1e-8),
                 xt.Target('qy', self.qy0, tol=1e-8),
             ])
-        
-        #'''
-        # Remove unrealistic aperture below limit
-        if minimum_aperture_to_remove is not None and add_aperture:
-            line = sps.remove_aperture_below_threshold(line, minimum_aperture_to_remove)
-        #'''
+
+        # Remove unrealistic aperture below limit ---> this removed deferred expressions, removed elements in data/aperture_fixed_file
+        #if minimum_aperture_to_remove is not None and add_aperture:
+        #    line = sps.remove_aperture_below_threshold(line, minimum_aperture_to_remove)
+        #
+
         if cycle_mode_to_minimize_dx_dpx is not None:
             
             if cycle_mode_to_minimize_dx_dpx == 'dx':

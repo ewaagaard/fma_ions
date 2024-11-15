@@ -21,7 +21,7 @@ from ..beam_parameters import BeamParameters_SPS, BeamParameters_SPS_Oxygen, Bea
 optics =  Path(__file__).resolve().parent.joinpath('../../data/acc-models-sps').absolute()
 sequence_path = Path(__file__).resolve().parent.joinpath('../../data/sps_sequences').absolute()
 error_file_path = Path(__file__).resolve().parent.joinpath('../../data/sps_sequences/magnet_errors').absolute()
-
+aperture_fixed_path = Path(__file__).resolve().parent.joinpath('../../data/aperture_fixed').absolute()
 
 @dataclass
 class SPS_sequence_maker:
@@ -755,7 +755,7 @@ class SPS_sequence_maker:
         if add_aperture:
             print('\nAdded aperture!\n')
             madx.use(sequence='sps')
-            madx.call('{}/aperture/APERTURE_SPS_LS2_30-SEP-2020.seq'.format(optics))
+            madx.call('{}/APERTURE_SPS_LS2_30-SEP-2020.seq'.format(aperture_fixed_path))
 
         # Use correct tune and chromaticity matching macros
         madx.command.use(sequence='sps')       
