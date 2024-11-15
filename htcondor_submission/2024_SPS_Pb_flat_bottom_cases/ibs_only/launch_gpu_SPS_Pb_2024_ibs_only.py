@@ -13,7 +13,7 @@ dir_path = pathlib.Path(__file__).parent.absolute()
 # Define run files and which parameters to change
 master_name = 'SPS_Q26_Pb_ibs_only_ideal_lattice'
 num_turns = 2_000_000 # corresponds to about 3.46 s for protons
-Qx = 26.30
+Qx = 26.31
 Qy = 26.19
 run_files = ['sps_run_1_tbt.py']
 
