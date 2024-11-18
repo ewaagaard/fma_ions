@@ -39,7 +39,7 @@ num_part = 20_000
 
 # Tracking on GPU context
 sps = fma_ions.SPS_Flat_Bottom_Tracker(qx0={:.3f}, qy0={:.3f}, num_turns=n_turns, num_part=num_part)
-tbt = sps.track_SPS(ion_type='proton', which_context='gpu', install_SC_on_line=True, beta_beat=0.1, 
+tbt = sps.track_SPS(ion_type='proton', which_context='gpu', install_SC_on_line=True, beta_beat=0.15, 
                 add_non_linear_magnet_errors=True, apply_kinetic_IBS_kicks=False)
 tbt.to_json(output_dir)
     '''.format(num_turns, Qx, Qy_range[i])

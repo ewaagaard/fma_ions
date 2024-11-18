@@ -46,7 +46,7 @@ num_part = 20_000
 
 # Tracking on GPU context
 sps = fma_ions.SPS_Flat_Bottom_Tracker(qx0={:.3f}, qy0={:.3f}, num_turns=n_turns, num_part=num_part)
-tbt = sps.track_SPS(ion_type='proton', which_context='gpu', install_SC_on_line=True, beta_beat=0.1, add_sextupolar_errors=True, add_octupolar_errors=True,
+tbt = sps.track_SPS(ion_type='proton', which_context='gpu', install_SC_on_line=True, beta_beat=0.15, add_sextupolar_errors=True, add_octupolar_errors=True,
                 add_non_linear_magnet_errors=True, add_tune_ripple=True, dq={:.2f}, apply_kinetic_IBS_kicks=False)
 tbt.to_json(output_dir)
         '''.format(num_turns, Qx, Qy_range[i], dq_range[j])
@@ -71,4 +71,4 @@ for j in range(len(dq_range)):
     dq_folder_names = ['sps_Qx_{:.2f}_Qy_{:.2f}_dq_{:.2f}'.format(Qx, Qy_range[k], dq_range[j]) for k in range(len(Qy_range))]
     sub.copy_plot_script_emittances_for_scan('{}_dq_{:.2f}'.format(master_name, dq_range[j]), dq_folder_names, scan_array_for_x_axis=Qy_range,
                                              label_for_x_axis='$Q_{y}$', 
-                                             extra_text_string='$Q_{{x}}$ = {:.2f}. Frozen SC, 10% $\\beta$-beat + up to octupolar magnet errors + ripple'.format(Qx))
+                                             extra_text_string='$Q_{{x}}$ = {:.2f}. Frozen SC, 15% $\\beta$-beat + up to octupolar magnet errors + ripple'.format(Qx))
