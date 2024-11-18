@@ -426,7 +426,7 @@ class SPS_Flat_Bottom_Tracker:
                 if add_tune_ripple:
                     #tw = line.twiss()
                     #qx, qy = tw['qx'], tw['qy']
-                    print('kqf = {:.5f}, kqf = {:.5f}'.format(line.vars['kqf']._value, line.vars['kqd']._value))
+                    print('kqf = {:.6f}, kqf = {:.6f}'.format(line.vars['kqf']._value, line.vars['kqd']._value))
                     #print('Tune ripple on: Qx = {:.3f}, Qy = {:.3f}'.format(qx, qy))    
             
             ########## ----- Exert TUNE RIPPLE if desired ----- ##########
