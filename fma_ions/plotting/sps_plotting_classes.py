@@ -224,10 +224,11 @@ class SPS_Plotting:
         ######### Measured bunch length data and q-values #########
         if distribution_type=='gaussian':
             turn_array, time_array, sigmas_gaussian = self.fit_bunch_lengths_to_data(tbt_dict=tbt_dict, distribution=distribution_type)
-        else:
-            turn_array, time_array, sigmas_q_gaussian, sigmas_binomial, q, q_error, m, m_error = self.fit_bunch_lengths_to_data(tbt_dict=tbt_dict,
-                                                                                                distribution=distribution_type)
-       
+        elif distribution_type=='qgaussian':
+            turn_array, time_array, sigmas_q_gaussian, q, q_error = self.fit_bunch_lengths_to_data(tbt_dict=tbt_dict, distribution=distribution_type)
+        elif distribution_type=='binomial':
+            turn_array, time_array, sigmas_binomial, m, m_error = self.fit_bunch_lengths_to_data(tbt_dict=tbt_dict, distribution=distribution_type)
+
         f3, ax22 = plt.subplots(1, 1, figsize = (8,6))
         # Uncomment if want to plot standard deviation of numerical particle object
         if also_plot_particle_std_BL:
@@ -347,9 +348,12 @@ class SPS_Plotting:
             with open('{}saved_bunch_length_fits.pickle'.format(output_folder_str), 'rb') as handle:
                 BL_dict = pickle.load(handle)
                 
-            if distribution=='qgaussian' or distribution=='binomial':
+            if distribution=='qgaussian':
                 sigmas_q_gaussian, sigmas_binomial = BL_dict['sigmas_q_gaussian'], BL_dict['sigmas_binomial']
-                q_vals, q_errors, m, m_error = BL_dict['q_vals'], BL_dict['q_errors'], BL_dict['m'], BL_dict['m_error']
+                q_vals, q_errors = BL_dict['q_vals'], BL_dict['q_errors']
+            elif distribution=='binomial':
+                 sigmas_binomial = BL_dict['sigmas_binomial']
+                 m, m_error = BL_dict['m'], BL_dict['m_error']
             elif distribution=='gaussian':
                 sigmas = BL_dict['sigmas']
             else:
@@ -364,14 +368,14 @@ class SPS_Plotting:
                 z_height_max_avg = np.mean(z_bin_heights_sorted[:5]) # take average of top 5 values
                 xdata, ydata = tbt_dict['z_bin_centers'], tbt_dict['z_bin_heights'][:, i] / z_height_max_avg
                             
-                if distribution=='qgaussian' or distribution=='binomial':
+                if distribution=='qgaussian':
                         # Fit both q-Gaussian and binomial
                         popt_Q, pcov_Q = fits.fit_Q_Gaussian(xdata, ydata)
                         q_vals[i] = popt_Q[1]
                         q_errors[i] = np.sqrt(np.diag(pcov_Q))[1] # error from covarance_matrix
                         sigmas_q_gaussian[i] = fits.get_sigma_RMS_from_qGaussian_fit(popt_Q)
-                        print('Profile {}: q-Gaussian fit q={:.3f} +/- {:.2f}, sigma_RMS = {:.3f} m'.format(i, q_vals[i], q_errors[i], 
-                                                                                                                  sigmas_q_gaussian[i]))
+                        print('Profile {}: q-Gaussian fit q={:.3f} +/- {:.2f}, sigma_RMS = {:.3f} m'.format(i, q_vals[i], q_errors[i], sigmas_q_gaussian[i]))
+                elif distribution=='binomial':
                         popt_B, pcov_B = fits.fit_Binomial(xdata, ydata)
                         sigmas_binomial[i], sigmas_error = fits.get_sigma_RMS_from_binomial_fit(popt_B, pcov_B)
                         m[i] = popt_B[1]
@@ -387,8 +391,9 @@ class SPS_Plotting:
                     
             # Create dictionary with fits
             if distribution=='qgaussian' or distribution=='binomial':
-                BL_dict = {'sigmas_q_gaussian': sigmas_q_gaussian, 'sigmas_binomial': sigmas_binomial, 
-                           'q_vals': q_vals, 'q_errors': q_errors, 'm': m, 'm_error': m_error}
+                BL_dict = {'sigmas_q_gaussian': sigmas_q_gaussian, 'q_vals': q_vals, 'q_errors': q_errors}
+            elif distribution=='binomial':
+                BL_dict = {'sigmas_binomial': sigmas_binomial, 'm': m, 'm_error': m_error}
             else:
                 BL_dict = {'sigmas': sigmas}
                     
@@ -401,8 +406,9 @@ class SPS_Plotting:
         if show_final_profile:
             fig0, ax0 = plt.subplots(1, 1, figsize = (8, 6))
             ax0.plot(xdata, ydata, label='Fit')
-            if distribution=='binomial':
+            if distribution=='qgaussian':
                 ax0.plot(xdata, fits.Q_Gaussian(xdata, *popt_Q), color='green', ls='--', lw=2.8, label='q-Gaussian fit')
+            elif distribution=='binomial':
                 ax0.plot(xdata, fits.Binomial(xdata, *popt_B), color='red', ls=':', lw=2.8, label='Binomial fit')
             elif distribution=='gaussian':
                 ax0.plot(xdata, fits.Gaussian(xdata, *popt_G), color='red', ls='--', lw=2.8, label='Gaussian fit')
@@ -414,12 +420,10 @@ class SPS_Plotting:
 
         if distribution=='gaussian':
             return turn_array, time_array, sigmas
-        else: 
-            return turn_array, time_array, sigmas_q_gaussian, sigmas_binomial, q_vals, q_errors, m, m_error
-
-
-
-
+        elif distribution=='qgaussian':
+            turn_array, time_array, sigmas_q_gaussian, q_vals, q_errors
+        elif distribution=='binomial':
+            return turn_array, time_array, sigmas_binomial, m, m_error
 
     def plot_multiple_sets_of_tracking_data(self, 
                                             output_str_array, 
