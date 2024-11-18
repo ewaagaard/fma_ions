@@ -8,8 +8,8 @@ from dataclasses import dataclass
 @dataclass
 class BeamParameters_SPS:
     """Data Container for SPS Pb default beam parameters 2024"""
-    Nb:  float = 3.85e8 # measured ions per bunch on 2024-10-10
-    sigma_z: float = 0.206 # measured with WCM on 2024-11-13
+    Nb:  float = 3.65e8 # measured ions per bunch on 2024-10-10
+    sigma_z: float = 0.213 # measured with WCM on 2024-11-13
     exn: float = 2.2e-6 # measured on 2024-11-13 at injection
     eyn: float = 1.1e-6
     q : float = 0.72 # q-Gaussian parameter after RF spill

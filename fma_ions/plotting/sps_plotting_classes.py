@@ -75,6 +75,7 @@ class SPS_Plotting:
                            distribution_type='qgaussian',
                            emittance_dict=None,
                            fbct_dict=None,
+                           BL_dict=None,
                            inj_profile_is_after_RF_spill=True,
                            also_plot_sigma_delta=False,
                            plot_2016_bunch_length_measurements=False,
@@ -96,9 +97,11 @@ class SPS_Plotting:
         x_units_in_turns : bool
             if True, x axis units will be turn, otherwise in seconds
         emittance_dict : dict
-            if not None, will plot measurement arrays with 'ctime', 'exn', 'dexn', 'eyn', 'deyn' with 'label'
+            Measured WS data. If not None, will plot measurement arrays with 'ctime', 'exn', 'dexn', 'eyn', 'deyn' with 'label'
         fbct_dict : dict
-            if not None, will plot arrays with 'ctime', 'Nb' with 'label'
+            Measued FBCT data. If not None, will plot arrays with 'ctime', 'Nb' with 'label'
+        BL_dict : dict 
+            Measued Wall Current Monitor bunch length data. If not None, will plot arrays with 'ctime', 'sigma_RMS' with 'label'
         distribution_type : str
             either 'qgaussian', 'gaussian' or 'binomial'
         inj_profile_is_after_RF_spill : bool
@@ -251,12 +254,16 @@ class SPS_Plotting:
             if plot_2016_bunch_length_measurements:
                 ax22.plot(ctime, sigma_RMS_qGaussian_in_m, color='darkorange', alpha=0.95, label='Measured profiles')
                     
-        ax22.set_ylabel(r'$\sigma_{{z, RMS}}$ [m] of fitted {}'.format(distribution_type))
+        # Any custom BL measurements
+        if BL_dict is not None:
+            ax22.plot(BL_dict['ctime'], BL_dict['sigma_RMS'], label=BL_dict['label'], alpha=0.85, color='r')
+
+        ax22.set_ylabel(r'$\sigma_{{z, RMS}}$ [m] of {}'.format(distribution_type))
         ax22.set_xlabel('Turns' if x_unit_in_turns else 'Time [s]')
         ax22.legend()
         
-        if distribution_type != 'gaussian':
-            # Insert extra box with fitted m-value of profiles - plot every 10th value
+        if distribution_type == 'qgaussian':
+            # Insert extra box with fitted q-value of profiles - plot every 10th value
             ax23 = ax22.inset_axes([0.7,0.5,0.25,0.25])
         
             # Select only reasonable q-values (above 0), then plot only every nth interval
@@ -271,8 +278,13 @@ class SPS_Plotting:
                           color='cyan', alpha=0.85, markerfacecolor='cyan', 
                           ls='None', marker='o', ms=5.1, label='Simulated')
             start_ind = 2 if inj_profile_is_after_RF_spill else 0
+            
+            # Add measured data
             if plot_2016_bunch_length_measurements:
                 ax23.errorbar(ctime[start_ind::15], q_measured[start_ind::15], yerr=dq_measured[start_ind::15], markerfacecolor='darkorange', color='darkorange', alpha=0.65, ls='None', marker='o', ms=5.1, label='Measured')
+            if BL_dict is not None:
+                ax23.errorbar(BL_dict['ctime'][::15], BL_dict['q'][::15], yerr=BL_dict['q_error'][::15], marker='o', label=BL_dict['label'], alpha=0.75, color='r')
+            
             ax23.set_ylabel('Fitted $q$-value', fontsize=13.5) #, color='green')
             #ax23.legend(fontsize=11, loc='upper left')
             
@@ -349,7 +361,7 @@ class SPS_Plotting:
                 BL_dict = pickle.load(handle)
                 
             if distribution=='qgaussian':
-                sigmas_q_gaussian, sigmas_binomial = BL_dict['sigmas_q_gaussian'], BL_dict['sigmas_binomial']
+                sigmas_q_gaussian= BL_dict['sigmas_q_gaussian']
                 q_vals, q_errors = BL_dict['q_vals'], BL_dict['q_errors']
             elif distribution=='binomial':
                  sigmas_binomial = BL_dict['sigmas_binomial']
@@ -421,7 +433,7 @@ class SPS_Plotting:
         if distribution=='gaussian':
             return turn_array, time_array, sigmas
         elif distribution=='qgaussian':
-            turn_array, time_array, sigmas_q_gaussian, q_vals, q_errors
+            return turn_array, time_array, sigmas_q_gaussian, q_vals, q_errors
         elif distribution=='binomial':
             return turn_array, time_array, sigmas_binomial, m, m_error
 
