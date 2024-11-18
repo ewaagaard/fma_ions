@@ -46,9 +46,9 @@ class SPS_sequence_maker:
         absolute path to optics repository -> cloned from https://gitlab.cern.ch/acc-models
     """
     qx0: float = 26.30
-    qy0: float = 26.25
-    dq1: float = -3.460734474533172e-09 
-    dq2: float = -3.14426538905229e-09
+    qy0: float = 26.19
+    dq1: float = 0.174 #-3.460734474533172e-09
+    dq2: float = 0.086 #-3.14426538905229e-09
     # Default SPS PB ION CHROMA VALUES: not displayed on acc-model, extracted from PTC Twiss 
     
     # Define beam type - default is Pb
@@ -193,7 +193,7 @@ class SPS_sequence_maker:
                             voltage=3.0e6,
                             use_symmetric_lattice=False,
                             add_non_linear_magnet_errors=False,
-                            deferred_expressions=False,
+                            deferred_expressions=True,
                             add_aperture=False,
                             nr_slices=5):
         """

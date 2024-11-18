@@ -37,7 +37,7 @@ class SPS_Flat_Bottom_Tracker:
     output_folder : str = "output" 
     turn_print_interval : int = 10_000
     qx0: float = 26.30
-    qy0: float = 26.25
+    qy0: float = 26.19
     ion_inj_ctime : float = 0.725 # ion injection happens at this time in cycle, important for WS
     proton_optics : str = 'q26'
 
