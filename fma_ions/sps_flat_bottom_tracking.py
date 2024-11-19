@@ -420,6 +420,7 @@ class SPS_Flat_Bottom_Tracker:
         time00 = time.time()
         for turn in range(1, self.num_turns):
             
+            # Print out info at specified intervals
             if turn % self.turn_print_interval == 0:
                 print('\nTracking turn {}'.format(turn))            
                 
@@ -428,6 +429,13 @@ class SPS_Flat_Bottom_Tracker:
                     #qx, qy = tw['qx'], tw['qy']
                     print('kqf = {:.6f}, kqf = {:.6f}'.format(line.vars['kqf']._value, line.vars['kqd']._value))
                     #print('Tune ripple on: Qx = {:.3f}, Qy = {:.3f}'.format(qx, qy))    
+                            # Print number and cause of lost particles
+                if particles.state[particles.state <= 0].size > 0:
+                    print('Lost particle state: most common code: "-{}" for {} particles out of {} lost in total'.format(np.bincount(np.abs(particles.state[particles.state <= 0])).argmax(),
+                                                                                        np.max(np.bincount(np.abs(particles.state[particles.state <= 0]))),
+                                                                                        len(particles.state[particles.state <= 0])))
+                else:
+                    print('No particles lost')
             
             ########## ----- Exert TUNE RIPPLE if desired ----- ##########
             if add_tune_ripple:
@@ -457,13 +465,6 @@ class SPS_Flat_Bottom_Tracker:
                                            which_context=which_context)
                 zetas.update_at_turn(0, particles) # start from turn, but 0 in new dataclass
                 
-            # Print number and cause of lost particles
-            if particles.state[particles.state <= 0].size > 0:
-                if turn % self.turn_print_interval == 0:
-                    print('Lost particle state: most common code: "-{}" for {} particles out of {} lost in total'.format(np.bincount(np.abs(particles.state[particles.state <= 0])).argmax(),
-                                                                                                          np.max(np.bincount(np.abs(particles.state[particles.state <= 0]))),
-                                                                                                          len(particles.state[particles.state <= 0])))
-            
         time01 = time.time()
         dt0 = time01-time00
         print('\nTracking time: {:.1f} s = {:.1f} h'.format(dt0, dt0/3600))
