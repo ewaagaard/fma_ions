@@ -273,6 +273,7 @@ class Tune_Ripple_SPS:
         k_val_path = '{}/qx_{}_qy_{}/k_knobs'.format(sequence_path, self.qx0, self.qy0)
         os.makedirs(k_val_path, exist_ok=True)
         print('\nSaving k strengths to \n{}dq{}percent.json"\n'.format(k_val_path, int(100*dq)))
+        print('Ripple period: {}'.format(self.ripple_period))
         
         with open("{}/k_vals_{}{}_dq{}percent.json".format(k_val_path, plane, sym_string, int(100*dq)), "w") as fp:
             json.dump(k_dict , fp) 
