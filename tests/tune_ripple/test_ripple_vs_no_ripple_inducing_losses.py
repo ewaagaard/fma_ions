@@ -29,6 +29,7 @@ sps_tracker = fma_ions.SPS_Flat_Bottom_Tracker(num_part=num_part, num_turns=num_
 particles = sps_tracker.generate_particles(line=line)
 fma_sps = fma_ions.FMA()
 
+'''
 # Generate extra particles - test without tune ripple
 particles2 = particles.copy()
 line2 = line.copy()
@@ -41,7 +42,7 @@ line = fma_sps.install_SC_and_get_line(line=line,
 line2 = fma_sps.install_SC_and_get_line(line=line2,
                                         beamParams=beamParams,
                                         optimize_for_tracking=False)
-
+'''
 
 # Set upp tune ripple
 turns_per_sec = 1/twiss['T_rev0']
@@ -53,7 +54,8 @@ kqf_vals, kqd_vals, _ = ripple.load_k_from_xtrack_matching(dq=0.01, plane='both'
 # Track with tune ripple
 for turn in range(num_turns):
     print('\nRipple: Tracking turn {}'.format(turn))      
-    
+    print('kqf = {:.7f}, kqf = {:.7f}'.format(line.vars['kqf']._value, line.vars['kqd']._value))
+
     # First change knobs for tune ripple
     line.vars['kqf'] = kqf_vals[turn]
     line.vars['kqd'] = kqd_vals[turn]
@@ -64,7 +66,7 @@ for turn in range(num_turns):
         print('Lost particle state: most common code: "-{}" for {} particles out of {} lost in total'.format(np.bincount(np.abs(particles.state[particles.state <= 0])).argmax(),
                                                                                             np.max(np.bincount(np.abs(particles.state[particles.state <= 0]))),
                                                                                             len(particles.state[particles.state <= 0])))
-    
+'''    
 # Track without tune ripple
 for turn in range(num_turns):
     print('\nNo ripple: Tracking turn {}'.format(turn))      
@@ -75,11 +77,11 @@ for turn in range(num_turns):
         print('Lost particle state: most common code: "-{}" for {} particles out of {} lost in total'.format(np.bincount(np.abs(particles2.state[particles.state <= 0])).argmax(),
                                                                                             np.max(np.bincount(np.abs(particles2.state[particles2.state <= 0]))),
                                                                                             len(particles2.state[particles2.state <= 0])))
-
+'''
 print('Summary:')
 print('Ripple: lost particle state: most common code: "-{}" for {} particles out of {} lost in total'.format(np.bincount(np.abs(particles.state[particles.state <= 0])).argmax(),
                                                                                         np.max(np.bincount(np.abs(particles.state[particles.state <= 0]))),
                                                                                         len(particles.state[particles.state <= 0])))
-print('No ripple: lost particle state: most common code: "-{}" for {} particles out of {} lost in total'.format(np.bincount(np.abs(particles2.state[particles.state <= 0])).argmax(),
-                                                                                        np.max(np.bincount(np.abs(particles2.state[particles2.state <= 0]))),
-                                                                                        len(particles2.state[particles2.state <= 0])))
+#print('No ripple: lost particle state: most common code: "-{}" for {} particles out of {} lost in total'.format(np.bincount(np.abs(particles2.state[particles.state <= 0])).argmax(),
+#                                                                                        np.max(np.bincount(np.abs(particles2.state[particles2.state <= 0]))),
+#                                                                                        len(particles2.state[particles2.state <= 0])))
