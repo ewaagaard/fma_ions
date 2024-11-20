@@ -362,7 +362,7 @@ class SPS_Flat_Bottom_Tracker:
             turns_per_sec = 1/twiss['T_rev0']
             ripple_period = int(turns_per_sec/ripple_freq)  # number of turns particle makes during one ripple oscillation
             ripple = Tune_Ripple_SPS(beta_beat=beta_beat, num_turns=self.num_turns, ripple_period=ripple_period, qx0=self.qx0, qy0=self.qy0)
-            kqf_vals, kqd_vals, _ = ripple.load_k_from_xtrack_matching(dq=dq, plane=ripple_plane)
+            kqf_vals, kqd_vals, _ = ripple.find_k_from_xtrack_matching(dq=dq, plane=ripple_plane)
             
             '''
             # New way: install EXCITER ELEMENT
@@ -427,7 +427,7 @@ class SPS_Flat_Bottom_Tracker:
                 if add_tune_ripple:
                     #tw = line.twiss()
                     #qx, qy = tw['qx'], tw['qy']
-                    print('kqf = {:.6f}, kqf = {:.6f}'.format(line.vars['kqf']._value, line.vars['kqd']._value))
+                    print('kqf = {:.7f}, kqf = {:.7f}'.format(line.vars['kqf']._value, line.vars['kqd']._value))
                     #print('Tune ripple on: Qx = {:.3f}, Qy = {:.3f}'.format(qx, qy))    
                             # Print number and cause of lost particles
                 if particles.state[particles.state <= 0].size > 0:
