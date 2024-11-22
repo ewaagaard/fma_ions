@@ -73,7 +73,7 @@ class SPS_sequence_maker:
                                    save_new_xtrack_line=False,
                                    deferred_expressions=True, 
                                    add_aperture=False, 
-                                   plane='Y',
+                                   plane='both',
                                    voltage=3.0e6):
         """
         Method to load pre-generated SPS lattice files for Xsuite, or generate new if does not exist
