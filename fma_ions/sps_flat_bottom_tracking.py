@@ -115,7 +115,9 @@ class SPS_Flat_Bottom_Tracker:
                   nbins = 140,
                   cycle_mode_to_minimize_dx_dpx='dx',
                   target_dx_and_dpx=None,
-                  also_keep_delta_profiles=False
+                  also_keep_delta_profiles=False,
+                  I_LSE=None, 
+                  which_LSE='lse.12402'
                   ):
         """
         Run full tracking at SPS flat bottom
@@ -188,7 +190,12 @@ class SPS_Flat_Bottom_Tracker:
             to these values
         also_keep_delta_profiles : bool
             whether to keep aggregated delta coordinates in Zeta_Container or not
-            
+        I_LSE : float
+            if not None, how much sextupolar current to excite with. The LSEs are 
+            'lse.12402', 'lse.20602', 'lsen.42402', 'lse.50602' or 'lse.62402'
+        which_LSE : str
+            which LSE sextupole to excite with 
+
         Returns:
         --------
         tbt : Records
@@ -264,12 +271,13 @@ class SPS_Flat_Bottom_Tracker:
                 xt.Target('dqx', sps.dq1, tol=1e-7),
                 xt.Target('dqy', sps.dq2, tol=1e-7),
             ])
-
-        # Remove unrealistic aperture below limit ---> this removed deferred expressions, removed elements in data/aperture_fixed_file
-        #if minimum_aperture_to_remove is not None and add_aperture:
-        #    line = sps.remove_aperture_below_threshold(line, minimum_aperture_to_remove)
-        #
+        tw = line.twiss()
+        print('After matching: Qx = {:.4f}, Qy = {:.4f}, dQx = {:.4f}, dQy = {:.4f}\n'.format(tw['qx'], tw['qy'], tw['dqx'], tw['dqy']))
         
+        # Excite sextupole if desired
+        if I_LSE is not None:
+            line = sps.excite_LSE_sextupole_from_current(line, I_LSE=I_LSE, which_LSE=which_LSE)
+
         # Not compatible with tune ripple, as the kqf and kqd disappear
         if (cycle_mode_to_minimize_dx_dpx is not None) and not add_tune_ripple:
             

@@ -1059,7 +1059,7 @@ class SPS_sequence_maker:
         line : xtrack.line
             xtrack line object with new sextupole values
         """
-        lse_names = ['lse.12402.', 'lse.20602', 'lsen.42402', 'lse.50602', 'lse.62402']
+        lse_names = ['lse.12402', 'lse.20602', 'lsen.42402', 'lse.50602', 'lse.62402']
         k2_values = np.array([0.02295123,  0.03247354, -0.0141614 , -0.0314969 , -0.01139423])
         
         # Iterate over extraction sextupole, find in SPS sequence and set value
@@ -1075,6 +1075,45 @@ class SPS_sequence_maker:
 
         return line
     
+
+    def excite_LSE_sextupole_from_current(self, line, I_LSE, which_LSE='lse.12402')->xt.Line:
+        """
+        Add sextupolar component to a extraction LSE sextupole of choice in SPS (normally zero-valued)
+        Set current, then convert to normalized k strength
+        
+        Parameters:
+        -----------
+        line : xtrack.line
+            xtrack line object to search through
+
+        Returns:
+        --------
+        line : xtrack.line
+            xtrack line object with new sextupole values
+        I_LSE : float
+            how much sextupolar current to excite with. The LSEs are 
+            'lse.12402', 'lse.20602', 'lsen.42402', 'lse.50602' or 'lse.62402'
+        which_LSE : str
+            which LSE sextupole to excite with 
+        """
+        # Converting factor and polarity for LSE compared to currents - from Kostas
+        polarity = -1.0 if which_LSE=='lse.12402' else 1.0
+        K2I = -49.1477
+        I2K = polarity * 1/K2I
+        K2 = I_LSE * I2K
+        
+        print('\nExiciting LSE sextupole {} with I = {:.3f} --> K2 = {:.5f}'.format(which_LSE, I_LSE, K2))
+        # Iterate over SPS sequence and set LSE value
+        for key in line.element_names:
+            # For each slice with name, multiply k2 value with length to get integrated B field strength
+            if type(line[key]) == xt.beam_elements.elements.Multipole and which_LSE in key:
+                k2 = line[key].length * K2
+                line.element_dict[key] = xt.Multipole(knl = [0, 0, k2], length=line[key].length)
+                print('{}: replaced and set to knl = {}'.format(key, line[key].knl))
+
+        return line
+
+
     def set_LOE_octupolar_errors(self, line)->xt.Line:
         """
         Add octupolar component to the extraction LOE octupoles in SPS (normally zero-valued) to
