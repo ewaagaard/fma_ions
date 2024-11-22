@@ -48,8 +48,8 @@ class SPS_sequence_maker:
     ion_type: str = 'Pb' # Define beam type - default is Pb
     qx0: float = 26.30
     qy0: float = 26.19
-    dq1: float = -0.367 if ion_type == 'Pb' else 0.174 # ion values measured on 2024-11-19
-    dq2: float = -0.449 if ion_type == 'Pb' else 0.086 # ion values measured on 2024-11-19
+    dq1: float = -0.367 if ion_type == 'Pb' else 0.174 # ion values measured 2024-11-19, proton vals: knobs + Ingrid
+    dq2: float = -0.449 if ion_type == 'Pb' else 0.086 # ion values measured 2024-11-19, proton vals: knobs + Ingrid 
     seq_name: str = 'nominal'
     B_PS_extr: float = 1.2368 # [T] - magnetic field in PS for Pb ions, from Heiko Damerau
     rho_PS: float = 70.1206 # [m] - PS bending radius 

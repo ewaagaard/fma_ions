@@ -250,15 +250,19 @@ class SPS_Flat_Bottom_Tracker:
             line = sps.set_LOE_octupolar_errors(line)
 
 
-        # Rematch tunes to ensure correct values
+        # Rematch tunes and chromaticity to ensure correct values
         line.match(
             vary=[
                 xt.Vary('kqf', step=1e-8),
                 xt.Vary('kqd', step=1e-8),
+                xt.Vary('qph_setvalue', step=1e-7),
+                xt.Vary('qpv_setvalue', step=1e-7)
             ],
             targets = [
                 xt.Target('qx', self.qx0, tol=1e-8),
                 xt.Target('qy', self.qy0, tol=1e-8),
+                xt.Target('dqx', sps.dq1, tol=1e-7),
+                xt.Target('dqy', sps.dq2, tol=1e-7),
             ])
 
         # Remove unrealistic aperture below limit ---> this removed deferred expressions, removed elements in data/aperture_fixed_file
