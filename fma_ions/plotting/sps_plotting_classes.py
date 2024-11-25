@@ -750,8 +750,8 @@ class SPS_Plotting:
         ax[0].plot(scan_array_for_x_axis, exn[1, :] * 1e6, c='b', marker="o", label="X - final")
         ax[0].plot(scan_array_for_x_axis, eyn[1, :] * 1e6, c='darkorange', marker="o", label="Y - final")
         if plot_starting_emittances:
-            ax[0].plot(scan_array_for_x_axis, exn[0, :] * 1e6, c='b', lw=1.0, alpha=0.75, marker=".", label="X - initial")
-            ax[0].plot(scan_array_for_x_axis, eyn[0, :] * 1e6, c='darkorange', lw=1.0, alpha=0.75, marker=".", label="Y - initial")
+            ax[0].plot(scan_array_for_x_axis, exn[0, :] * 1e6, c='b', ls='--', lw=1.0, alpha=0.75, marker=".", label="X - initial")
+            ax[0].plot(scan_array_for_x_axis, eyn[0, :] * 1e6, c='darkorange', ls='--', lw=1.0, alpha=0.75, marker=".", label="Y - initial")
 
         ax[0].set_ylabel("$\epsilon_{x, y}^n$ [$\mu$m]")       
         ax[1].plot(scan_array_for_x_axis, transmission, c='red', marker='o', label='Transmission')
