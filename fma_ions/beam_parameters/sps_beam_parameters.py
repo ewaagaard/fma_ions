@@ -10,8 +10,8 @@ class BeamParameters_SPS:
     """Data Container for SPS Pb default beam parameters 2024"""
     Nb:  float = 3.4e8 # measured ions per bunch on 2024-11-13, at 16:23 (lowest amount of noise)
     sigma_z: float = 0.213 # measured with WCM on 2024-11-13
-    exn: float = 2.5e-6 # measured on 2024-11-19 at injection
-    eyn: float = 1.3e-6
+    exn: float = 2.5e-6 # measured 2.58 after 25 ms on 2024-11-19
+    eyn: float = 1.3e-6 # measured 1.34 after 25 ms on 2024-11-19
     q : float = 0.72 # q-Gaussian parameter after RF spill
     m : float = 4.0 # binomial parameter to determine tail of parabolic distribution (approximate value)
 
