@@ -762,7 +762,8 @@ class SPS_Plotting:
         ax[1].set_xlabel(label_for_x_axis)
         if emittance_range is not None:
             ax[0].set_ylim(emittance_range[0], emittance_range[1])
-        ax[1].set_ylim(transmission_range[0], transmission_range[1])
+        if transmission_range is not None:
+            ax[1].set_ylim(transmission_range[0], transmission_range[1])
         if master_job_name is None:
             master_job_name = 'scan_result_final_emittances_and_bunch_intensity'
         fig.savefig('output/{}.png'.format(master_job_name), dpi=250)
