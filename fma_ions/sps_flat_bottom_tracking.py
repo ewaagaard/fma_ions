@@ -414,10 +414,33 @@ class SPS_Flat_Bottom_Tracker:
             #  friction and diffusion terms of the kinetic theory of gases
             ibs_kick = xf.IBSKineticKick(num_slices=50)
 
-            # Install the IBS kinetic kick element
-            line.configure_intrabeam_scattering(
-                element=ibs_kick, name="ibskick", index=-1, update_every=ibs_step
-            )
+            ### Install the IBS kinetic kick element ###
+            #line.configure_intrabeam_scattering(
+            #    element=ibs_kick, name="ibskick", index=-1, update_every=ibs_step
+            #)
+
+            # THESE LINES ABOVE WILL NOT WORK if space charge is already installed
+            # Instead, follow manual steps Felix Soubelet's tips
+            # Directly copy steps from https://github.com/xsuite/xfields/blob/6882e0d03bb6772f873ce57ef6cf2592e5779359/xfields/ibs/_api.py
+            _buffer = line._buffer
+            line.discard_tracker()
+            line.insert_element(element=ibs_kick, name="ibskick", index=-1)
+            line.build_tracker(_buffer=_buffer)
+
+            line_sc_off = line.filter_elements(exclude_types_starting_with='SpaceCh')
+            twiss_no_sc = line_sc_off.twiss(method="4d")
+
+            # Figure out the IBS kick element and its name in the line
+            only_ibs_kicks = {name: element for name, element in line.element_dict.items() if isinstance(element, xf.ibs._kicks.IBSKick)}
+            assert len(only_ibs_kicks) == 1, "Only one 'IBSKick' element should be present in the line"
+            name, element = only_ibs_kicks.popitem()
+
+            # Set necessary (private) attributes for the kick to function
+            element.update_every = ibs_step
+            element._name = name
+            element._twiss = twiss_no_sc
+            element._scale_strength = 1  # element is now ON, will track
+
             print('\nFixed IBS coefficient recomputation at interval = {} steps\n'.format(ibs_step))
         
         # Install longitudinal beam profile monitor if desired
