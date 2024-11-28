@@ -382,9 +382,12 @@ class SPS_Flat_Bottom_Tracker:
             k_ripple = ripple.get_k_ripple_signal(k_amplitude=k_amplitude)
             
             # Save initial values
-            kqf0 = line.vars['kqf']
-            kqd0 = line.vars['kqd']
+            kqf0 = line.vars['kqf']._value
+            kqd0 = line.vars['kqd']._value
             
+            print('Quadrupolar knobs will oscillate with')
+            print('kqf =  {:.4e} +/- {:.3e}'.format(kqf0, max(k_ripple)))
+            print('kqd = {:.4e} +/- {:.3e}'.format(kqd0, max(k_ripple)))
 
         ######### IBS kinetic kicks #########
         if apply_kinetic_IBS_kicks:
@@ -445,9 +448,12 @@ class SPS_Flat_Bottom_Tracker:
                     print('kqf = {:.7f}, kqf = {:.7f}'.format(line.vars['kqf']._value, line.vars['kqd']._value))
 
                 if particles.state[particles.state <= 0].size > 0:
-                    print('Lost particle state: most common code: "-{}" for {} particles out of {} lost in total'.format(np.bincount(np.abs(particles.state[particles.state <= 0])).argmax(),
-                                                                                        np.max(np.bincount(np.abs(particles.state[particles.state <= 0]))),
-                                                                                        len(particles.state[particles.state <= 0])))
+                    print('Total lost particles: {}'.format(len(particles.state[particles.state <= 0])))
+                    loss_type, loss_count = np.unique(particles.state, return_counts=True)
+                    print('Loss types: {}\nwith occurrence {}'.format(loss_type, loss_count))
+                    #print('Lost particle state: most common code: "-{}" for {} particles out of {} lost in total'.format(np.bincount(np.abs(particles.state[particles.state <= 0])).argmax(),
+                    #                                                                    np.max(np.bincount(np.abs(particles.state[particles.state <= 0]))),
+                    #                                                                    len(particles.state[particles.state <= 0])))
                 else:
                     print('No particles lost')
             
@@ -456,8 +462,6 @@ class SPS_Flat_Bottom_Tracker:
                 line.vars['kqf'] = kqf0 + k_ripple[turn-1]
                 line.vars['kqd'] = kqd0 + k_ripple[turn-1]
             
-
-             
             # ----- Track and update records for tracked particles ----- #
             line.track(particles, num_turns=1)
 
