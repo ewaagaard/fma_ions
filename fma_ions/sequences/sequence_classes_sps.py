@@ -552,27 +552,29 @@ class SPS_sequence_maker:
         self._line.element_refs['qd.63510..1'].knl[1] = self._line.vars['kk_QD']
         self._line.element_refs['qf.63410..1'].knl[1] = self._line.vars['kk_QF']
         
-        # Rematch the tunes with the knobs
-        self._line.match(
-            vary=[
-                xt.Vary('kqf', step=1e-8),
-                xt.Vary('kqd', step=1e-8),
-                xt.Vary('kk_QD', step=1e-8),  #vary knobs and quadrupole simulatenously 
-                xt.Vary('kk_QF', step=1e-8),  #vary knobs and quadrupole simulatenously 
-            ],
-            targets = [
-                xt.Target('qx', self.qx0, tol=1e-7),
-                xt.Target('qy', self.qy0, tol=1e-7),
-                xt.Target('betx', value=betx_max, at=betx_max_loc, tol=1e-7),
-                xt.Target('bety', value=bety_max, at=bety_max_loc, tol=1e-7)
-            ])
-      
-        twiss3 = self._line.twiss()
+        # Try to rematch the tunes with the knobs
+        try:
+            self._line.match(
+                vary=[
+                    xt.Vary('kqf', step=1e-8),
+                    xt.Vary('kqd', step=1e-8),
+                    xt.Vary('kk_QD', step=1e-8),  #vary knobs and quadrupole simulatenously 
+                    xt.Vary('kk_QF', step=1e-8),  #vary knobs and quadrupole simulatenously 
+                ],
+                targets = [
+                    xt.Target('qx', self.qx0, tol=1e-7),
+                    xt.Target('qy', self.qy0, tol=1e-7),
+                    xt.Target('betx', value=betx_max, at=betx_max_loc, tol=1e-7),
+                    xt.Target('bety', value=bety_max, at=bety_max_loc, tol=1e-7)
+                ])
+            
+            twiss3 = self._line.twiss()
         
-        print('\nTunes rematched to qx = {:.4f}, qy = {:.4f}\n'.format(twiss3['qx'], twiss3['qy']))
-        print('New Y beat={:.5f}, X-beat={:.5f}'.format( (np.max(twiss3['bety']) - np.max(self._twiss0['bety']))/np.max(self._twiss0['bety']),
-                                                         (np.max(twiss3['betx']) - np.max(self._twiss0['betx']))/np.max(self._twiss0['betx']) ))
-        
+            print('\nTunes rematched to qx = {:.4f}, qy = {:.4f}\n'.format(twiss3['qx'], twiss3['qy']))
+            print('New Y beat={:.5f}, X-beat={:.5f}'.format( (np.max(twiss3['bety']) - np.max(self._twiss0['bety']))/np.max(self._twiss0['bety']),
+                                                            (np.max(twiss3['betx']) - np.max(self._twiss0['betx']))/np.max(self._twiss0['betx']) ))
+        except ValueError:
+            print('Twiss unstable for these tunes, could not rematch again exactly')
         
         # Save Xsuite sequence
         sps_fname = '{}/qy_dot{}/SPS_2021_{}{}_{}plane_{}_percent_beta_beat{}{}.json'.format(sequence_path, Qy_frac, self.ion_type, 
