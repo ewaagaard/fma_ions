@@ -99,7 +99,7 @@ class SPS_Flat_Bottom_Tracker:
                   distribution_type='gaussian',
                   add_tune_ripple=False,
                   ripple_plane='both',
-                  dq=0.01,
+                  k_amplitude=1e-6,
                   ripple_freq=50,
                   apply_kinetic_IBS_kicks=False,
                   harmonic_nb = 4653,
@@ -150,8 +150,8 @@ class SPS_Flat_Bottom_Tracker:
             whether to add external tune ripple from the Tune_Ripple_SPS class
         ripple_plane : str
             plane in which to add the tune ripple: 'X', 'Y' or 'both'
-        dq : float
-            amplitude for tune ripple, if applied
+        k_amplitude : float
+            amplitude for kqf/kqd ripple, if applied
         ripple_freq : float
             ripple frequency in Hz
         add_kinetic_IBS_kicks : bool
@@ -372,42 +372,19 @@ class SPS_Flat_Bottom_Tracker:
             print('Installed {} space charge interactions with {} z kick intergrations per sigma on line\n'.format(num_spacecharge_interactions,
                                                                                                                    z_kick_num_integ_per_sigma))
         
-        # Add tune ripple
+        # Modulate tune with ripple, if desired
         if add_tune_ripple:
 
-            # OLD WAY with quadrupolar knobs
+            # Create ripple in quadrupolar knobs
             turns_per_sec = 1/twiss['T_rev0']
             ripple_period = int(turns_per_sec/ripple_freq)  # number of turns particle makes during one ripple oscillation
             ripple = Tune_Ripple_SPS(beta_beat=beta_beat, num_turns=self.num_turns, ripple_period=ripple_period, qx0=self.qx0, qy0=self.qy0)
-            kqf_vals, kqd_vals, _ = ripple.find_k_from_xtrack_matching(dq=dq, plane=ripple_plane)
+            k_ripple = ripple.get_k_ripple_signal(k_amplitude=k_amplitude)
             
-            '''
-            # New way: install EXCITER ELEMENT
-            sampling_frequency = 10e4 # sampling frequency in Hz
-            A = 0.1 # amplitude    
-            t = np.arange(1000)/sampling_frequency # make vector with 1000 elements
-
-            f_ex = 50.0 # excitation frequency in Hz
-            signal_samples = A * np.sin(2*np.pi*f_ex*t)
-
-            # Initialize the exciter
-            exciter = xt.Exciter(
-                 _context=context,  # Assuming context is passed correctly
-                 samples=signal_samples,
-                 sampling_frequency=sampling_frequency,
-                 duration=self.num_turns * twiss['T_rev0'],
-                 frev=sampling_frequency,
-                 start_turn=0,
-                 knl=[1.]
-                 )
+            # Save initial values
+            kqf0 = line.vars['kqf']
+            kqd0 = line.vars['kqd']
             
-            # Rebuild tracker
-            line.discard_tracker()
-            line.insert_element(index=0, name='RF_KO_EXCITER', element=exciter)
-            line.build_tracker(_context = context)
-            line.optimize_for_tracking()
-            print('Tune ripple: installed exciter')
-            '''
 
         ######### IBS kinetic kicks #########
         if apply_kinetic_IBS_kicks:
@@ -465,11 +442,8 @@ class SPS_Flat_Bottom_Tracker:
                 print('\nTracking turn {}'.format(turn))            
                 
                 if add_tune_ripple:
-                    #tw = line.twiss()
-                    #qx, qy = tw['qx'], tw['qy']
                     print('kqf = {:.7f}, kqf = {:.7f}'.format(line.vars['kqf']._value, line.vars['kqd']._value))
-                    #print('Tune ripple on: Qx = {:.3f}, Qy = {:.3f}'.format(qx, qy))    
-                            # Print number and cause of lost particles
+
                 if particles.state[particles.state <= 0].size > 0:
                     print('Lost particle state: most common code: "-{}" for {} particles out of {} lost in total'.format(np.bincount(np.abs(particles.state[particles.state <= 0])).argmax(),
                                                                                         np.max(np.bincount(np.abs(particles.state[particles.state <= 0]))),
@@ -479,8 +453,8 @@ class SPS_Flat_Bottom_Tracker:
             
             ########## ----- Exert TUNE RIPPLE if desired ----- ##########
             if add_tune_ripple:
-                line.vars['kqf'] = kqf_vals[turn-1]
-                line.vars['kqd'] = kqd_vals[turn-1]
+                line.vars['kqf'] = kqf0 + k_ripple[turn-1]
+                line.vars['kqd'] = kqd0 + k_ripple[turn-1]
             
 
              

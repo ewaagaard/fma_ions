@@ -99,6 +99,31 @@ class Tune_Ripple_SPS:
         self._x_norm, self._y_norm = x_norm, y_norm
         
     
+    def get_k_ripple_signal(self, k_amplitude=1e-6):
+        """
+        Generate simple noise signal on top of kqf/kqd values, for a given ripple period and amplitude
+        
+        Parameters:
+        -----------
+        k_amplitude : float
+            ripple amplitude for kqf and kqd --> obtained from normalized FFT spectrum of IQD and IQF
+        plane : str
+            'X' or 'Y' or 'both' (default is 'X')
+
+        Returns:
+        --------
+        k_ripple_values : np.ndarray
+            focusing quadrupole values corresponding to modulate Qx according to dq (if chosen plane)
+        """
+
+        turns = np.arange(1, self.num_turns+1)
+        k_ripple = k_amplitude * np.sin(2 * np.pi * turns / self.ripple_period)
+        
+        print('Generated kqf/kqd ripple of amplitude {:.3e} with ripple period {}'.format(k_amplitude, self.ripple_period))
+            
+        return k_ripple
+    
+    
     def find_k_from_q_setvalue(self, dq=0.05, plane='X'):
         """
         For desired tune amplitude modulation dQx or dQy, find corresponding change in quadrupole strengths
