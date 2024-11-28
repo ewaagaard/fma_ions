@@ -15,7 +15,7 @@ master_name = 'Q26_Pb_ions_SC_frozen_beta_beat_and_non_linear_Qx_scan_LSE_excita
 num_turns = 130_000 # corresponds to 3s for SPS ions at flat bottom
 Qy = 26.19
 Qx_range = np.arange(26.28, 26.42, 0.01)
-run_files = ['sps_run_qx_{}_tbt_qy_26dot19.py'.format(i+1) for i in range(len(Qx_range))]
+run_files = ['sps_run_qx_{}_tbt_qy_26dot19_ripple.py'.format(i+1) for i in range(len(Qx_range))]
 
 # Define script and folder names
 script_names = run_files.copy()
