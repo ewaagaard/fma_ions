@@ -9,7 +9,7 @@ from dataclasses import dataclass
 class BeamParameters_SPS:
     """Data Container for SPS Pb default beam parameters 2024"""
     Nb:  float = 3.4e8 # measured ions per bunch on 2024-11-13, at 16:23 (lowest amount of noise)
-    sigma_z: float = 0.213 # measured with WCM on 2024-11-13
+    sigma_z: float = 0.2105 # measured with WCM on 2024-11-13
     exn: float = 2.31e-6 # measured 2.58 after 25 ms on 2024-11-19, but 2.31 on 2024-11-25
     eyn: float = 1.34e-6 # measured 1.34 after 25 ms on 2024-11-19, but 1.246 on 2024-11-25
     q : float = 0.72 # q-Gaussian parameter after RF spill
