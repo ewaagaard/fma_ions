@@ -769,6 +769,8 @@ class SPS_Plotting:
         ax[0].legend(fontsize=13)
         ax[0].grid(alpha=0.55)
         ax[1].grid(alpha=0.55)
+        ax[1].set_xticks(scan_array_for_x_axis)
+        ax[1].tick_params(axis='x', which='major', rotation=35, labelsize=13)
         if extra_text_string is not None:
             ax[1].text(0.024, 0.05, extra_text_string, transform=ax[1].transAxes, fontsize=12.8)
         ax[1].set_xlabel(label_for_x_axis)
