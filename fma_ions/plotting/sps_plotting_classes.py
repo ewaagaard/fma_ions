@@ -698,9 +698,9 @@ class SPS_Plotting:
                                                label_for_x_axis : str,
                                                output_str_array,
                                                extra_text_string=None,
-                                               transmission_range=[0.975, 1.005],
-                                               emittance_range = [0.67, 1.3],
-                                               plot_starting_emittances=False,
+                                               transmission_range=[0.0, 1.05],
+                                               emittance_range = [0.0, 3.55],
+                                               plot_starting_emittances=True,
                                                master_job_name=None) -> None:
         """
         Method to plot emittances and bunch intensities (final vs initial) for a 
@@ -733,20 +733,30 @@ class SPS_Plotting:
         # Load dictionary and append values
         for i, output_folder in enumerate(output_str_array):
             self.output_folder = output_folder
-            tbt_dict = self.load_records_dict_from_json(output_folder=output_folder)
+            try:
+                tbt_dict = self.load_records_dict_from_json(output_folder=output_folder)
 
-            # Append emittance and intensity values, initial and final
-            exn[0, i] =  tbt_dict['exn'][0] # initial
-            exn[1, i] =  tbt_dict['exn'][-1] # final
-            eyn[0, i] =  tbt_dict['eyn'][0] # initial
-            eyn[1, i] =  tbt_dict['eyn'][-1] # final
-            Nb[0, i]  =  tbt_dict['Nb'][0] # initial
-            Nb[1, i]  =  tbt_dict['Nb'][-1] # final
-            transmission[i] = Nb[1, i]/Nb[0, i]
+                # Append emittance and intensity values, initial and final
+                exn[0, i] =  tbt_dict['exn'][0] # initial
+                exn[1, i] =  tbt_dict['exn'][-1] # final
+                eyn[0, i] =  tbt_dict['eyn'][0] # initial
+                eyn[1, i] =  tbt_dict['eyn'][-1] # final
+                Nb[0, i]  =  tbt_dict['Nb'][0] # initial
+                Nb[1, i]  =  tbt_dict['Nb'][-1] # final
+                transmission[i] = Nb[1, i]/Nb[0, i]
+            except FileNotFoundError:
+                print('Could not find values in {}!'.format(output_folder))
+                exn[0, i] = np.nan
+                exn[1, i] = np.nan
+                eyn[0, i] = np.nan
+                eyn[1, i] = np.nan
+                Nb[0, i] = np.nan
+                Nb[1, i] = np.nan
+                transmission[i] = np.nan
 
         # Plot transmission and final emittances
         # Plot the transmission with emittance - ion tunes
-        fig, ax = plt.subplots(2, 1, figsize=(9,6), sharex=True, constrained_layout=True)
+        fig, ax = plt.subplots(2, 1, figsize=(9, 7.5), sharex=True, constrained_layout=True)
         ax[0].plot(scan_array_for_x_axis, exn[1, :] * 1e6, c='b', marker="o", label="X - final")
         ax[0].plot(scan_array_for_x_axis, eyn[1, :] * 1e6, c='darkorange', marker="o", label="Y - final")
         if plot_starting_emittances:
@@ -757,6 +767,8 @@ class SPS_Plotting:
         ax[1].plot(scan_array_for_x_axis, transmission, c='red', marker='o', label='Transmission')
         ax[1].set_ylabel("Transmission")
         ax[0].legend(fontsize=13)
+        ax[0].grid(alpha=0.55)
+        ax[1].grid(alpha=0.55)
         if extra_text_string is not None:
             ax[1].text(0.024, 0.05, extra_text_string, transform=ax[1].transAxes, fontsize=12.8)
         ax[1].set_xlabel(label_for_x_axis)
