@@ -31,6 +31,7 @@ for i, run_file in enumerate(run_files):
     run_file.truncate(0)  # remove existing content, if any
     run_file.write(
     '''import fma_ions
+import numpy as np
 output_dir = './'
 
 n_turns = {}
