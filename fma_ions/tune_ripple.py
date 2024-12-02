@@ -107,8 +107,6 @@ class Tune_Ripple_SPS:
         -----------
         k_amplitude : float
             ripple amplitude for kqf and kqd --> obtained from normalized FFT spectrum of IQD and IQF
-        plane : str
-            'X' or 'Y' or 'both' (default is 'X')
 
         Returns:
         --------
@@ -123,7 +121,45 @@ class Tune_Ripple_SPS:
             
         return k_ripple
     
-    
+
+    def get_k_ripple_summed_signal(self, ripple_periods, kqf_amplitudes, kqd_amplitudes):
+        """
+        Generate noise signal on top of kqf/kqd values, with desired ripple periods and amplitudes
+        
+        Parameters:
+        -----------
+        ripple_periods : np.ndarray
+            floats containing the ripple periods of the noise frequencies
+        kqf_amplitudes : np.ndarray
+            ripple amplitudes for desired frequencies of kqf --> obtained from normalized FFT spectrum of IQD and IQF. 
+            Default without 50 Hz compensation is 1e-6
+        kqd_amplitudes : list
+            ripple amplitudes for desired frequencies of kqd --> obtained from normalized FFT spectrum of IQD and IQF. 
+            Default without 50 Hz compensation is 1e-6
+
+        Returns:
+        --------
+        k_ripple_values : np.ndarray
+            focusing quadrupole values corresponding to modulate Qx according to dq (if chosen plane)
+        """
+
+        turns = np.arange(1, self.num_turns+1)
+        kqf_signals = np.zeros([len(ripple_periods), len(turns)])
+        kqd_signals = np.zeros([len(ripple_periods), len(turns)])
+        for i, ripple_period in enumerate(ripple_periods):
+            kqf_signals[i, :] = kqf_amplitudes[i] * np.sin(2 * np.pi * turns / ripple_period)
+            kqd_signals[i, :] = kqd_amplitudes[i] * np.sin(2 * np.pi * turns / ripple_period)
+
+        # Sum the signal
+        kqf_ripple = np.sum(kqf_signals, axis=0)
+        kqd_ripple = np.sum(kqd_signals, axis=0)
+
+        print('Generated kqf ripple of amplitudes {} with ripple periods {}'.format(kqf_amplitudes, ripple_periods))
+        print('Generated kqd ripple of amplitudes {} with ripple periods {}'.format(kqd_amplitudes, ripple_periods))
+
+        return kqf_ripple, kqd_ripple
+
+
     def find_k_from_q_setvalue(self, dq=0.05, plane='X'):
         """
         For desired tune amplitude modulation dQx or dQy, find corresponding change in quadrupole strengths

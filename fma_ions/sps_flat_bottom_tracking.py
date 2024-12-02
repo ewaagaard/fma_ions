@@ -98,13 +98,12 @@ class SPS_Flat_Bottom_Tracker:
                   SC_mode='frozen',
                   distribution_type='gaussian',
                   add_tune_ripple=False,
-                  ripple_plane='both',
-                  k_amplitude=1e-6,
-                  ripple_freq=50,
+                  kqf_amplitudes = np.array([9.7892e-7]),
+                  kqd_amplitudes = np.array([9.6865e-7]),
+                  ripple_freqs=np.array([50.]),
                   apply_kinetic_IBS_kicks=False,
                   harmonic_nb = 4653,
                   ibs_step = 5000,
-                  minimum_aperture_to_remove=0.025,
                   matched_for_PS_extraction=False,
                   plane_for_beta_beat='both',
                   num_spacecharge_interactions=1080,
@@ -150,18 +149,18 @@ class SPS_Flat_Bottom_Tracker:
             whether to add external tune ripple from the Tune_Ripple_SPS class
         ripple_plane : str
             plane in which to add the tune ripple: 'X', 'Y' or 'both'
-        k_amplitude : float
-            amplitude for kqf/kqd ripple, if applied
-        ripple_freq : float
-            ripple frequency in Hz
+        kqf_amplitudes : np.ndarray
+            amplitude for kqf ripple amplitudes, if applied
+        kqd_amplitudes : np.ndarray
+            amplitude for kqd ripple amplitudes, if applied
+        ripple_freqs : np.ndarray
+            array with desired ripple frequencies in Hz
         add_kinetic_IBS_kicks : bool
             whether to apply kinetic kicks from xibs 
         harmonic_nb : int
             harmonic used for SPS RF system
         ibs_step : int
             Turn interval at which to recalculate IBS growth rates
-        minimum_aperture_to_remove : float 
-            minimum threshold of horizontal SPS aperture to remove, default is 0.025 (can also be set to None)
             as faulty IPM aperture has 0.01 m, which is too small
         matched_for_PS_extraction : bool
             whether to match particle object to before RF capture at SPS injection. If 'True', particles will be matched to PS extraction 
@@ -377,17 +376,17 @@ class SPS_Flat_Bottom_Tracker:
 
             # Create ripple in quadrupolar knobs
             turns_per_sec = 1/twiss['T_rev0']
-            ripple_period = int(turns_per_sec/ripple_freq)  # number of turns particle makes during one ripple oscillation
-            ripple = Tune_Ripple_SPS(beta_beat=beta_beat, num_turns=self.num_turns, ripple_period=ripple_period, qx0=self.qx0, qy0=self.qy0)
-            k_ripple = ripple.get_k_ripple_signal(k_amplitude=k_amplitude)
+            ripple_periods = (turns_per_sec/ripple_freqs).astype(int)  # number of turns particle makes during one ripple oscillation
+            ripple_maker = Tune_Ripple_SPS(beta_beat=beta_beat, num_turns=self.num_turns, qx0=self.qx0, qy0=self.qy0)
+            kqf_ripple, kqd_ripple = ripple_maker.get_k_ripple_summed_signal(ripple_periods, kqf_amplitudes, kqd_amplitudes)
             
             # Save initial values
             kqf0 = line.vars['kqf']._value
             kqd0 = line.vars['kqd']._value
             
             print('Quadrupolar knobs will oscillate with')
-            print('kqf =  {:.4e} +/- {:.3e}'.format(kqf0, max(k_ripple)))
-            print('kqd = {:.4e} +/- {:.3e}'.format(kqd0, max(k_ripple)))
+            print('kqf =  {:.4e} +/- {:.3e}'.format(kqf0, max(kqf_ripple)))
+            print('kqd = {:.4e} +/- {:.3e}'.format(kqd0, max(kqd_ripple)))
 
         ######### IBS kinetic kicks #########
         if apply_kinetic_IBS_kicks:
@@ -459,8 +458,8 @@ class SPS_Flat_Bottom_Tracker:
             
             ########## ----- Exert TUNE RIPPLE if desired ----- ##########
             if add_tune_ripple:
-                line.vars['kqf'] = kqf0 + k_ripple[turn-1]
-                line.vars['kqd'] = kqd0 + k_ripple[turn-1]
+                line.vars['kqf'] = kqf0 + kqf_ripple[turn-1]
+                line.vars['kqd'] = kqd0 + kqd_ripple[turn-1]
             
             # ----- Track and update records for tracked particles ----- #
             line.track(particles, num_turns=1)
