@@ -11,7 +11,7 @@ import datetime
 dir_path = pathlib.Path(__file__).parent.absolute()
 
 # Define run files and which parameters to change
-master_name = 'Q26_Pb_ions_SC_frozen_beta_beat_and_non_linear_Qx_scan_LSE_excitation_3_with_ibs_and_ripple'
+master_name = 'Q26_Pb_ions_SC_frozen_beta_beat_and_non_linear_Qx_scan_LSE_excitation_3_with_ibs_and_summed_ripple'
 num_turns = 130_000 # corresponds to 3s for SPS ions at flat bottom
 Qy = 26.19
 Qx_range = np.arange(26.28, 26.42, 0.01)
@@ -65,4 +65,4 @@ for i, script in enumerate(script_names):
 sub.copy_master_plot_script(folder_names, string_array)
 sub.copy_plot_script_emittances_for_scan(master_name, folder_names, scan_array_for_x_axis=Qx_range,
                                              label_for_x_axis='$Q_{x}$', 
-                                             extra_text_string='$Q_{y}$ = 26.19 - q-Gaussian beam\n Frozen SC, 15% $\\beta$-beat + non-linear magnet errors\nLSE excitation')
+                                             extra_text_string='$Q_{y}$ = 26.19 - q-Gaussian beam\n Frozen SC, IBS, 15% $\\beta$-beat + non-linear magnet errors\nLSE excitation')
