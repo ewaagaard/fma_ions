@@ -450,9 +450,6 @@ class SPS_Flat_Bottom_Tracker:
                     print('Total lost particles: {}'.format(len(particles.state[particles.state <= 0])))
                     loss_type, loss_count = np.unique(particles.state, return_counts=True)
                     print('Loss types: {}, with occurrence {}'.format(loss_type, loss_count))
-                    #print('Lost particle state: most common code: "-{}" for {} particles out of {} lost in total'.format(np.bincount(np.abs(particles.state[particles.state <= 0])).argmax(),
-                    #                                                                    np.max(np.bincount(np.abs(particles.state[particles.state <= 0]))),
-                    #                                                                    len(particles.state[particles.state <= 0])))
                 else:
                     print('No particles lost')
             
