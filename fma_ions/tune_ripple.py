@@ -122,9 +122,11 @@ class Tune_Ripple_SPS:
         return k_ripple
     
 
-    def get_k_ripple_summed_signal(self, ripple_periods, kqf_amplitudes, kqd_amplitudes):
+    def get_k_ripple_summed_signal(self, ripple_periods, kqf_amplitudes, kqd_amplitudes,
+                                   kqf_phases, kqd_phases):
         """
-        Generate noise signal on top of kqf/kqd values, with desired ripple periods and amplitudes
+        Generate noise signal on top of kqf/kqd values, with desired ripple periods and amplitudes.
+        Phase and frequencies unit must correspond to where it is used, e.g turns
         
         Parameters:
         -----------
@@ -136,6 +138,10 @@ class Tune_Ripple_SPS:
         kqd_amplitudes : list
             ripple amplitudes for desired frequencies of kqd --> obtained from normalized FFT spectrum of IQD and IQF. 
             Default without 50 Hz compensation is 1e-6
+        kqf_phases : np.ndarray
+            ripple phase for desired frequencies of kqf --> obtained from normalized FFT spectrum of IQD and IQF. 
+        kqd_phases : list
+            ripple phases for desired frequencies of kqd --> obtained from normalized FFT spectrum of IQD and IQF. 
 
         Returns:
         --------
@@ -147,15 +153,15 @@ class Tune_Ripple_SPS:
         kqf_signals = np.zeros([len(ripple_periods), len(turns)])
         kqd_signals = np.zeros([len(ripple_periods), len(turns)])
         for i, ripple_period in enumerate(ripple_periods):
-            kqf_signals[i, :] = kqf_amplitudes[i] * np.sin(2 * np.pi * turns / ripple_period)
-            kqd_signals[i, :] = kqd_amplitudes[i] * np.sin(2 * np.pi * turns / ripple_period)
+            kqf_signals[i, :] = kqf_amplitudes[i] * np.sin(2 * np.pi * turns / ripple_period + kqf_phases[i])
+            kqd_signals[i, :] = kqd_amplitudes[i] * np.sin(2 * np.pi * turns / ripple_period + kqd_phases[i])
 
         # Sum the signal
         kqf_ripple = np.sum(kqf_signals, axis=0)
         kqd_ripple = np.sum(kqd_signals, axis=0)
 
-        print('Generated kqf ripple of amplitudes {} with ripple periods {}'.format(kqf_amplitudes, ripple_periods))
-        print('Generated kqd ripple of amplitudes {} with ripple periods {}'.format(kqd_amplitudes, ripple_periods))
+        print('Generated kqf ripple of amplitudes {} and phases {} with ripple periods {}'.format(kqf_amplitudes, kqf_phases, ripple_periods))
+        print('Generated kqd ripple of amplitudes {} and phases {} with ripple periods {}'.format(kqd_amplitudes, kqd_phases, ripple_periods))
 
         return kqf_ripple, kqd_ripple
 

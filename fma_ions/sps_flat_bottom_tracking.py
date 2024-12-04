@@ -100,6 +100,8 @@ class SPS_Flat_Bottom_Tracker:
                   add_tune_ripple=False,
                   kqf_amplitudes = np.array([9.7892e-7]),
                   kqd_amplitudes = np.array([9.6865e-7]),
+                  kqf_phases=np.array([0.5564486]), 
+                  kqd_phases=np.array([0.47329223]),
                   ripple_freqs=np.array([50.]),
                   apply_kinetic_IBS_kicks=False,
                   harmonic_nb = 4653,
@@ -153,6 +155,10 @@ class SPS_Flat_Bottom_Tracker:
             amplitude for kqf ripple amplitudes, if applied
         kqd_amplitudes : np.ndarray
             amplitude for kqd ripple amplitudes, if applied
+        kqf_phases : np.ndarray
+            ripple phase for desired frequencies of kqf --> obtained from normalized FFT spectrum of IQD and IQF. 
+        kqd_phases : list
+            ripple phases for desired frequencies of kqd --> obtained from normalized FFT spectrum of IQD and IQF. 
         ripple_freqs : np.ndarray
             array with desired ripple frequencies in Hz
         add_kinetic_IBS_kicks : bool
@@ -380,11 +386,15 @@ class SPS_Flat_Bottom_Tracker:
         # Modulate tune with ripple, if desired
         if add_tune_ripple:
 
-            # Create ripple in quadrupolar knobs
+            # Create ripple in quadrupolar knobs, convert phases to turns
             turns_per_sec = 1/twiss['T_rev0']
             ripple_periods = (turns_per_sec/ripple_freqs).astype(int)  # number of turns particle makes during one ripple oscillation
+            kqf_phases_turns = kqf_phases * turns_per_sec # convert time domain to turn domain, i.e. multiply with turns/sec
+            kqd_phases_turns = kqd_phases * turns_per_sec # convert time domain to turn domain, i.e. multiply with turns/sec
+
             ripple_maker = Tune_Ripple_SPS(num_turns=self.num_turns, qx0=self.qx0, qy0=self.qy0)
-            kqf_ripple, kqd_ripple = ripple_maker.get_k_ripple_summed_signal(ripple_periods, kqf_amplitudes, kqd_amplitudes)
+            kqf_ripple, kqd_ripple = ripple_maker.get_k_ripple_summed_signal(ripple_periods, kqf_amplitudes, kqd_amplitudes,
+                                                                             kqf_phases_turns, kqd_phases_turns)
             
             # Save initial values
             kqf0 = line.vars['kqf']._value

@@ -44,7 +44,7 @@ kqd_amplitudes = np.array([9.6865e-7, 4.4711e-7, 5.5065e-7])
 
 # Tracking on GPU context
 sps = fma_ions.SPS_Flat_Bottom_Tracker(qx0={:.3f}, qy0={:.3f}, num_turns=n_turns, num_part=num_part)
-tbt = sps.track_SPS(which_context='gpu', distribution_type='qgaussian', install_SC_on_line=True, beta_beat=0.15, add_non_linear_magnet_errors=True, 
+tbt = sps.track_SPS(which_context='gpu', distribution_type='qgaussian', install_SC_on_line=True, add_beta_beat=True, add_non_linear_magnet_errors=True, 
                     I_LSE=-3.0, apply_kinetic_IBS_kicks=True, ibs_step = 2000, add_tune_ripple=True, ripple_freqs = ripple_freqs,
                     kqf_amplitudes = kqf_amplitudes, kqd_amplitudes = kqd_amplitudes)
 tbt.to_json(output_dir)
