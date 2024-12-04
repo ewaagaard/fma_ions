@@ -698,7 +698,7 @@ class SPS_Plotting:
                                                label_for_x_axis : str,
                                                output_str_array,
                                                extra_text_string=None,
-                                               transmission_range=[0.0, 1.05],
+                                               transmission_range=[0.0, 105],
                                                emittance_range = [0.0, 4.1],
                                                plot_starting_emittances=True,
                                                master_job_name=None) -> None:
@@ -764,8 +764,8 @@ class SPS_Plotting:
             ax[0].plot(scan_array_for_x_axis, eyn[0, :] * 1e6, c='darkorange', ls='--', lw=1.0, alpha=0.75, marker=".", label="Y - initial")
 
         ax[0].set_ylabel("$\epsilon_{x, y}^n$ [$\mu$m]")       
-        ax[1].plot(scan_array_for_x_axis, transmission, c='red', marker='o', label='Transmission')
-        ax[1].set_ylabel("Transmission")
+        ax[1].plot(scan_array_for_x_axis, 100*transmission, c='red', marker='o', label='Transmission')
+        ax[1].set_ylabel("Transmission [%]")
         ax[0].legend(fontsize=13)
         ax[0].grid(alpha=0.55)
         ax[1].grid(alpha=0.55)

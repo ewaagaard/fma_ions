@@ -459,14 +459,16 @@ class SPS_sequence_maker:
 
 
     def generate_xsuite_seq_with_beta_beat(self, 
-                                           beta_beat=0.05,
+                                           find_beta_beat_from_rms=True,
+                                           beta_beat_x=0.05,
+                                           beta_beat_y=0.05,
                                            save_xsuite_seq=False, 
                                            line=None,
                                            use_symmetric_lattice=False,
                                            add_non_linear_magnet_errors=False,
-                                           plane='both',
                                            add_aperture=False,
-                                           voltage=3.0e6
+                                           voltage=3.0e6,
+                                           mask_with_BPMs=False
                                            ):
         """
         Generate Xsuite line with desired beta beat, optimizer finds
@@ -474,9 +476,12 @@ class SPS_sequence_maker:
         
         Parameters:
         -----------
-        beta_beat : float
-            desired beta beat, i.e. relative difference between max beta function and max original beta function. If
-            not 'both', the other plane will be assumed to have 0 beta-beat
+        find_beta_beat_from_rms : bool
+            whether to optimize quadrupolar strengths to find RMS values around the ring. If False, will search for maximum
+        beta_beat_x : float
+            desired beta beat in x, i.e. relative difference between max beta function and max original beta function.
+        beta_beat_y : float
+            desired beta beat in x, i.e. relative difference between max beta function and max original beta function. 
         save_xsuite_seq : bool
             flag to save xsuite sequence in desired location
         line : xtrack.Line
@@ -485,12 +490,12 @@ class SPS_sequence_maker:
             add errors from non-linear chromaticity if desired 
         add_non_linear_magnet_errors : bool
             whether to add line with non-linear chromatic errors
-        plane : str
-            'X' or 'Y' or 'both' - which plane(s) to find beta-beat for
         add_aperture : bool
             whether to include aperture for SPS
         voltage : float
             RF voltage in V
+        mask_with_BPMs: bool
+            whether to only measure beta functions at BPM locations, like in the measurements. May cause undesired modulation
         
         Returns:
         -------
@@ -504,10 +509,6 @@ class SPS_sequence_maker:
         else:
             raise ValueError('Invalid optics: select Q20 or Q26')
 
-        # Substrings to identify line
-        symmetric_string = '_symmetric' if use_symmetric_lattice else '_nominal'
-        err_str = '_with_non_linear_chrom_error' if add_non_linear_magnet_errors else ''
-
         Qy_frac = int(100*(np.round(self.qy0 % 1, 2)))
         self._line, _ = self.load_SPS_line_with_deferred_madx_expressions(use_symmetric_lattice=use_symmetric_lattice, Qy_frac=Qy_frac,
                                                          add_non_linear_magnet_errors=add_non_linear_magnet_errors, add_aperture=add_aperture,
@@ -516,11 +517,48 @@ class SPS_sequence_maker:
         self._line0 = self._line.copy()
         self._twiss0 = self._line0.twiss()
         
+        # Load BPM data and find BPM locations for beta functions
+        if mask_with_BPMs:
+            bpm_x_names = []
+            bpm_y_names = []
+            self.bpm_x_ind = []
+            self.bpm_y_ind = []
+            bpms_h = np.loadtxt('{}/BPMs/common_bpms_H.txt'.format(sequence_path), dtype=str)
+            bpms_v = np.loadtxt('{}/BPMs/common_bpms_V.txt'.format(sequence_path), dtype=str)
+            
+            for i, key in enumerate(self._line.element_names):
+            
+                # X plane --> check BPM elements
+                for bpm_h in bpms_h:
+                    if bpm_h[:-2].lower() in key:
+                        self.bpm_x_ind.append(i)
+                        bpm_x_names.append(key)
+    
+                # Y plane --> check BPM elements
+                for bpm_v in bpms_v:
+                    if bpm_v[:-2].lower() in key:
+                        self.bpm_y_ind.append(i)
+                        bpm_y_names.append(key)
+            print('Only use Twiss at BPMs locations: found {} in H and {} in V'.format(len(self.bpm_x_ind), len(self.bpm_y_ind)))
+        else:
+            # Select all elements
+            self.bpm_x_ind = np.arange(len(self._twiss0))
+            self.bpm_y_ind = np.arange(len(self._twiss0))
+
+        
         # Initial guess: small perturbation to initial value, then minimize loss function
-        print('\nBeta-beat search for {} in {} plane(s)!\n'.format(beta_beat, plane))
+        print('\nBeta-beat search for X: {} and Y: {}\n'.format(beta_beat_x, beta_beat_y))
         dqd0 = [self._line0['qd.63510..1'].knl[1] + 1e-6, self._line0['qf.63410..1'].knl[1] + 1e-6]
-        result = minimize(self._loss_function_beta_beat, dqd0, args=(beta_beat, plane), 
-                          method='nelder-mead', tol=1e-7, options={'maxiter':100})
+        
+        # Search for RMS beta-beat, if desired
+        if find_beta_beat_from_rms:
+            result = minimize(self._loss_function_beta_beat_RMS, dqd0, args=(beta_beat_x, beta_beat_y), 
+                              method='nelder-mead', tol=1e-7, options={'maxiter':100})
+        else:
+            result = minimize(self._loss_function_beta_beat, dqd0, args=(beta_beat_x, beta_beat_y), 
+                              method='nelder-mead', tol=1e-7, options={'maxiter':100})
+        
+        
         print(result)
         
         # Update QD value, and also additional QF value if both planes are used
@@ -538,7 +576,6 @@ class SPS_sequence_maker:
         # Show beta-beat 
         print('\nX beta-beat: {:.5f}'.format( (np.max(twiss2['betx']) - np.max(self._twiss0['betx']))/np.max(self._twiss0['betx']) ))
         print('Y beta-beat: {:.5f}'.format( (np.max(twiss2['bety']) - np.max(self._twiss0['bety']))/np.max(self._twiss0['bety']) ))
-        print('Generated sequence with Qx, Qy = ({}, {}) and beta-beat = {}!\n'.format(twiss2['qx'], twiss2['qy'], beta_beat))
         
         # Find where this maximum beta function occurs
         betx_max_loc = twiss2.rows[np.argmax(twiss2.betx)].name[0]
@@ -554,42 +591,41 @@ class SPS_sequence_maker:
         
         # Try to rematch the tunes with the knobs
         try:
+            
             self._line.match(
                 vary=[
                     xt.Vary('kqf', step=1e-8),
                     xt.Vary('kqd', step=1e-8),
                     xt.Vary('kk_QD', step=1e-8),  #vary knobs and quadrupole simulatenously 
                     xt.Vary('kk_QF', step=1e-8),  #vary knobs and quadrupole simulatenously 
+                    xt.Vary('qph_setvalue', step=1e-7),
+                    xt.Vary('qpv_setvalue', step=1e-7)
                 ],
                 targets = [
                     xt.Target('qx', self.qx0, tol=1e-7),
                     xt.Target('qy', self.qy0, tol=1e-7),
                     xt.Target('betx', value=betx_max, at=betx_max_loc, tol=1e-7),
-                    xt.Target('bety', value=bety_max, at=bety_max_loc, tol=1e-7)
+                    xt.Target('bety', value=bety_max, at=bety_max_loc, tol=1e-7),
+                    xt.Target('dqx', self.dq1, tol=1e-7),
+                    xt.Target('dqy', self.dq2, tol=1e-7),
                 ])
-            
             twiss3 = self._line.twiss()
         
-            print('\nTunes rematched to qx = {:.4f}, qy = {:.4f}\n'.format(twiss3['qx'], twiss3['qy']))
+            print('After matching: Qx = {:.4f}, Qy = {:.4f}, dQx = {:.4f}, dQy = {:.4f}\n'.format(twiss3['qx'], twiss3['qy'], twiss3['dqx'], twiss3['dqy']))
             print('New Y beat={:.5f}, X-beat={:.5f}'.format( (np.max(twiss3['bety']) - np.max(self._twiss0['bety']))/np.max(self._twiss0['bety']),
                                                             (np.max(twiss3['betx']) - np.max(self._twiss0['betx']))/np.max(self._twiss0['betx']) ))
+            print('\nAchieved with new single quadrupolar knobs:')
+            print('kk_QD = {:.6e}, kk_QF = {:.6e}'.format(self._line.vars['kk_QD']._value, self._line.vars['kk_QF']._value))
         except ValueError:
             print('Twiss unstable for these tunes, could not rematch again exactly')
         
-        # Save Xsuite sequence
-        sps_fname = '{}/qy_dot{}/SPS_2021_{}{}_{}plane_{}_percent_beta_beat{}{}.json'.format(sequence_path, Qy_frac, self.ion_type, 
-                                                                                 symmetric_string, plane, int(beta_beat*100), err_str,
-                                                                                 proton_optics_str)
-        if save_xsuite_seq:
-            with open(sps_fname, 'w') as fid:
-                json.dump(self._line.to_dict(), fid, cls=xo.JEncoder)
-                
+
         return self._line              
 
 
-    def _loss_function_beta_beat(self, dqd, beta_beat, plane='Y'):
+    def _loss_function_beta_beat(self, dqd, beta_beat_rms_X, beta_beat_rms_Y):
         """
-        Loss function to optimize to find correct beta-beat in 'X' or 'Y' or 'both'
+        Loss function to optimize to find correct maximum beta-beat in 'X' or 'Y' or 'both'
         
         Parameters:
         ----------
@@ -606,14 +642,7 @@ class SPS_sequence_maker:
         """
         
         # Define beta-beat vector
-        if plane=='Y':
-            beta_beats = [0.0, beta_beat]
-        elif plane=='X':
-            beta_beats = [beta_beat, 0.0]
-        elif plane=='both':
-            beta_beats = [beta_beat, beta_beat]
-        else:
-            raise ValueError('Invalid plane!')
+        beta_beats = [beta_beat_rms_X, beta_beat_rms_Y]
             
         # Try with new quadrupole error, otherwise return high value (square of error)
         try:
@@ -640,6 +669,57 @@ class SPS_sequence_maker:
             print('Resetting line...')
         
         return loss 
+    
+    
+    def _loss_function_beta_beat_RMS(self, dqd, beta_beat_rms_X, beta_beat_rms_Y):
+        """
+        Loss function to optimize to find correct RMS beta-beat in 'X' or 'Y' or 'both'
+        
+        Parameters:
+        ----------
+        dqd : np.ndarray
+            array containing: quadrupolar strength for first slice of last SPS quadrupoles, value of kqf and value of kqd knob
+        beta_beat_rms_X : float
+            RMS X beta beat around the ring, i.e. relative difference between max beta function and max original beta function
+        beta_beat_rms_Y : float
+            RMS X beta beat around the ring, i.e. relative difference between max beta function and max original beta function
+        
+        Returns:
+        --------
+        loss - loss function value, np.abs(beta_beat - desired beta beat)
+        """
+        
+        # Define beta-beat vector
+        beta_beats = [beta_beat_rms_X, beta_beat_rms_Y]
+                
+        # Try with new quadrupole error, otherwise return high value (square of error)
+        try:
+            # Vary first slice of last quadrupole
+            self._line['qd.63510..1'].knl[1] = dqd[0]
+            self._line['qf.63410..1'].knl[1] = dqd[1]
+            twiss2 = self._line.twiss()
+        
+            # Calculate beta-beat
+            beat_x = (self._twiss0['betx'][self.bpm_x_ind] - twiss2['betx'][self.bpm_x_ind]) / self._twiss0['betx'][self.bpm_x_ind] 
+            beat_y = (self._twiss0['bety'][self.bpm_y_ind] - twiss2['bety'][self.bpm_y_ind]) / self._twiss0['bety'][self.bpm_y_ind] 
+            rms_x = np.sqrt(np.sum(beat_x**2)/len(beat_x))
+            rms_y = np.sqrt(np.sum(beat_y**2)/len(beat_y))
+            
+            print('Setting QD error to {:.3e}, QF error to {:.3e},  with Ybeat_RMS={:.4e}, Xbeat_RMS={:.4f}, qx = {:.4f}, qy = {:.4f}'.format(dqd[0],
+                                                                                                                                              dqd[1], 
+                                                                                                                                              rms_x,
+                                                                                                                                              rms_y,
+                                                                                                                                              twiss2['qx'], 
+                                                                                                                                              twiss2['qy']))
+            # Define objective function as squared difference
+            loss = (beta_beats[0] - rms_x)**2 + (beta_beats[1] - rms_y)**2
+
+        except ValueError:
+            loss = dqd[0]**2 
+            self._line = self._line0.copy()
+            print('Resetting line...')
+        
+        return loss     
 
 
     @staticmethod

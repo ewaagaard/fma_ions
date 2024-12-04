@@ -92,7 +92,7 @@ class SPS_Flat_Bottom_Tracker:
                   add_sextupolar_errors=False,
                   add_octupolar_errors=False,
                   add_aperture=True,
-                  beta_beat=None, 
+                  add_beta_beat=False, 
                   beamParams=None,
                   install_SC_on_line=True, 
                   SC_mode='frozen',
@@ -135,8 +135,8 @@ class SPS_Flat_Bottom_Tracker:
             whether to add octupolar LOE errors to reproduce machine errors
         add_aperture : bool
             whether to include aperture for SPS
-        beta_beat : float
-            relative beta beat, i.e. relative difference between max beta function and max original beta function
+        add_beta_beat : float
+            whether to add computed beta beat, i.e. relative difference between max beta function and max original beta function
         beamParams : dataclass
             container of exn, eyn, Nb and sigma_z. Default 'None' will load nominal SPS beam parameters 
         install_SC_on_line : bool
@@ -236,8 +236,7 @@ class SPS_Flat_Bottom_Tracker:
             raise ValueError('Only Pb and O ions implemented so far!')
         
         # Extract line with aperture, beta-beat and non-linear magnet errors if desired
-        line, twiss = sps.load_xsuite_line_and_twiss(add_aperture=add_aperture, beta_beat=beta_beat,
-                                                   add_non_linear_magnet_errors=add_non_linear_magnet_errors, 
+        line, twiss = sps.load_xsuite_line_and_twiss(add_aperture=add_aperture, add_non_linear_magnet_errors=add_non_linear_magnet_errors, 
                                                    deferred_expressions=True, # needed for tune matching
                                                    plane=plane_for_beta_beat, voltage=voltage)
         print('{} optics: Qx = {:.3f}, Qy = {:.3f}'.format(self.proton_optics, twiss['qx'], twiss['qy']))
@@ -247,6 +246,13 @@ class SPS_Flat_Bottom_Tracker:
             line2 = line.copy()
             sps.print_smallest_aperture(line2)
 
+        # Whether to add beta-beat, computed RMS values in sps_generate_beta_beat module under `sequences`
+        if add_beta_beat:
+            line.element_refs['qd.63510..1'].knl[1] = -1.07328640311457e-02
+            line.element_refs['qf.63410..1'].knl[1] = 1.08678014669101e-02
+            print('Beta-beat added: kk_QD = {:.6e}, kk_QF = {:.6e}'.format(line.element_refs['qd.63510..1'].knl[1]._value,
+                                                                           line.element_refs['qf.63410..1'].knl[1]._value))
+
         # Add LSE errors, if desired
         if add_sextupolar_errors:
             line = sps.set_LSE_sextupolar_errors(line)
@@ -254,7 +260,6 @@ class SPS_Flat_Bottom_Tracker:
         # Add LOE errors, if desired
         if add_octupolar_errors:
             line = sps.set_LOE_octupolar_errors(line)
-
 
         # Rematch tunes and chromaticity to ensure correct values
         line.match(
@@ -272,10 +277,10 @@ class SPS_Flat_Bottom_Tracker:
             ])
         tw = line.twiss()
         print('After matching: Qx = {:.4f}, Qy = {:.4f}, dQx = {:.4f}, dQy = {:.4f}\n'.format(tw['qx'], tw['qy'], tw['dqx'], tw['dqy']))
-        
+
         # Excite sextupole if desired
         if I_LSE is not None:
-            line = sps.excite_LSE_sextupole_from_current(line, I_LSE=I_LSE, which_LSE=which_LSE)
+            line = sps.excite_LSE_sextupole_from_current(line, I_LSE=I_LSE, which_LSE=which_LSE)        
 
         # Not compatible with tune ripple, as the kqf and kqd disappear
         if (cycle_mode_to_minimize_dx_dpx is not None) and not add_tune_ripple:
@@ -377,7 +382,7 @@ class SPS_Flat_Bottom_Tracker:
             # Create ripple in quadrupolar knobs
             turns_per_sec = 1/twiss['T_rev0']
             ripple_periods = (turns_per_sec/ripple_freqs).astype(int)  # number of turns particle makes during one ripple oscillation
-            ripple_maker = Tune_Ripple_SPS(beta_beat=beta_beat, num_turns=self.num_turns, qx0=self.qx0, qy0=self.qy0)
+            ripple_maker = Tune_Ripple_SPS(num_turns=self.num_turns, qx0=self.qx0, qy0=self.qy0)
             kqf_ripple, kqd_ripple = ripple_maker.get_k_ripple_summed_signal(ripple_periods, kqf_amplitudes, kqd_amplitudes)
             
             # Save initial values
