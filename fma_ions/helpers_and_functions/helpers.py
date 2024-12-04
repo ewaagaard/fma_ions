@@ -56,10 +56,10 @@ class Records:
     bunch_length: np.ndarray
     Nb: np.ndarray
     turns: np.ndarray
-    includes_profile_data : bool = False
-    includes_seconds_array : bool = False
     particles_i : dict
     particles_f : dict
+    includes_profile_data : bool = False
+    includes_seconds_array : bool = False
 
     def update_at_turn(self, turn: int, parts: xp.Particles, twiss: xt.TwissTable):
         """Automatically update the records at given turn from the xpart.Particles."""
@@ -85,6 +85,14 @@ class Records:
             particles_f={}
         )
     
+
+    def store_initial_particles(self, parts: xp.Particles):
+        """Store initial particle object"""
+        self.particles_i = parts.to_dict()
+
+    def store_final_particles(self, parts: xp.Particles):
+        """Store final particle object"""
+        self.particles_f = parts.to_dict()
 
     def append_profile_monitor_data(self, 
                                     monitorH, 

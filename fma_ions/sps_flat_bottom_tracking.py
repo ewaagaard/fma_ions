@@ -350,7 +350,7 @@ class SPS_Flat_Bottom_Tracker:
         # Initialize the dataclasses and store the initial values
         tbt = Records.init_zeroes(self.num_turns)  # only emittances and bunch intensity
         tbt.update_at_turn(0, particles, twiss)
-        tbt['particles_i'] = particles.to_dict()
+        tbt.store_initial_particles(particles)
         
         # Track particles for one turn         
         if matched_for_PS_extraction:
@@ -500,7 +500,7 @@ class SPS_Flat_Bottom_Tracker:
                                             also_keep_delta_profiles=also_keep_delta_profiles)
         
         # Append final particle state
-        tbt['particles_f'] = particles.to_dict()
+        tbt.store_final_particles(particles)
             
         return tbt
 
