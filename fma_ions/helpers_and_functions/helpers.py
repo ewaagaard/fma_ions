@@ -4,6 +4,7 @@ Container for helper functions during tracking to calculate beam parameters and 
 import numpy as np
 import xpart as xp
 import xtrack as xt
+import xobjects as xo
 from dataclasses import dataclass
 from typing import Self
 import pandas as pd
@@ -47,6 +48,7 @@ class Records:
     Data class to store numpy.ndarray of results during tracking 
     - normalized emittance is used
     - beam profile data (transverse wire scanner and longitudinal profile monitor) can be added
+    - initial and final particle object
     """
     exn: np.ndarray
     eyn: np.ndarray
@@ -56,6 +58,8 @@ class Records:
     turns: np.ndarray
     includes_profile_data : bool = False
     includes_seconds_array : bool = False
+    particles_i : dict
+    particles_f : dict
 
     def update_at_turn(self, turn: int, parts: xp.Particles, twiss: xt.TwissTable):
         """Automatically update the records at given turn from the xpart.Particles."""
@@ -76,7 +80,9 @@ class Records:
             Nb=np.zeros(n_turns, dtype=float),
             sigma_delta=np.zeros(n_turns, dtype=float),
             bunch_length=np.zeros(n_turns, dtype=float),
-            turns=np.arange(n_turns, dtype=int)   
+            turns=np.arange(n_turns, dtype=int),
+            particles_i={},
+            particles_f={}
         )
     
 
@@ -127,7 +133,7 @@ class Records:
         self.includes_seconds_array = True if seconds_array is not None else False
 
 
-    def to_dict(self, convert_to_numpy=False):
+    def to_dict(self, convert_to_numpy=True):
         """
         Convert data arrays to dictionary, possible also beam profile monitor data
         Convert lists to numpy format if desired, but typically not if data is saved to json
@@ -139,7 +145,9 @@ class Records:
             'bunch_length': self.bunch_length.tolist(),
             'Nb' : self.Nb.tolist(),
             'includes_profile_data' : self.includes_profile_data,
-            'Turns': self.turns.tolist()
+            'Turns': self.turns.tolist(),
+            'particles_i': self.particles_i,
+            'particles_f': self.particles_f 
         }
         if self.includes_profile_data:
             data['monitorH_x_grid'] = self.monitorH_x_grid
@@ -174,7 +182,7 @@ class Records:
         data = self.to_dict()
 
         with open('{}tbt.json'.format(file_path), 'w') as f:
-            json.dump(data, f)
+            json.dump(data, f, cls=xo.JEncoder)
 
 
     @staticmethod

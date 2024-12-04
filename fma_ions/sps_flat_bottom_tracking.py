@@ -325,8 +325,8 @@ class SPS_Flat_Bottom_Tracker:
                 frev=1,
                 sampling_frequency=1/nturns_profile_accumulation_interval,
                 n=nbins,
-                x_range=0.04,
-                y_range=0.04)
+                x_range=0.07,
+                y_range=0.07)
             line.insert_element(index='bwsrc.51637', element=monitorH, name='monitorH')
 
             # Create vertical beam monitor
@@ -335,8 +335,8 @@ class SPS_Flat_Bottom_Tracker:
                 frev=1,
                 sampling_frequency=1/nturns_profile_accumulation_interval,
                 n=nbins,
-                x_range=0.04,
-                y_range=0.04)
+                x_range=0.07,
+                y_range=0.07)
             line.insert_element(index='bwsrc.41677', element=monitorV, name='monitorV')
 
         line.build_tracker(_context=context)
@@ -350,6 +350,7 @@ class SPS_Flat_Bottom_Tracker:
         # Initialize the dataclasses and store the initial values
         tbt = Records.init_zeroes(self.num_turns)  # only emittances and bunch intensity
         tbt.update_at_turn(0, particles, twiss)
+        tbt['particles_i'] = particles.to_dict()
         
         # Track particles for one turn         
         if matched_for_PS_extraction:
@@ -497,6 +498,9 @@ class SPS_Flat_Bottom_Tracker:
         if install_beam_monitors:
             tbt.append_profile_monitor_data(monitorH, monitorV, zeta_monitor, seconds_array, 
                                             also_keep_delta_profiles=also_keep_delta_profiles)
+        
+        # Append final particle state
+        tbt['particles_f'] = particles.to_dict()
             
         return tbt
 
