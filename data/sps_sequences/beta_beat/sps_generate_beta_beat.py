@@ -7,6 +7,12 @@ Then plot beta-beat distribution around the ring
 import matplotlib.pyplot as plt
 import numpy as np
 import fma_ions
+import json
+
+# Load Panos beta-beat values
+with open('betabeat_Q26_plot_data.json', 'rb') as handle:
+    bb_dict = json.load(handle)
+
 
 # Desired RMS beta-beat values
 beta_beat_x_rms_val = 0.075
