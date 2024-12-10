@@ -510,6 +510,11 @@ class SPS_Plotting:
             try:
                 tbt_dict = self.load_records_dict_from_json(output_folder=output_folder)
 
+                # Initial emittances and bunch intensities
+                exn[0, i] =  tbt_dict['exn'][0]
+                eyn[0, i] =  tbt_dict['eyn'][0]
+                Nb[0, i]  =  tbt_dict['Nb'][0] # initial
+
                 # Select first and last sets of 100 turns
                 index_to_plot = [0, -1]
                 plot_str = ['First 100 turns', 'Last 100 turns']
@@ -527,10 +532,8 @@ class SPS_Plotting:
                 
                 ax.set_xlabel('x [m]')
                 ax.set_ylabel('Normalized counts')
-                ax.legend(loc='upper left', fontsize=14)
                 ax.set_ylim(0, 1.1)
                 ax.text(0.82, 0.05, '{} = {}'.format(label_for_x_axis, scan_array_for_x_axis[i]), transform=ax.transAxes, fontsize=12.8)
-                fig.savefig('output_transverse/X_profiles/{}_SPS_X_Beam_Profile_WS.png'.format(output_folder), dpi=250)
 
                 # Plot profile of particles
                 fig2, ax2 = plt.subplots(1, 1, figsize = (8, 6), constrained_layout=True)
@@ -544,54 +547,70 @@ class SPS_Plotting:
                 
                 ax2.set_ylabel('Normalized counts')
                 ax2.set_xlabel('y [m]')
-                ax2.legend(loc='upper left', fontsize=14)
                 ax2.set_ylim(0, 1.1)
                 ax2.text(0.82, 0.05, '{} = {}'.format(label_for_x_axis, scan_array_for_x_axis[i]), transform=ax2.transAxes, fontsize=12.8)
-                fig2.savefig('output_transverse/Y_profiles/{}_SPS_Y_Beam_Profile_WS.png'.format(output_folder), dpi=250)
-                plt.close()
 
-                # Fit q-Gaussian to final X and Y profiles, to latest curves
-                popt_Q_X, pcov_Q_X = fits.fit_Q_Gaussian(X_pos_data, X_profile_data)
-                q_vals_X[i] = popt_Q_X[1]
-                q_errors_X[i] = np.sqrt(np.diag(pcov_Q_X))[1] # error from covarance_matrix
-                sigmas_q_gaussian_X[i] = fits.get_sigma_RMS_from_qGaussian_fit(popt_Q_X)
-                print('X final profile: q-Gaussian fit q={:.3f} +/- {:.2f}, sigma_RMS = {:.3f} m'.format(q_vals_X[i], q_errors_X[i], sigmas_q_gaussian_X[i]))
-
-                popt_Q_Y, pcov_Q_Y = fits.fit_Q_Gaussian(Y_pos_data, Y_profile_data)
-                q_vals_Y[i] = popt_Q_Y[1]
-                q_errors_Y[i] = np.sqrt(np.diag(pcov_Q_Y))[1] # error from covarance_matrix
-                sigmas_q_gaussian_Y[i] = fits.get_sigma_RMS_from_qGaussian_fit(popt_Q_Y)
-                print('Y final profile: q-Gaussian fit q={:.3f} +/- {:.2f}, sigma_RMS = {:.3f} m'.format(q_vals_Y[i], q_errors_Y[i], sigmas_q_gaussian_Y[i]))
-                
-                # Initial emittances and bunch intensities
-                exn[0, i] =  tbt_dict['exn'][0]
-                eyn[0, i] =  tbt_dict['eyn'][0]
-                Nb[0, i]  =  tbt_dict['Nb'][0] # initial
+                # Fit Gaussian for the emittance
+                popt_X, pcov_X = fits.fit_Gaussian(X_pos_data, X_profile_data, p0=(1.0, 0.0, 0.02))
+                popt_Y, pcov_Y = fits.fit_Gaussian(Y_pos_data, Y_profile_data, p0=(1.0, 0.0, 0.02))
+                sigma_raw_X = np.abs(popt_X[2])
+                sigma_raw_Y = np.abs(popt_Y[2])
 
                 ### Convert beam sizes to emittances ###
                 part = tbt_dict['particles_i']
                 gamma = part['gamma0'][0]
                 beta_rel = part['beta0'][0]
 
+                # Fit q-Gaussian to final X and Y profiles, to latest curves - initial guess from Gaussian
+                q0 = 1.0
+                p0_qX = [popt_X[1], q0, 1/popt_X[2]**2/(5-3*q0), 2*popt_X[0]]
+                p0_qY = [popt_Y[1], q0, 1/popt_Y[2]**2/(5-3*q0), 2*popt_Y[0]]
+
+                popt_Q_X, pcov_Q_X = fits.fit_Q_Gaussian(X_pos_data, X_profile_data, p0=p0_qX)
+                q_vals_X[i] = popt_Q_X[1]
+                q_errors_X[i] = np.sqrt(np.diag(pcov_Q_X))[1] # error from covarance_matrix
+                sigmas_q_gaussian_X[i] = fits.get_sigma_RMS_from_qGaussian_fit(popt_Q_X)
+
+                popt_Q_Y, pcov_Q_Y = fits.fit_Q_Gaussian(Y_pos_data, Y_profile_data, p0=p0_qY)
+                q_vals_Y[i] = popt_Q_Y[1]
+                q_errors_Y[i] = np.sqrt(np.diag(pcov_Q_Y))[1] # error from covarance_matrix
+                sigmas_q_gaussian_Y[i] = fits.get_sigma_RMS_from_qGaussian_fit(popt_Q_Y)
+                
                 # Extract optics at Wire Scanner, correct for dispersion
                 betx, bety, dx = self.optics_at_WS()
                 dpp = 1e-3
                 sigmaX_betatronic = np.sqrt((sigmas_q_gaussian_X[i])**2 - (dpp * dx)**2)
                 exf = sigmaX_betatronic**2 / betx
 
-                sigmaY_betatronic = sigmas_q_gaussian_Y[i] # no vertical dispersion
+                sigmaY_betatronic = np.abs(sigmas_q_gaussian_Y[i]) # no vertical dispersion
                 eyf = sigmaY_betatronic**2 / bety
-
-                # Append emittance and intensity values, initial and final
                 exn[1, i] =  exf * beta_rel * gamma 
                 eyn[1, i] =  eyf * beta_rel * gamma 
                 Nb[1, i]  =  tbt_dict['Nb'][-1] # final
                 transmission[i] = Nb[1, i]/Nb[0, i]
+
+                print('X final profile: sigma = {:.3f} mm\nX q-Gaussian fit q={:.3f} +/- {:.2f}, sigma_RMS = {:.3f} mm'.format(sigma_raw_X*1e3, q_vals_X[i], q_errors_X[i], 1e3*sigmas_q_gaussian_X[i]))
+                print('Y final profile: sigma = {:.3f} mm\nY q-Gaussian fit q={:.3f} +/- {:.2f}, sigma_RMS = {:.3f} mm'.format(sigma_raw_Y*1e3, q_vals_Y[i], q_errors_Y[i], 1e3*sigmas_q_gaussian_Y[i]))
+
                 print('exn = {:.3e}, eyn = {:.3e}'.format(exn[1, i], eyn[1, i]))
                 print('Transmission = {:3f}\n'.format(transmission[i]))
 
+
+                # Add q-Gaussian fits to plots and save 
+                ax.text(0.02, 0.65, 'Final simulated:\n$\epsilon_{{x}}^n$ = {:.3f} $\mu$m rad'.format(1e6 * exn[1, i], 1e6), fontsize=12.5, transform=ax.transAxes)
+                ax2.text(0.02, 0.65, 'Final simulated\n$\epsilon_{{y}}^n$ = {:.3f} $\mu$m rad'.format(1e6 * eyn[1, i]), fontsize=12.5, transform=ax2.transAxes)
+                
+                ax.plot(X_pos_data, fits.Q_Gaussian(X_pos_data, *popt_Q_X), ls='--', color='lime', label='q-Gaussian fit final profiles')
+                ax2.plot(Y_pos_data, fits.Q_Gaussian(Y_pos_data, *popt_Q_Y), ls='--', color='lime', label='q-Gaussian fit final profiles')
+                ax.legend(loc='upper left', fontsize=14)
+                ax2.legend(loc='upper left', fontsize=14)
+                fig.savefig('output_transverse/X_profiles/{}_SPS_X_Beam_Profile_WS.png'.format(output_folder), dpi=250)
+                fig2.savefig('output_transverse/Y_profiles/{}_SPS_Y_Beam_Profile_WS.png'.format(output_folder), dpi=250)
+                plt.close()
+
+
             except FileNotFoundError:
-                print('Could not find values in {}!'.format(output_folder))
+                print('Could not find values in {}!\n'.format(output_folder))
                 exn[0, i] = np.nan
                 exn[1, i] = np.nan
                 eyn[0, i] = np.nan

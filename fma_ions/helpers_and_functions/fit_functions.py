@@ -121,7 +121,7 @@ class Fit_Functions:
         return Gq
     
     
-    def fit_Q_Gaussian(self, x_data, y_data, q0 = 1.4, starting_guess_from_Gaussian=False):
+    def fit_Q_Gaussian(self, x_data, y_data, q0 = 1.4, p0=None, starting_guess_from_Gaussian=False):
         """
         Fits Q-Gaussian to x- and y-data (numpy arrays)
         Parameters: q0 (starting guess)
@@ -132,6 +132,8 @@ class Fit_Functions:
         y_data : np.ndarray
         q0 : float
             initial guess for q-values
+        p0 : np.ndarray
+            array with starting guesses
         starting_guess_from_Gaussian : bool
             whether to first fit Gaussian and use values from there
         
@@ -142,11 +144,12 @@ class Fit_Functions:
         """
     
         # Test Gaussian fit for the first guess
-        if starting_guess_from_Gaussian:
-            popt, _ = self.fit_Gaussian(x_data, y_data)
-            p0 = [popt[1], q0, 1/popt[2]**2/(5-3*q0), 2*popt[0]] # add popt[3]] if desired offset
-        else:
-            p0 = [1.0, 1.0, 1.0, 1.0]
+        if p0 is None:
+            if starting_guess_from_Gaussian:
+                popt, _ = self.fit_Gaussian(x_data, y_data)
+                p0 = [popt[1], q0, 1/popt[2]**2/(5-3*q0), 2*popt[0]] # add popt[3]] if desired offset
+            else:
+                p0 = [1.0, 1.0, 1.0, 1.0]
     
         try:
             poptq, pcovq = curve_fit(self.Q_Gaussian, x_data, y_data, p0)
