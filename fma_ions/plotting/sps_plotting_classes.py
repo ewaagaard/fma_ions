@@ -437,6 +437,115 @@ class SPS_Plotting:
         elif distribution=='binomial':
             return turn_array, time_array, sigmas_binomial, m, m_error
 
+
+    def fit_and_plot_transverse_profiles(self, 
+                                         output_str_array : list,
+                                         scan_array_for_x_axis : np.ndarray,
+                                         label_for_x_axis : str,
+                                         extra_text_string=None):
+        """
+        Open tbt data from e.g tune scan, plot transverse profiles and fit a q-Gaussian
+
+        Parameters:
+        -----------
+        output_str_array : [outfolder, outfolder, ...]
+            List containing string for outfolder tbt data
+        scan_array_for_x_axis : np.ndarray
+            numpy array with quantity scanned over (e.g. Qx, Qy)
+        label_for_x_axis : str
+        extra_text_string : str
+            plot extra text in bottom left corner
+            
+        """
+        os.makedirs('output_transverse', exist_ok=True)
+        os.makedirs('output_transverse/X_profiles', exist_ok=True)
+        os.makedirs('output_transverse/Y_profiles', exist_ok=True)
+
+        # Initiate fit function
+        fits = Fit_Functions()
+
+        # Create empty arrays
+        n_profiles = len(output_str_array)
+        sigmas_q_gaussian_X = np.zeros(n_profiles)
+        q_vals_X = np.zeros(n_profiles)
+        q_errors_X = np.zeros(n_profiles)
+        sigmas_q_gaussian_Y = np.zeros(n_profiles)
+        q_vals_Y = np.zeros(n_profiles)
+        q_errors_Y = np.zeros(n_profiles) 
+
+        # Load dictionary and append values
+        for i, output_folder in enumerate(output_str_array):
+            self.output_folder = output_folder
+            try:
+                tbt_dict = self.load_records_dict_from_json(output_folder=output_folder)
+
+                # Select first and last sets of 100 turns
+                index_to_plot = [0, -1]
+                plot_str = ['First 100 turns', 'Last 100 turns']
+                    
+                # Find total number of stacked profiles and turns per profiles
+                stack_index = np.arange(len(tbt_dict['z_bin_heights'][0]))    
+                nturns_per_profile = tbt_dict['nturns_profile_accumulation_interval']
+                
+
+                # Plot profile of particles
+                fig, ax = plt.subplots(1, 1, figsize = (8, 6))
+
+                for j, i in enumerate(index_to_plot):
+                    # Normalize bin heights
+                    x_bin_heights_sorted = np.array(sorted(tbt_dict['monitorH_x_intensity'][i], reverse=True))
+                    x_height_max_avg = np.mean(x_bin_heights_sorted[:10]) # take average of top 10 values
+                    X_pos_data = tbt_dict['monitorH_x_grid']
+                    X_profile_data = tbt_dict['monitorH_x_intensity'][i] / x_height_max_avg
+                    ax.plot(X_pos_data, X_profile_data, label=plot_str[j])
+                
+                ax.set_xlabel('x [m]')
+                ax.set_ylabel('Normalized counts')
+                ax.legend(loc='upper left', fontsize=14)
+                plt.tight_layout()
+                fig.savefig('output_transverse/X_profiles/SPS_X_Beam_Profile_WS.png', dpi=250)
+
+                # Plot profile of particles
+                fig2, ax2 = plt.subplots(1, 1, figsize = (8, 6))
+                for j, i in enumerate(index_to_plot):
+                    # Normalize bin heights
+                    y_bin_heights_sorted = np.array(sorted(tbt_dict['monitorV_y_intensity'][i], reverse=True))
+                    y_height_max_avg = np.mean(y_bin_heights_sorted[:10]) # take average of top ten values
+                    Y_pos_data = tbt_dict['monitorV_y_grid']
+                    Y_profile_data = tbt_dict['monitorV_y_intensity'][i] / y_height_max_avg
+                    ax2.plot(Y_pos_data, Y_profile_data, label=plot_str[j])
+                
+                ax2.set_ylabel('Normalized counts')
+                ax2.set_xlabel('y [m]')
+                ax2.legend(loc='upper left', fontsize=14)
+                plt.tight_layout()
+                fig2.savefig('output_transverse/Y_profiles/SPS_Y_Beam_Profile_WS.png', dpi=250)
+
+                # Fit q-Gaussian to final X and Y profiles
+                popt_Q_X, pcov_Q_X = fits.fit_Q_Gaussian(X_pos_data, X_profile_data)
+                q_vals_X[i] = popt_Q_X[1]
+                q_errors_X[i] = np.sqrt(np.diag(pcov_Q_X))[1] # error from covarance_matrix
+                sigmas_q_gaussian_X[i] = fits.get_sigma_RMS_from_qGaussian_fit(popt_Q_X)
+                print('X final profile: q-Gaussian fit q={:.3f} +/- {:.2f}, sigma_RMS = {:.3f} m'.format(q_vals_X[i], q_errors_X[i], sigmas_q_gaussian_X[i]))
+
+                popt_Q_Y, pcov_Q_Y = fits.fit_Q_Gaussian(Y_pos_data, Y_profile_data)
+                q_vals_Y[i] = popt_Q_Y[1]
+                q_errors_Y[i] = np.sqrt(np.diag(pcov_Q_Y))[1] # error from covarance_matrix
+                sigmas_q_gaussian_Y[i] = fits.get_sigma_RMS_from_qGaussian_fit(popt_Q_Y)
+                print('Y final profile: q-Gaussian fit q={:.3f} +/- {:.2f}, sigma_RMS = {:.3f} m'.format(q_vals_Y[i], q_errors_Y[i], sigmas_q_gaussian_Y[i]))
+                        
+                # Create dictionary with fits
+                BL_dict = {'sigmas_q_gaussian': sigmas_q_gaussian, 'q_vals': q_vals, 'q_errors': q_errors}
+                        
+                # Dump saved fits in dictionary, then pickle file
+                with open('{}saved_bunch_length_fits.pickle'.format(output_folder_str), 'wb') as handle:
+                    pickle.dump(BL_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+                print('Dictionary with saved fits dumped')    
+
+            except FileNotFoundError:
+                print('Could not find values in {}!'.format(output_folder))
+
+
     def plot_multiple_sets_of_tracking_data(self, 
                                             output_str_array, 
                                             string_array, 
