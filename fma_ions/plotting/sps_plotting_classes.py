@@ -68,6 +68,23 @@ class SPS_Plotting:
         return tbt_dict
 
 
+    def optics_at_WS(self):
+        """Reads betx, bety and dx from json file if exists """
+        try:
+            seq_folder = Path(__file__).resolve().parent.joinpath('../../data/sps_sequences')
+            with open('{}/SPS_WS_optics.json'.format(seq_folder)) as f:
+                optics_dict = json.load(f)
+            
+            # Select correct optics for the relevant wire scanner
+            optics_ws_X = optics_dict['51637']
+            optics_ws_Y = optics_dict['41677']
+            
+            return optics_ws_X['betx'], optics_ws_Y['bety'], optics_ws_X['dx'] 
+        
+        except FileNotFoundError:
+            print('Optics file not found: need to run find_WS_optics module in data folder first!')
+
+
     def plot_tracking_data(self, 
                            tbt_dict=None, 
                            output_folder=None,
@@ -442,7 +459,11 @@ class SPS_Plotting:
                                          output_str_array : list,
                                          scan_array_for_x_axis : np.ndarray,
                                          label_for_x_axis : str,
-                                         extra_text_string=None):
+                                         extra_text_string,
+                                         transmission_range=[0.0, 105],
+                                         emittance_range = [0.0, 4.1],
+                                         master_job_name=None) -> None:
+
         """
         Open tbt data from e.g tune scan, plot transverse profiles and fit a q-Gaussian
 
@@ -455,8 +476,12 @@ class SPS_Plotting:
         label_for_x_axis : str
         extra_text_string : str
             plot extra text in bottom left corner
-            
+        transmission_range : list
+            in which range to plot transmission
+        emittance_range : list
+            in which range to plot emittances
         """
+        # Generate directories, if not existing already
         os.makedirs('output_transverse', exist_ok=True)
         os.makedirs('output_transverse/X_profiles', exist_ok=True)
         os.makedirs('output_transverse/Y_profiles', exist_ok=True)
@@ -473,6 +498,12 @@ class SPS_Plotting:
         q_vals_Y = np.zeros(n_profiles)
         q_errors_Y = np.zeros(n_profiles) 
 
+        # Load TBT data and append bunch intensities and emittances
+        exn = np.zeros([2, len(output_str_array)]) # rows are initial and final, columns for each run
+        eyn = np.zeros([2, len(output_str_array)])
+        Nb = np.zeros([2, len(output_str_array)])
+        transmission = np.zeros(len(output_str_array))
+
         # Load dictionary and append values
         for i, output_folder in enumerate(output_str_array):
             self.output_folder = output_folder
@@ -482,46 +513,44 @@ class SPS_Plotting:
                 # Select first and last sets of 100 turns
                 index_to_plot = [0, -1]
                 plot_str = ['First 100 turns', 'Last 100 turns']
-                    
-                # Find total number of stacked profiles and turns per profiles
-                stack_index = np.arange(len(tbt_dict['z_bin_heights'][0]))    
-                nturns_per_profile = tbt_dict['nturns_profile_accumulation_interval']
-                
-
+                                
                 # Plot profile of particles
-                fig, ax = plt.subplots(1, 1, figsize = (8, 6))
+                fig, ax = plt.subplots(1, 1, figsize = (8, 6), constrained_layout=True)
 
-                for j, i in enumerate(index_to_plot):
+                for j, ind in enumerate(index_to_plot):
                     # Normalize bin heights
-                    x_bin_heights_sorted = np.array(sorted(tbt_dict['monitorH_x_intensity'][i], reverse=True))
-                    x_height_max_avg = np.mean(x_bin_heights_sorted[:10]) # take average of top 10 values
+                    x_bin_heights_sorted = np.array(sorted(tbt_dict['monitorH_x_intensity'][ind], reverse=True))
+                    x_height_max_avg = np.mean(x_bin_heights_sorted[:3]) # take average of top 3 values
                     X_pos_data = tbt_dict['monitorH_x_grid']
-                    X_profile_data = tbt_dict['monitorH_x_intensity'][i] / x_height_max_avg
+                    X_profile_data = tbt_dict['monitorH_x_intensity'][ind] / x_height_max_avg
                     ax.plot(X_pos_data, X_profile_data, label=plot_str[j])
                 
                 ax.set_xlabel('x [m]')
                 ax.set_ylabel('Normalized counts')
                 ax.legend(loc='upper left', fontsize=14)
-                plt.tight_layout()
-                fig.savefig('output_transverse/X_profiles/SPS_X_Beam_Profile_WS.png', dpi=250)
+                ax.set_ylim(0, 1.1)
+                ax.text(0.82, 0.05, '{} = {}'.format(label_for_x_axis, scan_array_for_x_axis[i]), transform=ax.transAxes, fontsize=12.8)
+                fig.savefig('output_transverse/X_profiles/{}_SPS_X_Beam_Profile_WS.png'.format(output_folder), dpi=250)
 
                 # Plot profile of particles
-                fig2, ax2 = plt.subplots(1, 1, figsize = (8, 6))
-                for j, i in enumerate(index_to_plot):
+                fig2, ax2 = plt.subplots(1, 1, figsize = (8, 6), constrained_layout=True)
+                for j, ind in enumerate(index_to_plot):
                     # Normalize bin heights
-                    y_bin_heights_sorted = np.array(sorted(tbt_dict['monitorV_y_intensity'][i], reverse=True))
-                    y_height_max_avg = np.mean(y_bin_heights_sorted[:10]) # take average of top ten values
+                    y_bin_heights_sorted = np.array(sorted(tbt_dict['monitorV_y_intensity'][ind], reverse=True))
+                    y_height_max_avg = np.mean(y_bin_heights_sorted[:3]) # take average of top 3 values
                     Y_pos_data = tbt_dict['monitorV_y_grid']
-                    Y_profile_data = tbt_dict['monitorV_y_intensity'][i] / y_height_max_avg
+                    Y_profile_data = tbt_dict['monitorV_y_intensity'][ind] / y_height_max_avg
                     ax2.plot(Y_pos_data, Y_profile_data, label=plot_str[j])
                 
                 ax2.set_ylabel('Normalized counts')
                 ax2.set_xlabel('y [m]')
                 ax2.legend(loc='upper left', fontsize=14)
-                plt.tight_layout()
-                fig2.savefig('output_transverse/Y_profiles/SPS_Y_Beam_Profile_WS.png', dpi=250)
+                ax2.set_ylim(0, 1.1)
+                ax2.text(0.82, 0.05, '{} = {}'.format(label_for_x_axis, scan_array_for_x_axis[i]), transform=ax2.transAxes, fontsize=12.8)
+                fig2.savefig('output_transverse/Y_profiles/{}_SPS_Y_Beam_Profile_WS.png'.format(output_folder), dpi=250)
+                plt.close()
 
-                # Fit q-Gaussian to final X and Y profiles
+                # Fit q-Gaussian to final X and Y profiles, to latest curves
                 popt_Q_X, pcov_Q_X = fits.fit_Q_Gaussian(X_pos_data, X_profile_data)
                 q_vals_X[i] = popt_Q_X[1]
                 q_errors_X[i] = np.sqrt(np.diag(pcov_Q_X))[1] # error from covarance_matrix
@@ -533,17 +562,68 @@ class SPS_Plotting:
                 q_errors_Y[i] = np.sqrt(np.diag(pcov_Q_Y))[1] # error from covarance_matrix
                 sigmas_q_gaussian_Y[i] = fits.get_sigma_RMS_from_qGaussian_fit(popt_Q_Y)
                 print('Y final profile: q-Gaussian fit q={:.3f} +/- {:.2f}, sigma_RMS = {:.3f} m'.format(q_vals_Y[i], q_errors_Y[i], sigmas_q_gaussian_Y[i]))
-                        
-                # Create dictionary with fits
-                BL_dict = {'sigmas_q_gaussian': sigmas_q_gaussian, 'q_vals': q_vals, 'q_errors': q_errors}
-                        
-                # Dump saved fits in dictionary, then pickle file
-                with open('{}saved_bunch_length_fits.pickle'.format(output_folder_str), 'wb') as handle:
-                    pickle.dump(BL_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
-                print('Dictionary with saved fits dumped')    
+                
+                # Initial emittances and bunch intensities
+                exn[0, i] =  tbt_dict['exn'][0]
+                eyn[0, i] =  tbt_dict['eyn'][0]
+                Nb[0, i]  =  tbt_dict['Nb'][0] # initial
+
+                ### Convert beam sizes to emittances ###
+                part = tbt_dict['particles_i']
+                gamma = part['gamma0'][0]
+                beta_rel = part['beta0'][0]
+
+                # Extract optics at Wire Scanner, correct for dispersion
+                betx, bety, dx = self.optics_at_WS()
+                dpp = 1e-3
+                sigmaX_betatronic = np.sqrt((sigmas_q_gaussian_X[i])**2 - (dpp * dx)**2)
+                exf = sigmaX_betatronic**2 / betx
+
+                sigmaY_betatronic = sigmas_q_gaussian_Y[i] # no vertical dispersion
+                eyf = sigmaY_betatronic**2 / bety
+
+                # Append emittance and intensity values, initial and final
+                exn[1, i] =  exf * beta_rel * gamma 
+                eyn[1, i] =  eyf * beta_rel * gamma 
+                Nb[1, i]  =  tbt_dict['Nb'][-1] # final
+                transmission[i] = Nb[1, i]/Nb[0, i]
+                print('exn = {:.3e}, eyn = {:.3e}'.format(exn[1, i], eyn[1, i]))
+                print('Transmission = {:3f}\n'.format(transmission[i]))
 
             except FileNotFoundError:
                 print('Could not find values in {}!'.format(output_folder))
+                exn[0, i] = np.nan
+                exn[1, i] = np.nan
+                eyn[0, i] = np.nan
+                eyn[1, i] = np.nan
+                Nb[0, i] = np.nan
+                Nb[1, i] = np.nan
+                transmission[i] = np.nan
+        
+        ### Plot transmissions and final q-Gaussian emittances
+        fig, ax = plt.subplots(2, 1, figsize=(9, 7.5), sharex=True, constrained_layout=True)
+        ax[0].plot(scan_array_for_x_axis, exn[1, :] * 1e6, c='b', marker="o", label="X - final")
+        ax[0].plot(scan_array_for_x_axis, eyn[1, :] * 1e6, c='darkorange', marker="o", label="Y - final")
+        ax[0].plot(scan_array_for_x_axis, exn[0, :] * 1e6, c='b', ls='--', lw=1.0, alpha=0.75, marker=".", label="X - initial")
+        ax[0].plot(scan_array_for_x_axis, eyn[0, :] * 1e6, c='darkorange', ls='--', lw=1.0, alpha=0.75, marker=".", label="Y - initial")
+
+        ax[0].set_ylabel("$\epsilon_{x, y}^n$ [$\mu$m]")       
+        ax[1].plot(scan_array_for_x_axis, 100*transmission, c='red', marker='o', label='Transmission')
+        ax[1].set_ylabel("Transmission [%]")
+        ax[0].legend(fontsize=13)
+        ax[0].grid(alpha=0.55)
+        ax[1].grid(alpha=0.55)
+        ax[1].set_xticks(scan_array_for_x_axis)
+        ax[1].tick_params(axis='x', which='major', rotation=35, labelsize=12.4)
+        if extra_text_string is not None:
+            ax[1].text(0.024, 0.05, extra_text_string, transform=ax[1].transAxes, fontsize=12.8)
+        ax[1].set_xlabel(label_for_x_axis)
+        ax[0].set_ylim(emittance_range[0], emittance_range[1])
+        ax[1].set_ylim(transmission_range[0], transmission_range[1])
+        if master_job_name is None:
+            master_job_name = 'scan_result_final_emittances_and_bunch_intensity'
+        fig.savefig('output/{}_qGaussian_fits.png'.format(master_job_name), dpi=250)
+        plt.close()
 
 
     def plot_multiple_sets_of_tracking_data(self, 
