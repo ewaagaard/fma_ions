@@ -461,7 +461,7 @@ class SPS_Plotting:
                                          label_for_x_axis : str,
                                          extra_text_string,
                                          transmission_range=[0.0, 105],
-                                         emittance_range = [0.0, 7.1],
+                                         emittance_range = [0.0, 4.1],
                                          master_job_name=None,
                                          load_measured_profiles=False) -> None:
 
@@ -622,10 +622,12 @@ class SPS_Plotting:
                 # Extract optics at Wire Scanner, correct for dispersion
                 betx, bety, dx = self.optics_at_WS()
                 dpp = 1e-3
-                sigmaX_betatronic = np.sqrt((sigmas_q_gaussian_X[i])**2 - (dpp * dx)**2)
+                sigmaX_raw_for_betatronic = sigma_raw_X # sigmas_q_gaussian_X[i]
+                sigmaX_betatronic = np.sqrt((sigmaX_raw_for_betatronic)**2 - (dpp * dx)**2)
                 exf = sigmaX_betatronic**2 / betx
 
-                sigmaY_betatronic = np.abs(sigmas_q_gaussian_Y[i]) # no vertical dispersion
+                sigmaY_raw_for_betatronic = sigma_raw_Y # sigmas_q_gaussian_Y[i]
+                sigmaY_betatronic = np.abs(sigmaY_raw_for_betatronic) # no vertical dispersion
                 eyf = sigmaY_betatronic**2 / bety
                 exn[1, i] =  exf * beta_rel * gamma 
                 eyn[1, i] =  eyf * beta_rel * gamma 
@@ -640,8 +642,8 @@ class SPS_Plotting:
 
 
                 # Add q-Gaussian fits to plots and save 
-                ax.text(0.02, 0.65, 'Final simulated:\n$\epsilon_{{x}}^n$ = {:.3f} $\mu$m rad'.format(1e6 * exn[1, i], 1e6), fontsize=12.5, transform=ax.transAxes)
-                ax2.text(0.02, 0.65, 'Final simulated\n$\epsilon_{{y}}^n$ = {:.3f} $\mu$m rad'.format(1e6 * eyn[1, i]), fontsize=12.5, transform=ax2.transAxes)
+                #ax.text(0.02, 0.65, 'Final simulated:\n$\epsilon_{{x}}^n$ = {:.3f} $\mu$m rad'.format(1e6 * exn[1, i], 1e6), fontsize=12.5, transform=ax.transAxes)
+                #ax2.text(0.02, 0.65, 'Final simulated\n$\epsilon_{{y}}^n$ = {:.3f} $\mu$m rad'.format(1e6 * eyn[1, i]), fontsize=12.5, transform=ax2.transAxes)
 
                 ax.plot(X_pos_data, fits.Q_Gaussian(X_pos_data, *popt_Q_X), ls='--', color='lime', label='q-Gaussian fit final\nsimulated profiles')
                 ax2.plot(Y_pos_data, fits.Q_Gaussian(Y_pos_data, *popt_Q_Y), ls='--', color='lime', label='q-Gaussian fit final\nsimulated profiles')
@@ -660,6 +662,8 @@ class SPS_Plotting:
                 eyn[1, i] = np.nan
                 Nb[0, i] = np.nan
                 Nb[1, i] = np.nan
+                q_vals_X[i] = np.nan
+                q_vals_Y[i] = np.nan
                 transmission[i] = np.nan
         
         ### Plot transmissions and final q-Gaussian emittances
