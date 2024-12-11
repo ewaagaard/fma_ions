@@ -2464,3 +2464,145 @@ class SPS_Plot_Phase_Space:
         else:
             fig.savefig('output_plots/SPS_Pb_longitudinal_profile_vs_data.png', dpi=250)
         plt.show()
+
+
+    def plot_normalized_phase_space_from_tbt(self, 
+                                             part_dict,
+                                             include_density_map=True, 
+                                             x_min_aperture=0.03,
+                                             y_min_aperture=0.01615):
+        """
+        Generate normalized phase space in X and Y to follow particle distribution
+        
+        Parameters:
+        -----------
+        output_folder : str
+            path to data. default is 'None', assuming then that data is in the same directory
+        part_dict : dict
+            dictionary with particle data
+        include_density_map : bool
+            whether to add color gradient of how tightly packed particles are
+        plot_min_aperture : bool
+            whether to include line with minimum X and Y aperture along machine
+        x_min_aperture : float
+            default minimum aperture in X
+        y_min_aperture : float
+            default minimum aperture in Y
+        """
+        # Output directory
+        os.makedirs('output', exist_ok=True)
+        
+        # Final dead and alive indices
+        alive_ind_final = part_dict['state'] > 0
+        dead_ind_final = part_dict['state'] < 1
+
+        # Convert to normalized phase space
+        sps = SPS_sequence_maker()
+        line, twiss = sps.load_xsuite_line_and_twiss(add_aperture=True)
+        
+        '''
+        # Check minimum aperture and plot
+        if plot_min_aperture:
+            line = sps.remove_aperture_below_threshold(line, min_aperture)
+            x_ap, y_ap, a = sps.print_smallest_aperture(line)
+            ind_x, ind_y = np.argmin(x_ap), np.argmin(y_ap)
+            
+            # Find beta functions at these points
+            df = twiss.to_pandas()
+            betx_min_ap = df.iloc[np.abs(df['s'] - a.iloc[ind_x].s).argmin()].betx
+            bety_min_ap = df.iloc[np.abs(df['s'] - a.iloc[ind_y].s).argmin()].bety
+            
+            # Min aperture - convert to normalized coord
+            min_aperture_norm = np.array([x_ap[ind_x] / np.sqrt(betx_min_ap), y_ap[ind_y] / np.sqrt(bety_min_ap)])
+        '''
+        
+        X = part_dict['x'] / np.sqrt(twiss['betx'][0]) 
+        PX = twiss['alfx'][0] / np.sqrt(twiss['betx'][0]) * part_dict['x'] + np.sqrt(twiss['betx'][0]) * part_dict['px']
+        Y = part_dict['y'] / np.sqrt(twiss['bety'][0]) 
+        PY = twiss['alfy'][0] / np.sqrt(twiss['bety'][0]) * part_dict['y'] + np.sqrt(twiss['bety'][0]) * part_dict['py']
+        
+        planes = ['X', 'Y']
+        Us = [X, Y]
+        PUs = [PX, PY]
+        
+        # Iterate over X and Y
+        for i, U in enumerate(Us):
+            PU = PUs[i]
+            
+            ### First plot first and last turn of normalized phase space
+            # Generate histograms in all planes to inspect distribution
+            bin_heights, bin_borders = np.histogram(U[:, 0], bins=60)
+            bin_widths = np.diff(bin_borders)
+            bin_centers = bin_borders[:-1] + bin_widths / 2
+            #bin_heights = bin_heights/np.max(bin_heights) # normalize bin heights
+            
+            # Only plot final alive particles
+            bin_heights2, bin_borders2 = np.histogram(U[alive_ind_final, -1], bins=60)
+            bin_widths2 = np.diff(bin_borders2)
+            bin_centers2 = bin_borders2[:-1] + bin_widths2 / 2
+            #bin_heights2 = bin_heights2/np.max(bin_heights2) # normalize bin heights
+            
+            # Plot alive particles sorted by density
+            if include_density_map:
+                # First turn
+                x, y = U[alive_ind_final, 0], PU[alive_ind_final, 0]
+                xy = np.vstack([x,y]) # Calculate the point density
+                z = gaussian_kde(xy)(xy)
+                idx = z.argsort()  # Sort the points by density, so that the densest points are plotted last
+                x, y, z = x[idx], y[idx], z[idx]
+                
+                # Last turn
+                x2, y2 = U[alive_ind_final, -1], PU[alive_ind_final, -1]
+                xy2 = np.vstack([x2, y2]) # Calculate the point density
+                z2 = gaussian_kde(xy2)(xy2)
+                idx2 = z2.argsort()  # Sort the points by density, so that the densest points are plotted last
+                x2, y2, z2 = x2[idx2], y2[idx2], z2[idx2]
+
+            # Plot longitudinal phase space, initial and final state
+            fig, ax = plt.subplots(3, 1, figsize = (10, 12), sharex=True)
+            
+            # Plot initial particles
+            if include_density_map:
+                ax[0].scatter(x, y, c=z, cmap='cool', s=2, label='Alive')
+            else:   
+                ax[0].plot(U[alive_ind_final, 0], PU[alive_ind_final, 0], '.', 
+                    color='blue', markersize=3.6, label='Alive')
+            ax[0].plot(U[dead_ind_final, 0], PU[dead_ind_final, 0], '.', 
+                    color='darkred', markersize=3.6, label='Finally dead')
+            
+            # Plot aperture if desired
+            #ax[0].axvline(x=min_aperture_norm[i], ls='-', color='red', alpha=0.7, label='Min. aperture')
+            #ax[0].axvline(x=-min_aperture_norm[i], ls='-', color='red', alpha=0.7, label=None)
+
+            # Plot final particles
+            if include_density_map:
+                ax[1].scatter(x2, y2, c=z2, cmap='cool', s=2, label='Alive')
+            else:   
+                ax[1].plot(U[alive_ind_final, -1], PU[alive_ind_final, -1], '.', 
+                    color='blue', markersize=3.6, label='Alive')
+            ax[1].plot(U[dead_ind_final, -1], PU[dead_ind_final, -1], '.', 
+                    color='darkred', markersize=3.6, label='Finally dead')
+            
+            #ax[1].axvline(x=min_aperture_norm[i], ls='-', color='red', alpha=0.7, label='Min. aperture')
+            #ax[1].axvline(x=-min_aperture_norm[i], ls='-', color='red', alpha=0.7, label=None)
+            
+            ax[1].legend(loc='upper right', fontsize=13)
+            
+            # Plot initial and final particle distribution
+            ax[2].bar(bin_centers, bin_heights, width=bin_widths, alpha=1.0, color='darkturquoise', label='Initial')
+            ax[2].bar(bin_centers2, bin_heights2, width=bin_widths2, alpha=0.5, color='lime', label='Final (alive)')
+            ax[2].legend(loc='upper right', fontsize=13)
+            
+            # Adjust axis limits and plot turn
+            #x_lim = np.max(min_aperture_norm) + 0.001
+            #ax[0].set_ylim(-x_lim, x_lim)
+            #ax[0].set_xlim(-x_lim, x_lim)
+            #ax[1].set_ylim(-x_lim, x_lim)
+                
+            ax[2].set_xlabel(r'${}$'.format(planes[i]))
+            ax[2].set_ylabel('Counts')
+            ax[0].set_ylabel('$P{}$'.format(planes[i]))
+            ax[1].set_ylabel('$P{}$'.format(planes[i]))
+            plt.tight_layout()
+            fig.savefig('output/SPS_Pb_final_{}_phase_space.png'.format(planes[i]), dpi=250)
+            plt.close()
