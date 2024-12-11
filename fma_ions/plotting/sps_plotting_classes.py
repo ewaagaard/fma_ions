@@ -461,7 +461,7 @@ class SPS_Plotting:
                                          label_for_x_axis : str,
                                          extra_text_string,
                                          transmission_range=[0.0, 105],
-                                         emittance_range = [0.0, 4.1],
+                                         emittance_range = [0.0, 7.1],
                                          master_job_name=None,
                                          load_measured_profiles=False) -> None:
 
@@ -535,9 +535,10 @@ class SPS_Plotting:
                         x_measured_height_max_avg = np.mean(x_measured_bin_heights_sorted[:5]) # take average of top 3 values
                         x_prof_avg_norm = x_prof_avg / x_measured_height_max_avg
 
-                        # Fit Gaussian, center the profile
+                        # Fit Gaussian, center the profile and re-adjust heights
                         popt_X_meas, _ = fits.fit_Gaussian(x_pos, x_prof_avg_norm, p0=(1.0, 0.0, 0.02))
                         x_pos -= popt_X_meas[1]
+                        x_prof_avg_norm /= popt_X_meas[0]
                         ax.plot(x_pos, x_prof_avg_norm, ls='-', color='blue', label='Measured BWS')
 
                     except FileNotFoundError:
@@ -553,16 +554,17 @@ class SPS_Plotting:
                         y_measured_bin_heights_sorted = np.array(sorted(y_prof_avg, reverse=True))
                         y_measured_height_max_avg = np.mean(y_measured_bin_heights_sorted[:5]) # take average of top 3 values
                         y_prof_avg_norm = y_prof_avg / y_measured_height_max_avg
-                        # Fit Gaussian, center the profile
+                        # Fit Gaussian, center the profile and re-adjust heights
                         popt_Y_meas, _ = fits.fit_Gaussian(y_pos, y_prof_avg_norm, p0=(1.0, 0.0, 0.02))
                         y_pos -= popt_Y_meas[1]
+                        y_prof_avg_norm /= popt_Y_meas[0]
                         ax2.plot(y_pos, y_prof_avg_norm, ls='-', color='blue', label='Measured BWS')
                     except FileNotFoundError:
                         print('Could not open measured Y BWS profile')
 
                 # Select index to plot, e.g last set of 100 turns
                 index_to_plot = [-1] #[0, -1]
-                plot_str = ['Last simulated 100 turns'] #['First 100 turns', 'Last 100 turns']
+                plot_str = ['Simulated, last 100 turns'] #['First 100 turns', 'Last 100 turns']
 
                 for j, ind in enumerate(index_to_plot):
                     # Normalize bin heights
@@ -682,11 +684,37 @@ class SPS_Plotting:
         ax3[1].set_ylim(transmission_range[0], transmission_range[1])
         if master_job_name is None:
             master_job_name = 'scan_result_final_emittances_and_bunch_intensity'
-        fig3.savefig('output_transverse/{}_qGaussian_fits.png'.format(master_job_name), dpi=250)
-        print('Saved figure to output/{}_qGaussian_fits.png'.format(master_job_name))
+        fig3.savefig('output_transverse/emittance_evolution_qGaussian_fits_{}.png'.format(master_job_name), dpi=250)
         plt.close()
 
+        # Also plot q-values
+        fig1, ax1 = plt.subplots(1, 1, figsize=(8, 6), constrained_layout=True)
+        ax1.errorbar(scan_array_for_x_axis, y=q_vals_X, yerr=q_errors_X, fmt="o-", label="$q_{X}$ from simulations, from last 100 turns")
+        ax1.errorbar(scan_array_for_x_axis, y=q_vals_Y, yerr=q_errors_Y, fmt="o-", label="$q_{Y}$ from simulations, from last 100 turns")
+        #ax[0].axhline(y=1.5, c='darkgreen', label=None)   # at extr, not end of flat bottom
+        ax1.set_ylim(0, 2.0)
+        ax1.set_ylabel("Fitted $q_{x,y}$")
+        ax1.grid(alpha=0.5)
+        ax1.set_xticks(scan_array_for_x_axis)
+        ax1.tick_params(axis='x', which='major', rotation=35, labelsize=12.4)
+        ax1.set_xlabel(label_for_x_axis)
+        ax1.legend(loc="upper left", fontsize=11.5)
+        fig1.savefig('output_transverse/q_value_evolution_qGaussian_fits_{}.png'.format(master_job_name), dpi=250)
+        plt.close()
 
+        # Save values
+        with open('output_transverse/simulated_emittances_transmissions_and_qvalues.npy', 'wb') as f:
+            np.save(f, scan_array_for_x_axis)
+            np.save(f, exn[1, :])
+            np.save(f, eyn[1, :])
+            np.save(f, exn[0, :])
+            np.save(f, eyn[0, :])
+            np.save(f, transmission)
+            np.save(f, q_vals_X)
+            np.save(f, q_vals_Y)
+            np.save(f, q_errors_X)
+            np.save(f, q_errors_Y)
+            
     def plot_multiple_sets_of_tracking_data(self, 
                                             output_str_array, 
                                             string_array, 
