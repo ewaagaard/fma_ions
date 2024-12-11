@@ -462,7 +462,8 @@ class SPS_Plotting:
                                          extra_text_string,
                                          transmission_range=[0.0, 105],
                                          emittance_range = [0.0, 4.1],
-                                         master_job_name=None) -> None:
+                                         master_job_name=None,
+                                         load_measured_profiles=False) -> None:
 
         """
         Open tbt data from e.g tune scan, plot transverse profiles and fit a q-Gaussian
@@ -480,6 +481,8 @@ class SPS_Plotting:
             in which range to plot transmission
         emittance_range : list
             in which range to plot emittances
+        load_measured_profiles : bool
+            whether to plot measured profiles as well
         """
         # Generate directories, if not existing already
         os.makedirs('output_transverse', exist_ok=True)
@@ -514,13 +517,52 @@ class SPS_Plotting:
                 exn[0, i] =  tbt_dict['exn'][0]
                 eyn[0, i] =  tbt_dict['eyn'][0]
                 Nb[0, i]  =  tbt_dict['Nb'][0] # initial
-
-                # Select first and last sets of 100 turns
-                index_to_plot = [0, -1]
-                plot_str = ['First 100 turns', 'Last 100 turns']
                                 
-                # Plot profile of particles
+                # Plot simulated particle profile
                 fig, ax = plt.subplots(1, 1, figsize = (8, 6), constrained_layout=True)
+                fig2, ax2 = plt.subplots(1, 1, figsize = (8, 6), constrained_layout=True)
+
+                # Plot measured profiles if desired
+                if load_measured_profiles:
+                    try: 
+                        with open('measured_output_bws/X_average_bws_profiles_Qx_{:.2f}.npy'.format(scan_array_for_x_axis[i]), 'rb') as f:
+                            x_pos = np.load(f)
+                            x_prof_avg = np.load(f)
+
+                        # Convert to m, normalize height
+                        x_pos *= 1e-3
+                        x_measured_bin_heights_sorted = np.array(sorted(x_prof_avg, reverse=True))
+                        x_measured_height_max_avg = np.mean(x_measured_bin_heights_sorted[:5]) # take average of top 3 values
+                        x_prof_avg_norm = x_prof_avg / x_measured_height_max_avg
+
+                        # Fit Gaussian, center the profile
+                        popt_X_meas, _ = fits.fit_Gaussian(x_pos, x_prof_avg_norm, p0=(1.0, 0.0, 0.02))
+                        x_pos -= popt_X_meas[1]
+                        ax.plot(x_pos, x_prof_avg_norm, ls='-', color='blue', label='Measured BWS')
+
+                    except FileNotFoundError:
+                        print('Could not open measured X BWS profile')
+
+                    try: 
+                        with open('measured_output_bws/Y_average_bws_profiles_Qx_{:.2f}.npy'.format(scan_array_for_x_axis[i]), 'rb') as f:
+                            y_pos = np.load(f)
+                            y_prof_avg = np.load(f)
+
+                        # Convert to m, normalize height
+                        y_pos *= 1e-3
+                        y_measured_bin_heights_sorted = np.array(sorted(y_prof_avg, reverse=True))
+                        y_measured_height_max_avg = np.mean(y_measured_bin_heights_sorted[:5]) # take average of top 3 values
+                        y_prof_avg_norm = y_prof_avg / y_measured_height_max_avg
+                        # Fit Gaussian, center the profile
+                        popt_Y_meas, _ = fits.fit_Gaussian(y_pos, y_prof_avg_norm, p0=(1.0, 0.0, 0.02))
+                        y_pos -= popt_Y_meas[1]
+                        ax2.plot(y_pos, y_prof_avg_norm, ls='-', color='blue', label='Measured BWS')
+                    except FileNotFoundError:
+                        print('Could not open measured Y BWS profile')
+
+                # Select index to plot, e.g last set of 100 turns
+                index_to_plot = [-1] #[0, -1]
+                plot_str = ['Last simulated 100 turns'] #['First 100 turns', 'Last 100 turns']
 
                 for j, ind in enumerate(index_to_plot):
                     # Normalize bin heights
@@ -528,7 +570,7 @@ class SPS_Plotting:
                     x_height_max_avg = np.mean(x_bin_heights_sorted[:3]) # take average of top 3 values
                     X_pos_data = tbt_dict['monitorH_x_grid']
                     X_profile_data = tbt_dict['monitorH_x_intensity'][ind] / x_height_max_avg
-                    ax.plot(X_pos_data, X_profile_data, label=plot_str[j])
+                    ax.plot(X_pos_data, X_profile_data, label=plot_str[j], color='orange')
                 
                 ax.set_xlabel('x [m]')
                 ax.set_ylabel('Normalized counts')
@@ -536,14 +578,13 @@ class SPS_Plotting:
                 ax.text(0.82, 0.05, '{} = {}'.format(label_for_x_axis, scan_array_for_x_axis[i]), transform=ax.transAxes, fontsize=12.8)
 
                 # Plot profile of particles
-                fig2, ax2 = plt.subplots(1, 1, figsize = (8, 6), constrained_layout=True)
                 for j, ind in enumerate(index_to_plot):
                     # Normalize bin heights
                     y_bin_heights_sorted = np.array(sorted(tbt_dict['monitorV_y_intensity'][ind], reverse=True))
                     y_height_max_avg = np.mean(y_bin_heights_sorted[:3]) # take average of top 3 values
                     Y_pos_data = tbt_dict['monitorV_y_grid']
                     Y_profile_data = tbt_dict['monitorV_y_intensity'][ind] / y_height_max_avg
-                    ax2.plot(Y_pos_data, Y_profile_data, label=plot_str[j])
+                    ax2.plot(Y_pos_data, Y_profile_data, label=plot_str[j], color='orange')
                 
                 ax2.set_ylabel('Normalized counts')
                 ax2.set_xlabel('y [m]')
@@ -562,7 +603,7 @@ class SPS_Plotting:
                 beta_rel = part['beta0'][0]
 
                 # Fit q-Gaussian to final X and Y profiles, to latest curves - initial guess from Gaussian
-                q0 = 1.0
+                q0 = 1.02
                 p0_qX = [popt_X[1], q0, 1/popt_X[2]**2/(5-3*q0), 2*popt_X[0]]
                 p0_qY = [popt_Y[1], q0, 1/popt_Y[2]**2/(5-3*q0), 2*popt_Y[0]]
 
@@ -599,11 +640,11 @@ class SPS_Plotting:
                 # Add q-Gaussian fits to plots and save 
                 ax.text(0.02, 0.65, 'Final simulated:\n$\epsilon_{{x}}^n$ = {:.3f} $\mu$m rad'.format(1e6 * exn[1, i], 1e6), fontsize=12.5, transform=ax.transAxes)
                 ax2.text(0.02, 0.65, 'Final simulated\n$\epsilon_{{y}}^n$ = {:.3f} $\mu$m rad'.format(1e6 * eyn[1, i]), fontsize=12.5, transform=ax2.transAxes)
-                
-                ax.plot(X_pos_data, fits.Q_Gaussian(X_pos_data, *popt_Q_X), ls='--', color='lime', label='q-Gaussian fit final profiles')
-                ax2.plot(Y_pos_data, fits.Q_Gaussian(Y_pos_data, *popt_Q_Y), ls='--', color='lime', label='q-Gaussian fit final profiles')
-                ax.legend(loc='upper left', fontsize=14)
-                ax2.legend(loc='upper left', fontsize=14)
+
+                ax.plot(X_pos_data, fits.Q_Gaussian(X_pos_data, *popt_Q_X), ls='--', color='lime', label='q-Gaussian fit final\nsimulated profiles')
+                ax2.plot(Y_pos_data, fits.Q_Gaussian(Y_pos_data, *popt_Q_Y), ls='--', color='lime', label='q-Gaussian fit final\nsimulated profiles')
+                ax.legend(loc='upper left', fontsize=11.5)
+                ax2.legend(loc='upper left', fontsize=11.5)
                 fig.savefig('output_transverse/X_profiles/{}_SPS_X_Beam_Profile_WS.png'.format(output_folder), dpi=250)
                 fig2.savefig('output_transverse/Y_profiles/{}_SPS_Y_Beam_Profile_WS.png'.format(output_folder), dpi=250)
                 plt.close()
@@ -620,28 +661,29 @@ class SPS_Plotting:
                 transmission[i] = np.nan
         
         ### Plot transmissions and final q-Gaussian emittances
-        fig, ax = plt.subplots(2, 1, figsize=(9, 7.5), sharex=True, constrained_layout=True)
-        ax[0].plot(scan_array_for_x_axis, exn[1, :] * 1e6, c='b', marker="o", label="X - final")
-        ax[0].plot(scan_array_for_x_axis, eyn[1, :] * 1e6, c='darkorange', marker="o", label="Y - final")
-        ax[0].plot(scan_array_for_x_axis, exn[0, :] * 1e6, c='b', ls='--', lw=1.0, alpha=0.75, marker=".", label="X - initial")
-        ax[0].plot(scan_array_for_x_axis, eyn[0, :] * 1e6, c='darkorange', ls='--', lw=1.0, alpha=0.75, marker=".", label="Y - initial")
+        fig3, ax3 = plt.subplots(2, 1, figsize=(9, 7.5), sharex=True, constrained_layout=True)
+        ax3[0].plot(scan_array_for_x_axis, exn[1, :] * 1e6, c='b', marker="o", label="X - final")
+        ax3[0].plot(scan_array_for_x_axis, eyn[1, :] * 1e6, c='darkorange', marker="o", label="Y - final")
+        ax3[0].plot(scan_array_for_x_axis, exn[0, :] * 1e6, c='b', ls='--', lw=1.0, alpha=0.75, marker=".", label="X - initial")
+        ax3[0].plot(scan_array_for_x_axis, eyn[0, :] * 1e6, c='darkorange', ls='--', lw=1.0, alpha=0.75, marker=".", label="Y - initial")
 
-        ax[0].set_ylabel("$\epsilon_{x, y}^n$ [$\mu$m]")       
-        ax[1].plot(scan_array_for_x_axis, 100*transmission, c='red', marker='o', label='Transmission')
-        ax[1].set_ylabel("Transmission [%]")
-        ax[0].legend(fontsize=13)
-        ax[0].grid(alpha=0.55)
-        ax[1].grid(alpha=0.55)
-        ax[1].set_xticks(scan_array_for_x_axis)
-        ax[1].tick_params(axis='x', which='major', rotation=35, labelsize=12.4)
+        ax3[0].set_ylabel("$\epsilon_{x, y}^n$ [$\mu$m]")       
+        ax3[1].plot(scan_array_for_x_axis, 100*transmission, c='red', marker='o', label='Transmission')
+        ax3[1].set_ylabel("Transmission [%]")
+        ax3[0].legend(fontsize=13)
+        ax3[0].grid(alpha=0.55)
+        ax3[1].grid(alpha=0.55)
+        ax3[1].set_xticks(scan_array_for_x_axis)
+        ax3[1].tick_params(axis='x', which='major', rotation=35, labelsize=12.4)
         if extra_text_string is not None:
-            ax[1].text(0.024, 0.05, extra_text_string, transform=ax[1].transAxes, fontsize=12.8)
-        ax[1].set_xlabel(label_for_x_axis)
-        ax[0].set_ylim(emittance_range[0], emittance_range[1])
-        ax[1].set_ylim(transmission_range[0], transmission_range[1])
+            ax3[1].text(0.024, 0.05, extra_text_string, transform=ax3[1].transAxes, fontsize=12.8)
+        ax3[1].set_xlabel(label_for_x_axis)
+        ax3[0].set_ylim(emittance_range[0], emittance_range[1])
+        ax3[1].set_ylim(transmission_range[0], transmission_range[1])
         if master_job_name is None:
             master_job_name = 'scan_result_final_emittances_and_bunch_intensity'
-        fig.savefig('output/{}_qGaussian_fits.png'.format(master_job_name), dpi=250)
+        fig3.savefig('output_transverse/{}_qGaussian_fits.png'.format(master_job_name), dpi=250)
+        print('Saved figure to output/{}_qGaussian_fits.png'.format(master_job_name))
         plt.close()
 
 
