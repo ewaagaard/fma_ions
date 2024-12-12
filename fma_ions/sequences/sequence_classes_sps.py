@@ -2,6 +2,7 @@
 Main module for sequence generator container classes for SPS 
 """
 import numpy as np
+import pandas as pd
 from dataclasses import dataclass
 from pathlib import Path
 import os 
@@ -65,7 +66,21 @@ class SPS_sequence_maker:
         if self.ion_type == 'proton':
             self.Q_PS, self.Q_SPS = 1., 1.
             
-    
+
+    def load_default_twiss_table(self):
+        """
+        Return pandas dataframe with twiss table of default SPS sequence. Create json if does not exist already
+        """
+        try:
+            df_twiss = pd.read_json('{}/twiss_sps_pandas.json'.format(sequence_path))
+            print('\nLoaded twiss table\n') 
+        except FileNotFoundError:
+            line, twiss = self.load_xsuite_line_and_twiss()
+            df_twiss = twiss.to_pandas()
+            df_twiss.to_json('{}/twiss_sps_pandas.json'.format(sequence_path))
+            print('\nFailed to load Twiss dataframe, generating new\n')
+        return df_twiss
+
     def load_xsuite_line_and_twiss(self,
                                    beta_beat=None, 
                                    use_symmetric_lattice=False,
