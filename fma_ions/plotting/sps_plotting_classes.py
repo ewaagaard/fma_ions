@@ -1164,6 +1164,25 @@ class SPS_Plotting:
         #fig.savefig('output/SPS_Pb_final_{}_phase_space.png'.format(planes[i]), dpi=250)
         #plt.close()
 
+        ## LOST PARTICLES: at which TURN ##
+        fig2, ax2 = plt.subplots(1,1,figsize=(8,6), constrained_layout=True)
+        bin_heights_turn_where_lost, bin_borders_turn_where_lost = np.histogram(part_dict['at_turn'][dead_ind_final], bins=40)
+        bin_widths_turn_where_lost = np.diff(bin_borders_turn_where_lost)
+        bin_centers_turn_where_lost = bin_borders_turn_where_lost[:-1] + bin_widths_turn_where_lost / 2
+        ax2.bar(bin_centers_turn_where_lost, bin_heights_turn_where_lost, width=bin_widths_turn_where_lost, 
+                alpha=0.85, color='darkred', label='Killed particles')
+        ax2.set_ylabel('Lost particle count')
+        ax2.set_xlabel('Lost at turn')
+
+        fig3, ax3 = plt.subplots(1,1,figsize=(8,6), constrained_layout=True)
+        bin_heights_element_where_lost, bin_borders_element_where_lost = np.histogram(part_dict['at_element'][dead_ind_final], bins=40)
+        bin_widths_element_where_lost = np.diff(bin_borders_element_where_lost)
+        bin_centers_element_where_lost = bin_borders_element_where_lost[:-1] + bin_widths_element_where_lost / 2
+        ax3.bar(bin_centers_element_where_lost, bin_heights_element_where_lost, width=bin_widths_element_where_lost, 
+                alpha=0.85, color='darkred', label='Killed particles')
+        ax3.set_ylabel('Last particle count')
+        ax3.set_xlabel('s[m]')
+
 
     def plot_tracking_vs_analytical(self,
                                     analytical_tbt,
