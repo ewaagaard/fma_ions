@@ -463,7 +463,8 @@ class SPS_Plotting:
                                          transmission_range=[0.0, 105],
                                          emittance_range = [0.0, 4.1],
                                          master_job_name=None,
-                                         load_measured_profiles=False) -> None:
+                                         load_measured_profiles=False,
+                                         x_axis_quantity='Qx') -> None:
 
         """
         Open tbt data from e.g tune scan, plot transverse profiles and fit a q-Gaussian.
@@ -484,6 +485,8 @@ class SPS_Plotting:
             in which range to plot emittances
         load_measured_profiles : bool
             whether to plot measured profiles as well
+        x_axis_quantity: str
+            which quantity to use for x-axis, e.g. Qx or Qy
         """
         # Generate directories, if not existing already
         os.makedirs('output_transverse', exist_ok=True)
@@ -538,7 +541,7 @@ class SPS_Plotting:
                 # Plot measured profiles if desired
                 if load_measured_profiles:
                     try: 
-                        with open('measured_output_bws/X_average_bws_profiles_Qx_{:.2f}.npy'.format(scan_array_for_x_axis[i]), 'rb') as f:
+                        with open('measured_output_bws/X_average_bws_profiles_{}_{:.2f}.npy'.format(x_axis_quantity, scan_array_for_x_axis[i]), 'rb') as f:
                             x_pos = np.load(f)
                             x_prof_avg = np.load(f)
 
@@ -558,7 +561,7 @@ class SPS_Plotting:
                         print('Could not open measured X BWS profile')
 
                     try: 
-                        with open('measured_output_bws/Y_average_bws_profiles_Qx_{:.2f}.npy'.format(scan_array_for_x_axis[i]), 'rb') as f:
+                        with open('measured_output_bws/Y_average_bws_profiles_{}_{:.2f}.npy'.format(x_axis_quantity, scan_array_for_x_axis[i]), 'rb') as f:
                             y_pos = np.load(f)
                             y_prof_avg = np.load(f)
 
