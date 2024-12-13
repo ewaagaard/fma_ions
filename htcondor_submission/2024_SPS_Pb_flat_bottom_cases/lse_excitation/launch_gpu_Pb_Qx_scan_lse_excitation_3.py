@@ -14,7 +14,7 @@ dir_path = pathlib.Path(__file__).parent.absolute()
 master_name = 'Q26_Pb_ions_SC_frozen_beta_beat_and_non_linear_Qx_scan_LSE_excitation_3'
 num_turns = 130_000 # corresponds to 3s for SPS ions at flat bottom
 Qy = 26.19
-Qx_range = [26.28, 26.39] #np.arange(26.28, 26.42, 0.01)
+Qx_range = np.arange(26.28, 26.42, 0.01)
 run_files = ['sps_run_qx_{}_tbt_qy_26dot19.py'.format(i+1) for i in range(len(Qx_range))]
 
 # Define script and folder names
