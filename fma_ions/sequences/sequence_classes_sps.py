@@ -75,7 +75,7 @@ class SPS_sequence_maker:
             df_twiss = pd.read_json('{}/twiss_sps_pandas.json'.format(sequence_path))
             print('\nLoaded twiss table\n') 
         except FileNotFoundError:
-            line, twiss = self.load_xsuite_line_and_twiss()
+            line, twiss = self.load_xsuite_line_and_twiss(add_aperture=True)
             df_twiss = twiss.to_pandas()
             df_twiss.to_json('{}/twiss_sps_pandas.json'.format(sequence_path))
             print('\nFailed to load Twiss dataframe, generating new\n')
@@ -1136,6 +1136,12 @@ class SPS_sequence_maker:
         # Find minimum aperture
         print('\nMinimum X aperture is x_min={} m at s={} m'.format(x_ap[np.argmin(x_ap)], s_ap[np.argmin(x_ap)]))
         print('Minimum Y aperture is y_min={} m at s={} m'.format(y_ap[np.argmin(y_ap)], s_ap[np.argmin(y_ap)]))
+
+        print('X aperture unique counts:')
+        print(np.unique(x_ap, return_counts=True))
+        print('Y aperture unique counts:\n')
+        print(np.unique(y_ap, return_counts=True))
+        print('\n')
 
         return x_ap, y_ap, a
     
