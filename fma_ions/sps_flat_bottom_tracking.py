@@ -288,8 +288,8 @@ class SPS_Flat_Bottom_Tracker:
         if I_LSE is not None:
             line = sps.excite_LSE_sextupole_from_current(line, I_LSE=I_LSE, which_LSE=which_LSE)        
 
-        # Not compatible with tune ripple, as the kqf and kqd disappear
-        if (cycle_mode_to_minimize_dx_dpx is not None) and not add_tune_ripple:
+        # Not compatible with tune ripple, as the kqf and kqd disappear. Relevant for Q20 optics with higher initial dispersion
+        if (cycle_mode_to_minimize_dx_dpx is not None) and not add_tune_ripple and self.proton_optics=='q20':
             
             if cycle_mode_to_minimize_dx_dpx == 'dx':
                 penalty = np.abs(twiss.dx)
