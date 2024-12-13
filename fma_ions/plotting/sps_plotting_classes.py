@@ -513,7 +513,7 @@ class SPS_Plotting:
         # Load dictionary and append values
         for i, output_folder in enumerate(output_str_array):
             self.output_folder = output_folder
-            scan_string = '{} = {}'.format(label_for_x_axis, scan_array_for_x_axis[i])
+            scan_string = '{} = {:.2f}'.format(label_for_x_axis, scan_array_for_x_axis[i])
             try:
                 tbt_dict = self.load_records_dict_from_json(output_folder=output_folder)
 
@@ -590,7 +590,7 @@ class SPS_Plotting:
                 ax.set_xlabel('x [m]')
                 ax.set_ylabel('Normalized counts')
                 ax.set_ylim(0, 1.1)
-                ax.text(0.82, 0.05, '{} = {}'.format(label_for_x_axis, scan_array_for_x_axis[i]), transform=ax.transAxes, fontsize=12.8)
+                ax.text(0.82, 0.05, '{} = {:.2f}'.format(label_for_x_axis, scan_array_for_x_axis[i]), transform=ax.transAxes, fontsize=12.8)
 
                 # Plot profile of particles
                 for j, ind in enumerate(index_to_plot):
@@ -604,7 +604,7 @@ class SPS_Plotting:
                 ax2.set_ylabel('Normalized counts')
                 ax2.set_xlabel('y [m]')
                 ax2.set_ylim(0, 1.1)
-                ax2.text(0.82, 0.05, '{} = {}'.format(label_for_x_axis, scan_array_for_x_axis[i]), transform=ax2.transAxes, fontsize=12.8)
+                ax2.text(0.82, 0.05, '{} = {:.2f}'.format(label_for_x_axis, scan_array_for_x_axis[i]), transform=ax2.transAxes, fontsize=12.8)
 
                 # Fit Gaussian for the emittance
                 popt_X, pcov_X = fits.fit_Gaussian(X_pos_data, X_profile_data, p0=(1.0, 0.0, 0.02))
@@ -736,6 +736,139 @@ class SPS_Plotting:
             np.save(f, q_errors_X)
             np.save(f, q_errors_Y)
             
+
+    def fit_transverse_profile_evolution(self, profile_step=100):
+        "Load turn-by-turn data and plot emittance evolution"
+        
+        # Generate directories, if not existing already
+        os.makedirs('transverse_profile_evolution', exist_ok=True)
+
+        # Initiate fit function
+        fits = Fit_Functions()
+        # Extract optics at Wire Scanner, correct for dispersion
+        betx, bety, dx = self.optics_at_WS()
+        dpp = 1e-3
+
+        # Load turn-by-turn data
+        tbt_dict = self.load_records_dict_from_json()
+        index_to_plot = np.arange(0, len(tbt_dict['monitorH_x_intensity'])+1, profile_step)
+        index_to_plot[-1] -= 1 # correct counting index 
+        turns_to_plot = 100*index_to_plot # 100 turns
+
+        # Create empty arrays
+        n_profiles = len(index_to_plot)
+        exn = np.zeros(n_profiles)
+        q_vals_X = np.zeros(n_profiles)
+        q_errors_X = np.zeros(n_profiles)
+        eyn = np.zeros(n_profiles)
+        q_vals_Y = np.zeros(n_profiles)
+        q_errors_Y = np.zeros(n_profiles) 
+          
+        for i, ind in enumerate(index_to_plot):
+            print('Fitting WS profile turn {}'.format(turns_to_plot[i]))
+
+            # Plot simulated particle profile
+            fig, ax = plt.subplots(1, 1, figsize = (8, 6), constrained_layout=True)
+            fig2, ax2 = plt.subplots(1, 1, figsize = (8, 6), constrained_layout=True)
+
+            # Normalize bin heights
+            x_bin_heights_sorted = np.array(sorted(tbt_dict['monitorH_x_intensity'][ind], reverse=True))
+            x_height_max_avg = np.mean(x_bin_heights_sorted[:3]) # take average of top 3 values
+            X_pos_data = tbt_dict['monitorH_x_grid']
+            X_profile_data = tbt_dict['monitorH_x_intensity'][ind] / x_height_max_avg
+            ax.plot(X_pos_data, X_profile_data, label='Turn {}'.format(turns_to_plot[i]), color='orange')
+            ax.set_xlabel('x [m]')
+            ax.set_ylabel('Normalized counts')
+            ax.set_ylim(0, 1.1)
+
+            # Normalize bin heights
+            y_bin_heights_sorted = np.array(sorted(tbt_dict['monitorV_y_intensity'][ind], reverse=True))
+            y_height_max_avg = np.mean(y_bin_heights_sorted[:3]) # take average of top 3 values
+            Y_pos_data = tbt_dict['monitorV_y_grid']
+            Y_profile_data = tbt_dict['monitorV_y_intensity'][ind] / y_height_max_avg
+            ax2.plot(Y_pos_data, Y_profile_data, label='Turn {}'.format(turns_to_plot[i]), color='orange')
+            ax2.set_ylabel('Normalized counts')
+            ax2.set_xlabel('y [m]')
+            ax2.set_ylim(0, 1.1)
+
+            # Fit Gaussian for the emittance
+            popt_X, pcov_X = fits.fit_Gaussian(X_pos_data, X_profile_data, p0=(1.0, 0.0, 0.02))
+            popt_Y, pcov_Y = fits.fit_Gaussian(Y_pos_data, Y_profile_data, p0=(1.0, 0.0, 0.02))
+            sigma_raw_X = np.abs(popt_X[2])
+            sigma_raw_Y = np.abs(popt_Y[2])
+
+            ### Convert beam sizes to emittances ###
+            part = tbt_dict['particles_i']
+            gamma = part['gamma0'][0]
+            beta_rel = part['beta0'][0]
+
+            # Fit q-Gaussian to final X and Y profiles, to latest curves - initial guess from Gaussian
+            q0 = 1.02
+            p0_qX = [popt_X[1], q0, 1/popt_X[2]**2/(5-3*q0), 2*popt_X[0]]
+            p0_qY = [popt_Y[1], q0, 1/popt_Y[2]**2/(5-3*q0), 2*popt_Y[0]]
+
+            popt_Q_X, pcov_Q_X = fits.fit_Q_Gaussian(X_pos_data, X_profile_data, p0=p0_qX)
+            q_vals_X[i] = popt_Q_X[1]
+            q_errors_X[i] = np.sqrt(np.diag(pcov_Q_X))[1] # error from covarance_matrix
+            #sigmas_q_gaussian_X[i] = fits.get_sigma_RMS_from_qGaussian_fit(popt_Q_X)
+
+            popt_Q_Y, pcov_Q_Y = fits.fit_Q_Gaussian(Y_pos_data, Y_profile_data, p0=p0_qY)
+            q_vals_Y[i] = popt_Q_Y[1]
+            q_errors_Y[i] = np.sqrt(np.diag(pcov_Q_Y))[1] # error from covarance_matrix
+            #sigmas_q_gaussian_Y[i] = fits.get_sigma_RMS_from_qGaussian_fit(popt_Q_Y)
+
+            sigmaX_raw_for_betatronic = sigma_raw_X # sigmas_q_gaussian_X[i]
+            sigmaX_betatronic = np.sqrt((sigmaX_raw_for_betatronic)**2 - (dpp * dx)**2)
+            exf = sigmaX_betatronic**2 / betx
+
+            sigmaY_raw_for_betatronic = sigma_raw_Y # sigmas_q_gaussian_Y[i]
+            sigmaY_betatronic = np.abs(sigmaY_raw_for_betatronic) # no vertical dispersion
+            eyf = sigmaY_betatronic**2 / bety
+            exn[i] =  exf * beta_rel * gamma 
+            eyn[i] =  eyf * beta_rel * gamma 
+
+            ax.plot(X_pos_data, fits.Q_Gaussian(X_pos_data, *popt_Q_X), ls='--', color='lime', label='q-Gaussian fit')
+            ax2.plot(Y_pos_data, fits.Q_Gaussian(Y_pos_data, *popt_Q_Y), ls='--', color='lime', label='q-Gaussian fit')
+            ax.legend(loc='upper left', fontsize=11.5)
+            ax2.legend(loc='upper left', fontsize=11.5)
+            fig.savefig('transverse_profile_evolution/X_profile_turn_{}.png'.format(turns_to_plot[i]), dpi=250)
+            fig2.savefig('transverse_profile_evolution/Y_profile_turn_{}.png'.format(turns_to_plot[i]), dpi=250)
+
+            del fig, fig2
+            plt.close()
+
+        # Plot fitted emittances and bunch intensity 
+        f, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize = (9.5, 3.6), constrained_layout=True)
+        ax1.plot(turns_to_plot, exn * 1e6, alpha=0.7, c='turquoise', marker='o', ls='None', label='Simulated WS profiles')
+        ax2.plot(turns_to_plot, eyn * 1e6, alpha=0.7, c='turquoise',  marker='o', ls='None', label='Simulated WS profiles')
+        ax3.plot(tbt_dict['Turns'], tbt_dict['Nb'], alpha=0.7, lw=2.2, c='turquoise', label='Simulated')
+        for a in [ax1, ax2, ax3]:
+            a.set_xlabel('Turns')
+            a.grid(alpha=0.55)
+        ax1.set_ylabel(r'Fitted $\varepsilon_{x}^{n}$ [$\mu$m]')
+        ax2.set_ylabel(r'Fitted $\varepsilon_{y}^{n}$ [$\mu$m]')
+        ax3.set_ylabel(r'Ions per bunch $N_{b}$')
+        ax1.legend(fontsize=12.1)
+        ax1.set_ylim(0.0, 4.05)
+        ax2.set_ylim(0.0, 4.05)
+        ax3.set_ylim(0.0, max(tbt_dict['Nb'])*1.05)
+        f.savefig('transverse_profile_evolution/0000_epsilon_Nb.png', dpi=250)
+
+        # Also plot q-values
+        fig1, ax1 = plt.subplots(1, 1, figsize=(8, 6), constrained_layout=True)
+        ax1.errorbar(turns_to_plot, y=q_vals_X, yerr=q_errors_X, fmt="o-", label="Simulated $q_{X}$")
+        ax1.errorbar(turns_to_plot, y=q_vals_Y, yerr=q_errors_Y, fmt="o-", label="Simulated $q_{Y}$")
+        #ax[0].axhline(y=1.5, c='darkgreen', label=None)   # at extr, not end of flat bottom
+        ax1.set_ylim(0, 2.0)
+        ax1.set_ylabel("Fitted $q_{x,y}$")
+        ax1.grid(alpha=0.5)
+        ax1.set_xlabel('Turns')
+        ax1.legend(loc="upper left", fontsize=11.5)
+        fig1.savefig('transverse_profile_evolution/0001_q_value_evolution_qGaussian_fits.png', dpi=250)
+        plt.close()
+
+
+
     def plot_multiple_sets_of_tracking_data(self, 
                                             output_str_array, 
                                             string_array, 
