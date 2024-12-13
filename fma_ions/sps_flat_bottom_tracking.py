@@ -357,6 +357,7 @@ class SPS_Flat_Bottom_Tracker:
         tbt = Records.init_zeroes(self.num_turns)  # only emittances and bunch intensity
         tbt.update_at_turn(0, particles, twiss)
         tbt.store_initial_particles(particles)
+        tbt.store_twiss(twiss.to_pandas())
         
         # Track particles for one turn         
         if matched_for_PS_extraction:

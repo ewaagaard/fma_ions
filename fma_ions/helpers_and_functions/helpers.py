@@ -56,10 +56,11 @@ class Records:
     bunch_length: np.ndarray
     Nb: np.ndarray
     turns: np.ndarray
-    particles_i : dict
-    particles_f : dict
-    includes_profile_data : bool = False
-    includes_seconds_array : bool = False
+    twiss: dict
+    particles_i: dict
+    particles_f: dict
+    includes_profile_data: bool = False
+    includes_seconds_array: bool = False
 
     def update_at_turn(self, turn: int, parts: xp.Particles, twiss: xt.TwissTable):
         """Automatically update the records at given turn from the xpart.Particles."""
@@ -81,10 +82,14 @@ class Records:
             sigma_delta=np.zeros(n_turns, dtype=float),
             bunch_length=np.zeros(n_turns, dtype=float),
             turns=np.arange(n_turns, dtype=int),
+            twiss={},
             particles_i={},
             particles_f={}
         )
     
+    def store_twiss(self, df_twiss: pd.DataFrame):
+        """Store twiss table, before collective elements"""
+        self.twiss = df_twiss.to_dict()
 
     def store_initial_particles(self, parts: xp.Particles):
         """Store initial particle object"""
@@ -154,6 +159,7 @@ class Records:
             'Nb' : self.Nb.tolist(),
             'includes_profile_data' : self.includes_profile_data,
             'Turns': self.turns.tolist(),
+            'twiss': self.twiss,
             'particles_i': self.particles_i,
             'particles_f': self.particles_f 
         }
