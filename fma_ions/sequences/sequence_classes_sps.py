@@ -833,7 +833,7 @@ class SPS_sequence_maker:
         # Load madx instance
         madx = self.load_madx_SPS_from_job(use_Pb_ions=use_Pb_ions)
 
-        # Flatten and slice line
+        # Flatten and slice line --> start at zero-dispersion location
         if make_thin:
             madx.use(sequence='sps')
             madx.input("seqedit, sequence=SPS;")
@@ -842,6 +842,13 @@ class SPS_sequence_maker:
             madx.use("sps")
             madx.input("select, flag=makethin, slice={}, thick=false;".format(nr_slices))
             madx.input("makethin, sequence=sps, style=teapot, makedipedge=True;")
+            
+            # Cycle line to lowest dispersion location
+            madx.use(sequence='sps')
+            madx.input("seqedit, sequence=SPS;")
+            madx.input("flatten;")
+            madx.input("cycle, start=tacw.51998..5;")
+            madx.input("endedit;")
 
         madx.call("{}/toolkit/macro.madx".format(optics))
 
