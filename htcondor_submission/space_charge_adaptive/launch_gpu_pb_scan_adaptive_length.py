@@ -17,7 +17,7 @@ Qy = 26.10
 Qx = 26.31
 SC_adaptive_interval = [100, 200, 500, 1000, 2000, 5000]
 
-run_files = ['sps_run_50hz_amp_{}_tbt_ripple.py'.format(i+1) for i in range(len(SC_adaptive_interval))]
+run_files = ['sps_run_sc_interval_{}.py'.format(i+1) for i in range(len(SC_adaptive_interval))]
 
 # Define script and folder names
 script_names = run_files.copy()
