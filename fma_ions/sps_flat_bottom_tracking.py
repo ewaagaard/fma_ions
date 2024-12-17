@@ -96,6 +96,7 @@ class SPS_Flat_Bottom_Tracker:
                   beamParams=None,
                   install_SC_on_line=True, 
                   SC_mode='frozen',
+                  SC_adaptive_interval_during_tracking=None,
                   distribution_type='gaussian',
                   add_tune_ripple=False,
                   kqf_amplitudes = np.array([9.7892e-7]),
@@ -114,8 +115,6 @@ class SPS_Flat_Bottom_Tracker:
                   install_beam_monitors=True,
                   nturns_profile_accumulation_interval = 100,
                   nbins = 140,
-                  cycle_mode_to_minimize_dx_dpx='dx',
-                  target_dx_and_dpx=None,
                   also_keep_delta_profiles=False,
                   I_LSE=None, 
                   which_LSE='lse.12402'
@@ -145,6 +144,8 @@ class SPS_Flat_Bottom_Tracker:
             whether to install space charge
         SC_mode : str
             type of space charge - 'frozen' (recommended), 'quasi-frozen' or 'PIC'
+        SC_adaptive_interval_during_tracking : int
+            if not None, interval between which frozen space charge element lengths are adjusted according to bunch intensity
         distribution_type : str
             'gaussian' or 'qgaussian' or 'parabolic' or 'binomial': particle distribution for tracking
         add_tune_ripple : bool
@@ -186,13 +187,6 @@ class SPS_Flat_Bottom_Tracker:
             number of bins for histograms of transverse and longitudinal monitors
         z_kick_num_integ_per_sigma : int
             number of longitudinal kicks per sigma
-        cycle_mode_to_minimize_dx_dpx : str
-            options: None, 'dx', 'dpx', 'both' and 'custum' --> whether to cycle line to minimum Dx at the start, 
-            minimum D'x or minimize both. None will not perform any cycling. Default is to minimize initial dispersion,
-            where IBS kicks are applied
-        target_dx_and_dpx : list
-            if cycle_mode chosen to be 'custom' above, provide list [dx_target, dpx_target] to cycle sequence as close as possible 
-            to these values
         also_keep_delta_profiles : bool
             whether to keep aggregated delta coordinates in Zeta_Container or not
         I_LSE : float
@@ -363,6 +357,15 @@ class SPS_Flat_Bottom_Tracker:
                                                    z_kick_num_integ_per_sigma=z_kick_num_integ_per_sigma)
             print('Installed {} space charge interactions with {} z kick intergrations per sigma on line\n'.format(num_spacecharge_interactions,
                                                                                                                    z_kick_num_integ_per_sigma))
+            
+            ee0_elements = []
+            ee0_element_lengths = []
+            for ii, ee in enumerate(line.elements):
+                if isinstance(ee, xf.SpaceChargeBiGaussian):
+                    ee0_elements.append(ee)
+                    ee0_element_lengths.append(ee.length)
+            print('Initial SC element lengths = {:.5f} m +- {:.3e}'.format(np.mean(ee0_element_lengths), np.std(ee0_element_lengths)))
+            ee0_length = ee0_element_lengths[0]
         
         # Modulate tune with ripple, if desired
         if add_tune_ripple:
@@ -432,7 +435,7 @@ class SPS_Flat_Bottom_Tracker:
             delta_min_hist = 1.2 * np.min(context.nparray_from_context_array(particles.delta))
             delta_max_hist = 1.2 * np.max(context.nparray_from_context_array(particles.delta))
 
-        # Start tracking 
+        #### Start tracking ####
         time00 = time.time()
         for turn in range(1, self.num_turns):
             
@@ -449,7 +452,19 @@ class SPS_Flat_Bottom_Tracker:
                     print('Loss types: {}, with occurrence {}'.format(loss_type, loss_count))
                 else:
                     print('No particles lost')
-            
+
+            #### Adapt space charge element lenghts if desired ####
+            if SC_adaptive_interval_during_tracking is not None and turn % SC_adaptive_interval_during_tracking == 0:
+                transmission = tbt.Nb[turn-1] / tbt.Nb[0]
+                for ii, ee in enumerate(line.elements):
+                    if isinstance(ee, xf.SpaceChargeBiGaussian):
+                        # Scale length with bunch intensity
+                        ee.length = transmission*ee0_length
+
+                # Also print adjustment if desired
+                if turn % self.turn_print_interval == 0:
+                    print('Re-adjusted SC element length by {:.4f}'.format(transmission))
+
             ########## ----- Exert TUNE RIPPLE if desired ----- ##########
             if add_tune_ripple:
                 line.vars['kqf'] = kqf0 + kqf_ripple[turn-1]

@@ -92,10 +92,9 @@ for ii, ee in enumerate(line.elements):
     if isinstance(ee, xf.SpaceChargeBiGaussian):
         ee_element_lengths.append(ee.length)
 print('Final SC element lengths = {:.5f} m +- {:.3e}'.format(np.mean(ee_element_lengths), np.std(ee_element_lengths)))
-ee0_length = ee0_element_lengths[0]
 
 # Plot result space charge element length, and bunch intensity
-turns = np.arange(1, num_turns)
+turns = np.arange(num_turns)
 fig, ax = plt.subplots(2, 1, figsize=(8,6), sharex=True)
 ax[0].plot(turns, Nb_vals)
 ax[0].set_ylabel('Nb')
