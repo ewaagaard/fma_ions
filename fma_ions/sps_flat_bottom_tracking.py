@@ -288,26 +288,6 @@ class SPS_Flat_Bottom_Tracker:
         if I_LSE is not None:
             line = sps.excite_LSE_sextupole_from_current(line, I_LSE=I_LSE, which_LSE=which_LSE)        
 
-        # Not compatible with tune ripple, as the kqf and kqd disappear. Relevant for Q20 optics with higher initial dispersion
-        if (cycle_mode_to_minimize_dx_dpx is not None) and not add_tune_ripple and self.proton_optics=='q20':
-            
-            if cycle_mode_to_minimize_dx_dpx == 'dx':
-                penalty = np.abs(twiss.dx)
-            elif cycle_mode_to_minimize_dx_dpx == 'dpx':    
-                penalty = np.abs(twiss.dpx)
-            elif cycle_mode_to_minimize_dx_dpx == 'both':   
-                penalty = twiss.dx**2 + twiss.dpx**2 
-            elif cycle_mode_to_minimize_dx_dpx == 'custom':
-                penalty = (twiss.dx - target_dx_and_dpx[0])**2 + (twiss.dpx - - target_dx_and_dpx[1])**2
-            else:
-                raise ValueError("No valid cycling mode - choose 'dx', 'dpx' or 'both'")
-            line = line.cycle(index_first_element=np.argmin(penalty))
-            del twiss # delete old twiss table
-                        
-            twiss = line.twiss()
-            print('Cycled sequence: Qx = {:.4f}, Qy = {:.4f}, starting Dx = {:3f} m, starting Dxprime = {:.3f}m\n'.format(twiss['qx'], twiss['qy'], twiss.dx[0], twiss.dpx[0]))
-
-        
         # If scaling synchrotron tune
         if scale_factor_Qs is not None:
             line, sigma_z_new, Nb_new = sps.change_synchrotron_tune_by_factor(scale_factor_Qs, line, beamParams.sigma_z, beamParams.Nb)
