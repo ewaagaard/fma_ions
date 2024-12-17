@@ -319,6 +319,18 @@ class SPS_Flat_Bottom_Tracker:
                 y_range=0.07)
             line.insert_element(index='bwsrc.41677', element=monitorV, name='monitorV')
 
+            #### SPACE CHARGE sigma update, if desired ####
+            # Also insert beam profile monitors at the start, at location s = 0 with lowest dispersion
+            if SC_adaptive_interval_during_tracking:
+                monitor0 = xt.BeamProfileMonitor(
+                    start_at_turn=nturns_profile_accumulation_interval/2, stop_at_turn=self.num_turns,
+                    frev=1,
+                    sampling_frequency=1/nturns_profile_accumulation_interval,
+                    n=nbins,
+                    x_range=0.07,
+                    y_range=0.07)
+                line.insert_element(at=0, element=monitor0, name='monitor0')
+
         line.build_tracker(_context=context)
         #######################################################################################################################
         
@@ -358,14 +370,37 @@ class SPS_Flat_Bottom_Tracker:
             print('Installed {} space charge interactions with {} z kick intergrations per sigma on line\n'.format(num_spacecharge_interactions,
                                                                                                                    z_kick_num_integ_per_sigma))
             
-            ee0_elements = []
-            ee0_element_lengths = []
-            for ii, ee in enumerate(line.elements):
-                if isinstance(ee, xf.SpaceChargeBiGaussian):
-                    ee0_elements.append(ee)
-                    ee0_element_lengths.append(ee.length)
-            print('Initial SC element lengths = {:.5f} m +- {:.3e}'.format(np.mean(ee0_element_lengths), np.std(ee0_element_lengths)))
-            ee0_length = ee0_element_lengths[0]
+            #### TWISS at space charge elements ####
+            if SC_adaptive_interval_during_tracking is not None:
+                # Copy line, replace collective elements with markers for stable twiss
+                line00 = line.copy()
+                for ii, key in enumerate(line00.element_names):
+                    if 'spacecharge' in key:
+                        line00.element_dict[key] = xt.Marker()
+                line00.build_tracker()
+                tw_sc = line00.twiss()
+                df_twiss_sc = tw_sc.to_pandas()
+
+                # Space charge elements will have similar length
+                s_coord = line.get_s_elements()
+                ee0_elements = []
+                ee0_element_lengths = []
+                ee0_sigma_x = []
+                ee0_sigma_y = []
+                ee0_s = []
+                for ii, ee in enumerate(line.elements):
+                    if isinstance(ee, xf.SpaceChargeBiGaussian):
+                        ee0_elements.append(ee)
+                        ee0_element_lengths.append(ee.length)
+                        ee0_s.append(s_coord[ii])
+
+                        # Find beam sizes, do not remove dispersive components
+                        ee0_sigma_x.append(ee.sigma_x)
+                        ee0_sigma_y.append(ee.sigma_y)
+                        
+                print('Initial SC element lengths = {:.5f} m +- {:.3e}'.format(np.mean(ee0_element_lengths), np.std(ee0_element_lengths)))
+                ee0_length = ee0_element_lengths[0]
+                #### ####
         
         # Modulate tune with ripple, if desired
         if add_tune_ripple:
