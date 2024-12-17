@@ -6,6 +6,7 @@ import xfields as xf
 import xpart as xp
 import fma_ions
 import time
+import matplotlib.pyplot as plt
 
 # Beam parameters for the tracking
 num_turns = 100
@@ -57,7 +58,7 @@ for ii, ee in enumerate(line.elements):
     if isinstance(ee, xf.SpaceChargeBiGaussian):
         ee0_elements.append(ee)
         ee0_element_lengths.append(ee.length)
-print('SC element lengths = {:.5f} m +- {:.3e}'.format(np.mean(ee0_element_lengths), np.std(ee0_element_lengths)))
+print('Initial SC element lengths = {:.5f} m +- {:.3e}'.format(np.mean(ee0_element_lengths), np.std(ee0_element_lengths)))
 ee0_length = ee0_element_lengths[0]
 
 # Bunch intensity
@@ -65,7 +66,7 @@ Nb_vals = []
 
 # Track particles
 time00 = time.time()
-for turn in range(1, num_turns):
+for turn in range(0, num_turns):
 
     Nb = particles.weight[particles.state > 0][0]*len(particles.x[particles.state > 0])
     transmission = Nb/Nb0
@@ -86,5 +87,19 @@ time01 = time.time()
 dt0 = time01-time00
 print('\nTracking time: {:.4f} s h'.format(dt0))
 
+ee_element_lengths = []
+for ii, ee in enumerate(line.elements):
+    if isinstance(ee, xf.SpaceChargeBiGaussian):
+        ee_element_lengths.append(ee.length)
+print('Final SC element lengths = {:.5f} m +- {:.3e}'.format(np.mean(ee_element_lengths), np.std(ee_element_lengths)))
+ee0_length = ee0_element_lengths[0]
 
-
+# Plot result space charge element length, and bunch intensity
+turns = np.arange(1, num_turns)
+fig, ax = plt.subplots(2, 1, figsize=(8,6), sharex=True)
+ax[0].plot(turns, Nb_vals)
+ax[0].set_ylabel('Nb')
+ax[1].plot(turns, np.array(Nb_vals)/Nb0*ee0_length)
+ax[1].set_ylabel('SC ele. length [m]')
+ax[1].set_xlabel('Turns')
+plt.show()
