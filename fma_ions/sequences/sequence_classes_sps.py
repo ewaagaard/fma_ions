@@ -67,17 +67,18 @@ class SPS_sequence_maker:
             self.Q_PS, self.Q_SPS = 1., 1.
             
 
-    def load_default_twiss_table(self):
+    def load_default_twiss_table(self, cycled_to_minimum_dx=True):
         """
         Return pandas dataframe with twiss table of default SPS sequence. Create json if does not exist already
         """
+        string = '_min_dx' if cycled_to_minimum_dx else ''
         try:
-            df_twiss = pd.read_json('{}/twiss_sps_pandas.json'.format(sequence_path))
+            df_twiss = pd.read_json('{}/twiss_sps_pandas{}.json'.format(sequence_path, string))
             print('\nLoaded twiss table\n') 
         except FileNotFoundError:
             line, twiss = self.load_xsuite_line_and_twiss(add_aperture=True)
             df_twiss = twiss.to_pandas()
-            df_twiss.to_json('{}/twiss_sps_pandas.json'.format(sequence_path))
+            df_twiss.to_json('{}/twiss_sps_pandas{}.json'.format(sequence_path, string))
             print('\nFailed to load Twiss dataframe, generating new\n')
         return df_twiss
 
@@ -842,8 +843,15 @@ class SPS_sequence_maker:
             madx.use("sps")
             madx.input("select, flag=makethin, slice={}, thick=false;".format(nr_slices))
             madx.input("makethin, sequence=sps, style=teapot, makedipedge=True;")
+
+        # Add aperture classes
+        if add_aperture:
+            print('\nAdded aperture!\n')
+            madx.use(sequence='sps')
+            madx.call('{}/APERTURE_SPS_LS2_30-SEP-2020.seq'.format(aperture_fixed_path))
             
-            # Cycle line to lowest dispersion location
+        # Cycle line to lowest dispersion location
+        if make_thin:
             madx.use(sequence='sps')
             madx.input("seqedit, sequence=SPS;")
             madx.input("flatten;")
@@ -851,12 +859,6 @@ class SPS_sequence_maker:
             madx.input("endedit;")
 
         madx.call("{}/toolkit/macro.madx".format(optics))
-
-        # Add aperture classes
-        if add_aperture:
-            print('\nAdded aperture!\n')
-            madx.use(sequence='sps')
-            madx.call('{}/APERTURE_SPS_LS2_30-SEP-2020.seq'.format(aperture_fixed_path))
 
         # Use correct tune and chromaticity matching macros
         madx.command.use(sequence='sps')       
@@ -1118,8 +1120,12 @@ class SPS_sequence_maker:
         """function to return and print smallest aperture values"""
 
         # Get aperture table
-        a = line.check_aperture()
-        a = a[a['is_aperture']] # remove elements without aperture
+        a0 = line.check_aperture()
+        a = a0[a0['is_aperture']] # remove elements without aperture
+        
+        # Get Twiss values at the aperture
+        df_twiss = line.twiss().to_pandas()
+        df_twiss = df_twiss[a0['is_aperture']]
 
         # Loop over all elements to find aperture values
         x_ap = []
@@ -1133,24 +1139,39 @@ class SPS_sequence_maker:
                 y_ap.append(ele.max_y)
                 s_ap.append(a.s.iloc[i])
                 ind.append(i)
+                
+        df_twiss = df_twiss.iloc[ind]
 
         # Convert to numpy arrays
         x_ap = np.array(x_ap)
+        x_ap_norm = x_ap / np.sqrt(df_twiss.betx.values)
         y_ap = np.array(y_ap)
+        y_ap_norm = x_ap / np.sqrt(df_twiss.bety.values)
         s_ap = np.array(s_ap)
         ind = np.array(ind)
 
-        # Find minimum aperture
-        print('\nMinimum X aperture is x_min={} m at s={} m'.format(x_ap[np.argmin(x_ap)], s_ap[np.argmin(x_ap)]))
+        # Find minimum PHYSICAL aperture
+        print('\nPHYSICAL aperture:')
+        print('Minimum X aperture is x_min={} m at s={} m'.format(x_ap[np.argmin(x_ap)], s_ap[np.argmin(x_ap)]))
         print('Minimum Y aperture is y_min={} m at s={} m'.format(y_ap[np.argmin(y_ap)], s_ap[np.argmin(y_ap)]))
 
         print('X aperture unique counts:')
         print(np.unique(x_ap, return_counts=True))
         print('Y aperture unique counts:\n')
         print(np.unique(y_ap, return_counts=True))
+        
+        # Find minimum NORMALIZED aperture
+        print('\nNORMALIZED aperture:')
+        print('Minimum norm X aperture is x_min={} m at s={} m'.format(x_ap_norm[np.argmin(x_ap_norm)], s_ap[np.argmin(x_ap_norm)]))
+        print('Minimum norm Y aperture is y_min={} m at s={} m'.format(y_ap_norm[np.argmin(y_ap_norm)], s_ap[np.argmin(y_ap_norm)]))
+
+        print('Norm X aperture unique counts:')
+        print(np.unique(x_ap_norm, return_counts=True))
+        print('Norm Y aperture unique counts:\n')
+        print(np.unique(y_ap_norm, return_counts=True))
         print('\n')
 
-        return x_ap, y_ap, a
+        return x_ap, y_ap, x_ap_norm, y_ap_norm, a
     
     
     def set_LSE_sextupolar_errors(self, line)->xt.Line:

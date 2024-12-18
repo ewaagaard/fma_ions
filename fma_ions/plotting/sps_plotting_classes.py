@@ -521,8 +521,10 @@ class SPS_Plotting:
                 tbt_dict = self.load_records_dict_from_json(output_folder=output_folder)
 
                 particles_f = tbt_dict['particles_f']
+                twiss = tbt_dict['twiss']
+                df_twiss = pd.DataFrame(twiss)
                 fig_phase_space, fig2_lost_at_turn, fig3_lost_at_s, loss_string = self.plot_normalized_phase_space_from_tbt(particles_f,
-                                                                                      extra_text_string=scan_string)
+                                                                                      extra_text_string=scan_string, df_twiss=df_twiss)
                 fig_phase_space.savefig('output_transverse/losses/Norm_phase_space_{}.png'.format(output_folder), dpi=250)
                 fig2_lost_at_turn.savefig('output_transverse/losses/Lost_at_turn_{}.png'.format(output_folder), dpi=250)
                 fig3_lost_at_s.savefig('output_transverse/losses/Lost_at_s_{}.png'.format(output_folder), dpi=250)
@@ -593,7 +595,7 @@ class SPS_Plotting:
                 ax.set_xlabel('x [m]')
                 ax.set_ylabel('Normalized counts')
                 ax.set_ylim(0, 1.1)
-                ax.text(0.82, 0.05, '{} = {:.2f}'.format(label_for_x_axis, scan_array_for_x_axis[i]), transform=ax.transAxes, fontsize=12.8)
+                ax.text(0.02, 0.05, '{} = {:.2f}'.format(label_for_x_axis, scan_array_for_x_axis[i]), transform=ax.transAxes, fontsize=10.8)
 
                 # Plot profile of particles
                 for j, ind in enumerate(index_to_plot):
@@ -607,7 +609,7 @@ class SPS_Plotting:
                 ax2.set_ylabel('Normalized counts')
                 ax2.set_xlabel('y [m]')
                 ax2.set_ylim(0, 1.1)
-                ax2.text(0.82, 0.05, '{} = {:.2f}'.format(label_for_x_axis, scan_array_for_x_axis[i]), transform=ax2.transAxes, fontsize=12.8)
+                ax2.text(0.02, 0.55, '{} = {:.2f}'.format(label_for_x_axis, scan_array_for_x_axis[i]), transform=ax2.transAxes, fontsize=10.8)
 
                 # Fit Gaussian for the emittance
                 popt_X, pcov_X = fits.fit_Gaussian(X_pos_data, X_profile_data, p0=(1.0, 0.0, 0.02))
@@ -704,8 +706,10 @@ class SPS_Plotting:
         if extra_text_string is not None:
             ax3[1].text(0.024, 0.05, extra_text_string, transform=ax3[1].transAxes, fontsize=12.8)
         ax3[1].set_xlabel(label_for_x_axis)
-        ax3[0].set_ylim(emittance_range[0], emittance_range[1])
-        ax3[1].set_ylim(transmission_range[0], transmission_range[1])
+        if emittance_range is not None:
+            ax3[0].set_ylim(emittance_range[0], emittance_range[1])
+        if transmission_range is not None:
+            ax3[1].set_ylim(transmission_range[0], transmission_range[1])
         if master_job_name is None:
             master_job_name = 'scan_result_final_emittances_and_bunch_intensity'
         fig3.savefig('output_transverse/emittance_evolution_qGaussian_fits_{}.png'.format(master_job_name), dpi=250)
@@ -1228,11 +1232,12 @@ class SPS_Plotting:
 
     def plot_normalized_phase_space_from_tbt(self, 
                                              part_dict,
-                                             x_min_aperture=0.03,
-                                             x_min_aperture_loc=5221.5066,
-                                             y_min_aperture=0.01615,
-                                             y_min_aperture_loc=524.6862,
-                                             extra_text_string=''):
+                                             x_min_norm_aperture=0.004147391486397011,
+                                             x_min_norm_aperture_loc=5569.7227,
+                                             y_min_norm_aperture=0.003013704789098143,
+                                             y_min_norm_aperture_loc=6886.404799999996,
+                                             extra_text_string='',
+                                             df_twiss=None):
         """
         Generate normalized phase space in X and Y to follow particle distribution
         
@@ -1246,16 +1251,18 @@ class SPS_Plotting:
             whether to add color gradient of how tightly packed particles are
         plot_min_aperture : bool
             whether to include line with minimum X and Y aperture along machine
-        x_min_aperture : float
+        x_min_norm_aperture : float
             default minimum aperture in X
-        x_min_aperture_loc : float
+        x_min_norm_aperture_loc : float
             location of minimum X aperture
-        y_min_aperture : float
+        y_min_norm_aperture : float
             default minimum aperture in Y
-        y_min_aperture_loc : float
+        y_min_norm_aperture_loc : float
             location of minimum Y aperture
         extra_text_string : str
             plot extra text in plots
+        df_twiss : pd.DataFrame
+            twiss table in pandas format
         """
         # Output directory
         #os.makedirs('output', exist_ok=True)
@@ -1273,41 +1280,49 @@ class SPS_Plotting:
 
         # Convert to normalized phase space
         sps = SPS_sequence_maker()
-        df_twiss = sps.load_default_twiss_table() # load twiss table with aperture
+        if df_twiss is None:
+            df_twiss = sps.load_default_twiss_table() # load twiss table with aperture
 
-        # Find beta functions at minimum aperture, convert to normalized coord
-        betx_min_ap = df_twiss.iloc[np.abs(df_twiss['s'] - x_min_aperture_loc).argmin()].betx
-        bety_min_ap = df_twiss.iloc[np.abs(df_twiss['s'] - y_min_aperture_loc).argmin()].bety
-        min_aperture_norm = np.array([x_min_aperture / np.sqrt(betx_min_ap), y_min_aperture / np.sqrt(bety_min_ap)])
-
-        # Find normalized particle coordinates at start of line
-        X = part_dict['x'] / np.sqrt(df_twiss['betx'][0]) 
-        PX = df_twiss['alfx'][0] / np.sqrt(df_twiss['betx'][0]) * part_dict['x'] + np.sqrt(df_twiss['betx'][0]) * part_dict['px']
-        Y = part_dict['y'] / np.sqrt(df_twiss['bety'][0]) 
-        PY = df_twiss['alfy'][0] / np.sqrt(df_twiss['bety'][0]) * part_dict['y'] + np.sqrt(df_twiss['bety'][0]) * part_dict['py']
+        # ALIVE particles - find normalized particle coordinates at start of line
+        X_alive = part_dict['x'][alive_ind_final] / np.sqrt(df_twiss['betx'][0]) 
+        PX_alive = df_twiss['alfx'][0] / np.sqrt(df_twiss['betx'][0]) * part_dict['x'][alive_ind_final] + np.sqrt(df_twiss['betx'][0]) * part_dict['px'][alive_ind_final]
+        Y_alive = part_dict['y'][alive_ind_final] / np.sqrt(df_twiss['bety'][0]) 
+        PY_alive = df_twiss['alfy'][0] / np.sqrt(df_twiss['bety'][0]) * part_dict['y'][alive_ind_final] + np.sqrt(df_twiss['bety'][0]) * part_dict['py'][alive_ind_final]
         
-        ### First last turn of normalized phase space
+        # DEAD particles - find normalized particle coordinates where last seen
+        #ind_s_dead = part_dict['s'][dead_ind_final]
+        
+        ind_s_dead = []
+        for s in part_s:
+            ind  = df_twiss.iloc[np.abs(df_twiss['s'] - s).argmin()]
 
-        # Plot longitudinal phase space, initial and final state
+        
+        X_dead = part_dict['x'][dead_ind_final] / np.sqrt(df_twiss['betx'][ind_s_dead]) 
+        PX_dead = df_twiss['alfx'][ind_s_dead] / np.sqrt(df_twiss['betx'][ind_s_dead]) * part_dict['x'][dead_ind_final] + np.sqrt(df_twiss['betx'][ind_s_dead]) * part_dict['px'][dead_ind_final]
+        Y_dead = part_dict['y'][dead_ind_final] / np.sqrt(df_twiss['bety'][ind_s_dead]) 
+        PY_dead = df_twiss['alfy'][ind_s_dead] / np.sqrt(df_twiss['bety'][ind_s_dead]) * part_dict['y'][dead_ind_final] + np.sqrt(df_twiss['bety'][ind_s_dead]) * part_dict['py'][dead_ind_final]
+        
+        ### First and last turn of normalized phase space
+
         fig, ax = plt.subplots(2, 1, figsize = (8, 7.5), sharex=True, constrained_layout=True)
             
         # Final normalized X and Y
-        ax[0].plot(X[alive_ind_final], PX[alive_ind_final], '.', 
+        ax[0].plot(X_alive, PX_alive, '.', 
                 color='blue', markersize=3.6, label='Alive')
-        ax[0].plot(X[dead_ind_final], PX[dead_ind_final], '.', 
+        ax[0].plot(X_dead, PX_dead, '.', 
                 color='red', alpha=0.85, markersize=4.6, label='Finally dead')
-        ax[0].axvline(x=min_aperture_norm[0], ls='-', color='red', alpha=0.7, label='Min. aperture')
-        ax[0].axvline(x=-min_aperture_norm[0], ls='-', color='red', alpha=0.7, label=None)
+        ax[0].axvline(x=x_min_norm_aperture, ls='-', color='red', alpha=0.7, label='Min. aperture')
+        ax[0].axvline(x=-x_min_norm_aperture, ls='-', color='red', alpha=0.7, label=None)
         ax[0].legend(loc='upper right', fontsize=13)
         ax[0].set_ylabel('$P_{X}$')
         ax[0].set_xlabel('$X$')
         
-        ax[1].plot(Y[alive_ind_final], PY[alive_ind_final], '.', 
+        ax[1].plot(Y_alive, PY_alive, '.', 
                 color='blue', markersize=3.6, label='Alive')
-        ax[1].plot(Y[dead_ind_final], PY[dead_ind_final], '.', 
+        ax[1].plot(Y_dead, PY_dead, '.', 
                 color='red', alpha=0.85, markersize=4.6, label='Finally dead')
-        ax[1].axvline(x=min_aperture_norm[1], ls='-', color='red', alpha=0.7, label='Min. aperture')
-        ax[1].axvline(x=-min_aperture_norm[1], ls='-', color='red', alpha=0.7, label=None)
+        ax[1].axvline(x=y_min_norm_aperture, ls='-', color='red', alpha=0.7, label='Min. aperture')
+        ax[1].axvline(x=-y_min_norm_aperture, ls='-', color='red', alpha=0.7, label=None)
         #ax[1].legend(loc='upper right', fontsize=13)
         ax[1].set_ylabel('$P_{Y}$')
         ax[1].set_xlabel('$Y$')
