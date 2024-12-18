@@ -740,7 +740,7 @@ class SPS_Plotting:
             np.save(f, q_errors_Y)
             
 
-    def fit_transverse_profile_evolution(self, profile_step=100):
+    def fit_transverse_profile_evolution(self, profile_step=100, tbt_dict=None, output_folder=None):
         "Load turn-by-turn data and plot emittance evolution"
         
         # Generate directories, if not existing already
@@ -753,11 +753,12 @@ class SPS_Plotting:
         dpp = 1e-3
 
         # Load turn-by-turn data
-        tbt_dict = self.load_records_dict_from_json()
+        if tbt_dict is None:
+            tbt_dict = self.load_records_dict_from_json(output_folder=output_folder)
+        
         index_to_plot = np.arange(0, len(tbt_dict['monitorH_x_intensity'])+1, profile_step)
         index_to_plot[-1] -= 1 # correct counting index 
-        turns_to_plot = 100*index_to_plot # 100 turns
-
+        turns_to_plot = 100*index_to_plot # 100 tursn for each index
         # Create empty arrays
         n_profiles = len(index_to_plot)
         exn = np.zeros(n_profiles)
@@ -870,6 +871,7 @@ class SPS_Plotting:
         fig1.savefig('transverse_profile_evolution/0001_q_value_evolution_qGaussian_fits.png', dpi=250)
         plt.close()
 
+        return turns_to_plot, exn, eyn
 
 
     def plot_multiple_sets_of_tracking_data(self, 
