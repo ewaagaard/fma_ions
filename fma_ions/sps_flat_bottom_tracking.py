@@ -331,6 +331,9 @@ class SPS_Flat_Bottom_Tracker:
                     y_range=0.07)
                 line.insert_element(at=0, element=monitor0, name='monitor0')
 
+                # Initiate fit functions
+                fits = Fit_Functions()
+
         line.build_tracker(_context=context)
         #######################################################################################################################
         
@@ -371,10 +374,7 @@ class SPS_Flat_Bottom_Tracker:
                                                                                                                    z_kick_num_integ_per_sigma))
             
             #### TWISS at space charge elements ####
-            if SC_adaptive_interval_during_tracking is not None:
-                
-                # Initiate fit functions
-                fits = Fit_Functions()
+            if SC_adaptive_interval_during_tracking is not None: 
                 
                 # Copy line, replace collective elements with markers for stable twiss
                 line00 = line.copy()
@@ -481,7 +481,7 @@ class SPS_Flat_Bottom_Tracker:
             delta_min_hist = 1.2 * np.min(context.nparray_from_context_array(particles.delta))
             delta_max_hist = 1.2 * np.max(context.nparray_from_context_array(particles.delta))
 
-        #### Start tracking ####
+        #### START TRACKING WITH TIMER ####
         time00 = time.time()
         sc_monitor_counter = 0
         
@@ -500,16 +500,16 @@ class SPS_Flat_Bottom_Tracker:
                     print('Loss types: {}, with occurrence {}'.format(loss_type, loss_count))
                 else:
                     print('No particles lost')
-
+                    
             #### Adapt space charge element lenghts if desired ####
-            if SC_adaptive_interval_during_tracking is not None and turn % SC_adaptive_interval_during_tracking == 0:
-                
+            if SC_adaptive_interval_during_tracking is not None and turn % SC_adaptive_interval_during_tracking == 0 and turn > 100:
+
                 # Fit Gaussian beam sizes to beam profile data
                 try:
                     ###  Fit beam sizes ###
                     popt_X, pcov_X = fits.fit_Gaussian(monitor0.x_grid, monitor0.x_intensity[sc_monitor_counter] / np.max(monitor0.x_intensity[sc_monitor_counter]), p0=(1.0, 0.0, 0.02))
                     popt_Y, pcov_Y = fits.fit_Gaussian(monitor0.y_grid, monitor0.y_intensity[sc_monitor_counter] / np.max(monitor0.y_intensity[sc_monitor_counter]), p0=(1.0, 0.0, 0.02))
-                    sc_monitor_counter += 1
+                    
                     sigma_raw_X = np.abs(popt_X[2])
                     sigma_raw_Y = np.abs(popt_Y[2])
                     sigma_norm_X = sigma_raw_X / np.sqrt(df_twiss_sc.betx[0])
@@ -531,6 +531,7 @@ class SPS_Flat_Bottom_Tracker:
         
                 except ValueError:
                     print('Could not fit beam profiles!')
+                    
                 
                 transmission = tbt.Nb[turn-1] / tbt.Nb[0]
                 for ii, ee in enumerate(line.elements):
@@ -540,8 +541,12 @@ class SPS_Flat_Bottom_Tracker:
 
                 # Also print adjustment if desired
                 if turn % self.turn_print_interval == 0:
+                    print('Updating space charge element parameters. Fitting beam Profile index: {} out of {}'.format(sc_monitor_counter, len(monitor0.x_intensity)))
                     print('Re-adjusted SC element length by {:.4f}\nFirst SC element beam sizes:\nsigma_x = {:.5f}m \nsigma_y = {:.5f} m\n'.format(transmission, sigma_X_sc_elements[0], 
                                                                                                                                                    sigma_Y_sc_elements[0]))
+            # Set counter to correct values for X and Y profile monitor for space charge
+            if (turn+1) % nturns_profile_accumulation_interval == 0 and SC_adaptive_interval_during_tracking is not None and turn>100:
+                sc_monitor_counter += 1
                     
 
 
