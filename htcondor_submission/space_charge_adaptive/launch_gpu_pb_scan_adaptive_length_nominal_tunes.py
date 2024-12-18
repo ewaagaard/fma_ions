@@ -11,11 +11,11 @@ import datetime
 dir_path = pathlib.Path(__file__).parent.absolute()
 
 # Define run files and which parameters to change
-master_name = 'Q26_Pb_ions_adaptive_SC_length_scan'
-num_turns = 15_000 # corresponds to 3s for SPS ions at flat bottom
-Qy = 26.10
+master_name = 'Q26_Pb_ions_adaptive_SC_length_scan_nominal_tunes'
+num_turns = 40_000 # corresponds to 3s for SPS ions at flat bottom
+Qy = 26.19
 Qx = 26.31
-SC_adaptive_interval = [50, 100, 200, 500, 1000, 2000, 5000, 10_000]
+SC_adaptive_interval = [100, 200, 500, 1000, 2000, 5000, 10_000, 20_000]
 
 run_files = ['sps_run_sc_interval_{}.py'.format(i+1) for i in range(len(SC_adaptive_interval))]
 
