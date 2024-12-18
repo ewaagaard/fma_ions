@@ -549,7 +549,6 @@ class SPS_Flat_Bottom_Tracker:
                 sc_monitor_counter += 1
                     
 
-
             ########## ----- Exert TUNE RIPPLE if desired ----- ##########
             if add_tune_ripple:
                 line.vars['kqf'] = kqf0 + kqf_ripple[turn-1]

@@ -125,7 +125,6 @@ for turn in range(0, num_turns):
     # Update space charge parameters
     if turn > 0 and turn % update_sc_interval == 0:
 
-        #'''
         # Fit Gaussian beam sizes to beam profile data
         try:
             ###  Fit beam sizes ###
@@ -153,7 +152,6 @@ for turn in range(0, num_turns):
 
         except ValueError:
             print('Could not fit beam profiles!')
-        #'''
 
         # Update SC element lengths
         for ii, ee in enumerate(line.elements):
