@@ -523,13 +523,15 @@ class SPS_Plotting:
                 particles_f = tbt_dict['particles_f']
                 twiss = tbt_dict['twiss']
                 df_twiss = pd.DataFrame(twiss)
-                fig_phase_space, fig2_lost_at_turn, fig3_lost_at_s, loss_string = self.plot_normalized_phase_space_from_tbt(particles_f,
-                                                                                      extra_text_string=scan_string, df_twiss=df_twiss)
-                fig_phase_space.savefig('output_transverse/losses/Norm_phase_space_{}.png'.format(output_folder), dpi=250)
-                fig2_lost_at_turn.savefig('output_transverse/losses/Lost_at_turn_{}.png'.format(output_folder), dpi=250)
-                fig3_lost_at_s.savefig('output_transverse/losses/Lost_at_s_{}.png'.format(output_folder), dpi=250)
-                del fig_phase_space, fig2_lost_at_turn, fig3_lost_at_s
-                all_loss_strings += '\n{}\n{}'.format(scan_string, loss_string)
+                
+                # FIX original function
+                #fig_phase_space, fig2_lost_at_turn, fig3_lost_at_s, loss_string = self.plot_normalized_phase_space_from_tbt(particles_f,
+                #                                                                      extra_text_string=scan_string, df_twiss=df_twiss)
+                #fig_phase_space.savefig('output_transverse/losses/Norm_phase_space_{}.png'.format(output_folder), dpi=250)
+                #fig2_lost_at_turn.savefig('output_transverse/losses/Lost_at_turn_{}.png'.format(output_folder), dpi=250)
+                #fig3_lost_at_s.savefig('output_transverse/losses/Lost_at_s_{}.png'.format(output_folder), dpi=250)
+                #del fig_phase_space, fig2_lost_at_turn, fig3_lost_at_s
+                #all_loss_strings += '\n{}\n{}'.format(scan_string, loss_string)
 
                 # Initial emittances and bunch intensities
                 exn[0, i] =  tbt_dict['exn'][0]
@@ -1292,6 +1294,7 @@ class SPS_Plotting:
         # DEAD particles - find normalized particle coordinates where last seen
         #ind_s_dead = part_dict['s'][dead_ind_final]
         
+        '''
         ind_s_dead = []
         for s in part_s:
             ind  = df_twiss.iloc[np.abs(df_twiss['s'] - s).argmin()]
@@ -1380,6 +1383,7 @@ class SPS_Plotting:
         ax3.text(0.83, 0.93, extra_text_string, transform=ax3.transAxes, fontsize=12.8)
 
         return fig, fig2, fig3, loss_strings
+        '''
 
 
     def plot_tracking_vs_analytical(self,
