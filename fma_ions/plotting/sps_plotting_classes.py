@@ -878,6 +878,7 @@ class SPS_Plotting:
                                             compact_mode=False,
                                             include_emittance_measurements=False, 
                                             emittance_limits=None,
+                                            plot_bunch_length=False,
                                             plot_bunch_length_measurements=False,
                                             x_unit_in_turns=False,
                                             bbox_to_anchor_position=(0.0, 1.3),
@@ -906,6 +907,8 @@ class SPS_Plotting:
             whether to slim plot in more compact format 
         include_emittance_measurements : bool
             whether to include measured emittance or not
+        plot_bunch_length : bool
+            whether to plot bunch length measurements or not
         plot_bunch_length_measurements : bool
             whether to include bunch length measurements from SPS wall current monitor from 2016 studies by Hannes and Tomas
         x_units_in_turns : bool
@@ -1082,44 +1085,45 @@ class SPS_Plotting:
             
             
             # Bunch length
-            f3, ax22 = plt.subplots(1, 1, figsize = (8,6))
-            for i, tbt_dict in enumerate(tbt_array):
-                if distribution_type=='gaussian':
-                    turn_array, time_array, sigmas_gaussian = self.fit_bunch_lengths_to_data(tbt_dict=tbt_dict, distribution=distribution_type, 
-                                                                                             output_folder=output_str_array[i])
-                else:
-                    turn_array, time_array, sigmas_q_gaussian, sigmas_binomial, q, q_error, m, m_error = self.fit_bunch_lengths_to_data(tbt_dict=tbt_dict,
-                                                                                                        distribution=distribution_type,
-                                                                                                        output_folder=output_str_array[i])
-                
-                # Uncomment if want to plot standard deviation of numerical particle object
-                if also_plot_particle_std_BL:
-                    ax22.plot(time_units, tbt_dict['bunch_length'],  alpha=0.7, lw=1.5, label=string_array[i] + ' STD($\zeta$)')
-
-                if distribution_type=='gaussian':
-                    ax22.plot(turn_array if x_unit_in_turns else time_array, sigmas_gaussian, ls='--', alpha=0.95,
-                              label='Simulated profiles')
-                elif distribution_type=='binomial':
-                    ax22.plot(turn_array if x_unit_in_turns else time_array, sigmas_binomial, ls='--', alpha=0.95,
-                              label='Simulated profiles')
-                elif distribution_type=='qgaussian':
-                    ax22.plot(turn_array if x_unit_in_turns else time_array, sigmas_q_gaussian, ls='--', alpha=0.95,
-                              label=string_array[i])
-                    print('{}: relative bunch length increase = {:.3f} %'.format(string_array[i], 
-                                                                               100 * (sigmas_q_gaussian[-1] - sigmas_q_gaussian[0]) / sigmas_q_gaussian[0]))
-            if plot_bunch_length_measurements:
-                # Load bunch length data
-                sigma_RMS_Gaussian_in_m, sigma_RMS_Binomial_in_m, sigma_RMS_qGaussian_in_m, q_vals, q_error, ctime = self.load_bunch_length_data()
-                ax22.plot(ctime, sigma_RMS_qGaussian_in_m, color='orangered', alpha=0.7, ls='--', label='Measured RMS q-Gaussian')
-            if ylim_bunch_length is not None:
-                ax22.set_ylim(ylim_bunch_length[0], ylim_bunch_length[1])
-            if bunch_length_in_log_scale:
-                ax22.set_yscale('log')
-            ax22.set_ylabel(r'$\sigma_{z}$ [m]')
-            ax22.set_xlabel('Turns' if x_unit_in_turns else 'Time [s]')
-            ax22.legend(fontsize=legend_font_size, loc='upper left')
-            f3.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
-            f3.savefig('main_plots/sigma_multiple_trackings{}.png'.format(extra_str), dpi=250)
+            if plot_bunch_length:
+                f3, ax22 = plt.subplots(1, 1, figsize = (8,6))
+                for i, tbt_dict in enumerate(tbt_array):
+                    if distribution_type=='gaussian':
+                        turn_array, time_array, sigmas_gaussian = self.fit_bunch_lengths_to_data(tbt_dict=tbt_dict, distribution=distribution_type, 
+                                                                                                 output_folder=output_str_array[i])
+                    else:
+                        turn_array, time_array, sigmas_q_gaussian, sigmas_binomial, q, q_error, m, m_error = self.fit_bunch_lengths_to_data(tbt_dict=tbt_dict,
+                                                                                                            distribution=distribution_type,
+                                                                                                            output_folder=output_str_array[i])
+                    
+                    # Uncomment if want to plot standard deviation of numerical particle object
+                    if also_plot_particle_std_BL:
+                        ax22.plot(time_units, tbt_dict['bunch_length'],  alpha=0.7, lw=1.5, label=string_array[i] + ' STD($\zeta$)')
+    
+                    if distribution_type=='gaussian':
+                        ax22.plot(turn_array if x_unit_in_turns else time_array, sigmas_gaussian, ls='--', alpha=0.95,
+                                  label='Simulated profiles')
+                    elif distribution_type=='binomial':
+                        ax22.plot(turn_array if x_unit_in_turns else time_array, sigmas_binomial, ls='--', alpha=0.95,
+                                  label='Simulated profiles')
+                    elif distribution_type=='qgaussian':
+                        ax22.plot(turn_array if x_unit_in_turns else time_array, sigmas_q_gaussian, ls='--', alpha=0.95,
+                                  label=string_array[i])
+                        print('{}: relative bunch length increase = {:.3f} %'.format(string_array[i], 
+                                                                                   100 * (sigmas_q_gaussian[-1] - sigmas_q_gaussian[0]) / sigmas_q_gaussian[0]))
+                if plot_bunch_length_measurements:
+                    # Load bunch length data
+                    sigma_RMS_Gaussian_in_m, sigma_RMS_Binomial_in_m, sigma_RMS_qGaussian_in_m, q_vals, q_error, ctime = self.load_bunch_length_data()
+                    ax22.plot(ctime, sigma_RMS_qGaussian_in_m, color='orangered', alpha=0.7, ls='--', label='Measured RMS q-Gaussian')
+                if ylim_bunch_length is not None:
+                    ax22.set_ylim(ylim_bunch_length[0], ylim_bunch_length[1])
+                if bunch_length_in_log_scale:
+                    ax22.set_yscale('log')
+                ax22.set_ylabel(r'$\sigma_{z}$ [m]')
+                ax22.set_xlabel('Turns' if x_unit_in_turns else 'Time [s]')
+                ax22.legend(fontsize=legend_font_size, loc='upper left')
+                f3.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+                f3.savefig('main_plots/sigma_multiple_trackings{}.png'.format(extra_str), dpi=250)
             
             
         if return_fig:

@@ -27,19 +27,16 @@ script_names = run_files.copy()
 folder_names = ['sps_no_leir_inj_{}'.format(no_LEIR_inj[i]) for i in range(len(no_LEIR_inj))]
 string_array = ['No. LEIR inj. = {}'.format(no_LEIR_inj[i]) for i in range(len(no_LEIR_inj))]    
 
-
-
-
-
-# Generate the scripts to be submitted
-for i, run_file in enumerate(run_files):
+# Only re-run case number 4
+i = 2
+run_file = run_files[i]
     
-    # Write run file for given tune
-    print('Generating launch script {}\n'.format(run_file))
-    run_file = open(run_file, 'w')
-    run_file.truncate(0)  # remove existing content, if any
-    run_file.write(
-    '''import fma_ions
+# Write run file for given tune
+print('Generating launch script {}\n'.format(run_file))
+run_file = open(run_file, 'w')
+run_file.truncate(0)  # remove existing content, if any
+run_file.write(
+'''import fma_ions
 import numpy as np
 output_dir = './'
 
@@ -54,11 +51,11 @@ beamParams.eyn = {}
 # Tracking on GPU context
 sps = fma_ions.SPS_Flat_Bottom_Tracker(qx0={:.3f}, qy0={:.3f}, num_turns=n_turns, num_part=num_part)
 tbt = sps.track_SPS(which_context='gpu', distribution_type='qgaussian', beamParams=beamParams, install_SC_on_line=False, 
-                    apply_kinetic_IBS_kicks=True, ibs_step = 5000)
+                apply_kinetic_IBS_kicks=True, ibs_step = 5000)
 tbt.to_json(output_dir)
-    '''.format(num_turns, Nb_array[i], exn_array[i], eyn_array[i], Qx, Qy)
-    )
-    run_file.close()
+'''.format(num_turns, Nb_array[i], exn_array[i], eyn_array[i], Qx, Qy)
+)
+run_file.close()
     
     
 # Instantiate the submitter class and launch the jobs
