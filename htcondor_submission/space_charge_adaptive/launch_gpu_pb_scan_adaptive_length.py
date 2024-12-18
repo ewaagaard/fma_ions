@@ -15,7 +15,7 @@ master_name = 'Q26_Pb_ions_adaptive_SC_length_scan'
 num_turns = 15_000 # corresponds to 3s for SPS ions at flat bottom
 Qy = 26.10
 Qx = 26.31
-SC_adaptive_interval = [100, 200, 500, 1000, 2000, 5000]
+SC_adaptive_interval = [50, 100, 200, 500, 1000, 2000, 5000]
 
 run_files = ['sps_run_sc_interval_{}.py'.format(i+1) for i in range(len(SC_adaptive_interval))]
 
@@ -40,12 +40,12 @@ n_turns = {}
 num_part = 20_000
 
 # Higher intensity to see effects faster
-beamParams=fma_ions.BeamParameters_SPS()
-beamParams.Nb = 3.5e9
+#beamParams=fma_ions.BeamParameters_SPS()
+#beamParams.Nb = 3.5e9
 
 # Tracking on GPU context
 sps = fma_ions.SPS_Flat_Bottom_Tracker(qx0={:.3f}, qy0={:.3f}, num_turns=n_turns, num_part=num_part)
-tbt = sps.track_SPS(which_context='gpu', distribution_type='qgaussian', beamParams=beamParams, install_SC_on_line=True, add_beta_beat=True,
+tbt = sps.track_SPS(which_context='gpu', distribution_type='qgaussian', install_SC_on_line=True, add_beta_beat=True,
                 add_non_linear_magnet_errors=True, apply_kinetic_IBS_kicks=False, SC_adaptive_interval_during_tracking={})
 tbt.to_json(output_dir)
     '''.format(num_turns, Qx, Qy, SC_adaptive_interval[i])

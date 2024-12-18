@@ -740,11 +740,12 @@ class SPS_Plotting:
             np.save(f, q_errors_Y)
             
 
-    def fit_transverse_profile_evolution(self, profile_step=100, tbt_dict=None, output_folder=None):
+    def fit_transverse_profile_evolution(self, profile_step=100, output_folder_name='transverse_profile_evolution',
+                                         tbt_dict=None, output_folder=None):
         "Load turn-by-turn data and plot emittance evolution"
         
         # Generate directories, if not existing already
-        os.makedirs('transverse_profile_evolution', exist_ok=True)
+        os.makedirs(output_folder_name, exist_ok=True)
 
         # Initiate fit function
         fits = Fit_Functions()
@@ -835,8 +836,8 @@ class SPS_Plotting:
             ax2.plot(Y_pos_data, fits.Q_Gaussian(Y_pos_data, *popt_Q_Y), ls='--', color='lime', label='q-Gaussian fit')
             ax.legend(loc='upper left', fontsize=11.5)
             ax2.legend(loc='upper left', fontsize=11.5)
-            fig.savefig('transverse_profile_evolution/X_profile_turn_{}.png'.format(turns_to_plot[i]), dpi=250)
-            fig2.savefig('transverse_profile_evolution/Y_profile_turn_{}.png'.format(turns_to_plot[i]), dpi=250)
+            fig.savefig('{}/X_profile_turn_{}.png'.format(output_folder_name, turns_to_plot[i]), dpi=250)
+            fig2.savefig('{}/Y_profile_turn_{}.png'.format(output_folder_name, turns_to_plot[i]), dpi=250)
 
             del fig, fig2
             plt.close()
@@ -856,7 +857,7 @@ class SPS_Plotting:
         ax1.set_ylim(0.0, 4.05)
         ax2.set_ylim(0.0, 4.05)
         ax3.set_ylim(0.0, max(tbt_dict['Nb'])*1.05)
-        f.savefig('transverse_profile_evolution/0000_epsilon_Nb.png', dpi=250)
+        f.savefig('{}/0000_epsilon_Nb.png'.format(output_folder_name), dpi=250)
 
         # Also plot q-values
         fig1, ax1 = plt.subplots(1, 1, figsize=(8, 6), constrained_layout=True)
@@ -868,7 +869,7 @@ class SPS_Plotting:
         ax1.grid(alpha=0.5)
         ax1.set_xlabel('Turns')
         ax1.legend(loc="upper left", fontsize=11.5)
-        fig1.savefig('transverse_profile_evolution/0001_q_value_evolution_qGaussian_fits.png', dpi=250)
+        fig1.savefig('{}/0001_q_value_evolution_qGaussian_fits.png'.format(output_folder_name), dpi=250)
         plt.close()
 
         return turns_to_plot, exn, eyn

@@ -16,7 +16,7 @@ from .beam_parameters import BeamParameters_SPS, BeamParameters_SPS_Binomial_201
 from .sequences import SPS_sequence_maker
 from .tune_ripple import Tune_Ripple_SPS
 from .fma_ions import FMA
-from .helpers_and_functions import Records, Zeta_Container, Longitudinal_Monitor, Records_Growth_Rates
+from .helpers_and_functions import Records, Zeta_Container, Longitudinal_Monitor, Records_Growth_Rates, Fit_Functions
 from .longitudinal import generate_particles_transverse_gaussian, build_particles_linear_in_zeta, return_separatrix_coordinates
 
 from xibs.inputs import BeamParameters, OpticsParameters
@@ -372,6 +372,10 @@ class SPS_Flat_Bottom_Tracker:
             
             #### TWISS at space charge elements ####
             if SC_adaptive_interval_during_tracking is not None:
+                
+                # Initiate fit functions
+                fits = Fit_Functions()
+                
                 # Copy line, replace collective elements with markers for stable twiss
                 line00 = line.copy()
                 for ii, key in enumerate(line00.element_names):
@@ -401,6 +405,13 @@ class SPS_Flat_Bottom_Tracker:
                 print('Initial SC element lengths = {:.5f} m +- {:.3e}'.format(np.mean(ee0_element_lengths), np.std(ee0_element_lengths)))
                 ee0_length = ee0_element_lengths[0]
                 #### ####
+                
+                # Find beta values at the space charge element locations
+                betx_sc = np.zeros(len(ee0_s))
+                bety_sc = np.zeros(len(ee0_s))
+                for ii, s in enumerate(ee0_s):
+                    betx_sc[ii] = df_twiss_sc.iloc[np.abs(df_twiss_sc['s'] - s).argmin()].betx
+                    bety_sc[ii] = df_twiss_sc.iloc[np.abs(df_twiss_sc['s'] - s).argmin()].bety
         
         # Modulate tune with ripple, if desired
         if add_tune_ripple:
@@ -472,6 +483,8 @@ class SPS_Flat_Bottom_Tracker:
 
         #### Start tracking ####
         time00 = time.time()
+        sc_monitor_counter = 0
+        
         for turn in range(1, self.num_turns):
             
             # Print out info at specified intervals
@@ -490,6 +503,35 @@ class SPS_Flat_Bottom_Tracker:
 
             #### Adapt space charge element lenghts if desired ####
             if SC_adaptive_interval_during_tracking is not None and turn % SC_adaptive_interval_during_tracking == 0:
+                
+                # Fit Gaussian beam sizes to beam profile data
+                try:
+                    ###  Fit beam sizes ###
+                    popt_X, pcov_X = fits.fit_Gaussian(monitor0.x_grid, monitor0.x_intensity[sc_monitor_counter] / np.max(monitor0.x_intensity[sc_monitor_counter]), p0=(1.0, 0.0, 0.02))
+                    popt_Y, pcov_Y = fits.fit_Gaussian(monitor0.y_grid, monitor0.y_intensity[sc_monitor_counter] / np.max(monitor0.y_intensity[sc_monitor_counter]), p0=(1.0, 0.0, 0.02))
+                    sc_monitor_counter += 1
+                    sigma_raw_X = np.abs(popt_X[2])
+                    sigma_raw_Y = np.abs(popt_Y[2])
+                    sigma_norm_X = sigma_raw_X / np.sqrt(df_twiss_sc.betx[0])
+                    sigma_norm_Y = sigma_raw_Y / np.sqrt(df_twiss_sc.bety[0])
+        
+                    ### Update space charge element sigmas ###
+                    sigma_X_sc_elements = sigma_norm_X * np.sqrt(betx_sc)
+                    sigma_Y_sc_elements = sigma_norm_Y * np.sqrt(bety_sc)
+                    
+                    sc_element_counter = 0
+                    for ii, ee in enumerate(line.elements):
+                        if isinstance(ee, xf.SpaceChargeBiGaussian):
+                            
+                            # Scale length with bunch intensity
+                            ee.sigma_x = sigma_X_sc_elements[sc_element_counter]
+                            ee.sigma_y = sigma_Y_sc_elements[sc_element_counter]
+                            sc_element_counter += 1
+        
+        
+                except ValueError:
+                    print('Could not fit beam profiles!')
+                
                 transmission = tbt.Nb[turn-1] / tbt.Nb[0]
                 for ii, ee in enumerate(line.elements):
                     if isinstance(ee, xf.SpaceChargeBiGaussian):
@@ -498,7 +540,10 @@ class SPS_Flat_Bottom_Tracker:
 
                 # Also print adjustment if desired
                 if turn % self.turn_print_interval == 0:
-                    print('Re-adjusted SC element length by {:.4f}'.format(transmission))
+                    print('Re-adjusted SC element length by {:.4f}\nFirst SC element beam sizes:\nsigma_x = {:.5f}m \nsigma_y = {:.5f} m\n'.format(transmission, sigma_X_sc_elements[0], 
+                                                                                                                                                   sigma_Y_sc_elements[0]))
+                    
+
 
             ########## ----- Exert TUNE RIPPLE if desired ----- ##########
             if add_tune_ripple:
