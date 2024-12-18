@@ -63,10 +63,10 @@ sub = fma_ions.Submitter()
 master_job_name = '{:%Y_%m_%d__%H_%M_%S}_{}'.format(datetime.datetime.now(), master_name)
 
 # Launch the Python scripts in this folder
-for i, script in enumerate(script_names):
-    file_name = os.path.join(dir_path, script)
-    print(f"Submitting {file_name}")
-    sub.submit_GPU(file_name, master_job_name=master_job_name, job_name=folder_names[i])
+script = script_names[i]    
+file_name = os.path.join(dir_path, script)
+print(f"Submitting {file_name}")
+sub.submit_GPU(file_name, master_job_name=master_job_name, job_name=folder_names[i])
 sub.copy_master_plot_script(folder_names, string_array)
 sub.copy_plot_script_emittances_for_scan(master_name, folder_names, scan_array_for_x_axis=Nb_array,
                                              label_for_x_axis='Injected Pb ions per bunch', 
