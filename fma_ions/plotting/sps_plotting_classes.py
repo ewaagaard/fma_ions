@@ -524,9 +524,11 @@ class SPS_Plotting:
                 twiss = tbt_dict['twiss']
                 df_twiss = pd.DataFrame(twiss)
                 
-                fig_phase_space, fig2_lost_at_turn, fig3_lost_at_s, loss_string = self.plot_normalized_phase_space_from_tbt(particles_f,
+                fig_phase_space, fig01_phase_space, fig1_phase_space, fig2_lost_at_turn, fig3_lost_at_s, loss_string = self.plot_normalized_phase_space_from_tbt(particles_f,
                                                                                       extra_text_string=scan_string, df_twiss=df_twiss)
                 fig_phase_space.savefig('output_transverse/losses/Norm_phase_space_{}.png'.format(output_folder), dpi=250)
+                fig01_phase_space.savefig('output_transverse/losses/x_y_phase_space_{}.png'.format(output_folder), dpi=250)
+                fig1_phase_space.savefig('output_transverse/losses/X_Y_norm_phase_space_{}.png'.format(output_folder), dpi=250)
                 fig2_lost_at_turn.savefig('output_transverse/losses/Lost_at_turn_{}.png'.format(output_folder), dpi=250)
                 fig3_lost_at_s.savefig('output_transverse/losses/Lost_at_s_{}.png'.format(output_folder), dpi=250)
                 del fig_phase_space, fig2_lost_at_turn, fig3_lost_at_s
@@ -1237,6 +1239,8 @@ class SPS_Plotting:
                                              x_min_norm_aperture_loc=5569.7227,
                                              y_min_norm_aperture=0.003013704789098143,
                                              y_min_norm_aperture_loc=6886.404799999996,
+                                             x_min_aperture=0.03,
+                                             y_min_aperture=0.01615,
                                              extra_text_string='',
                                              df_twiss=None):
         """
@@ -1282,7 +1286,7 @@ class SPS_Plotting:
         # Convert to normalized phase space
         sps = SPS_sequence_maker()
         if df_twiss is None:
-            df_twiss = sps.load_default_twiss_table() # load twiss table with aperture
+            df_twiss = sps.load_default_twiss_table(cycled_to_minimum_dx=True) # load twiss table with aperture
 
         # ALIVE particles - find normalized particle coordinates at start of line
         X_alive = part_dict['x'][alive_ind_final] / np.sqrt(df_twiss['betx'][0]) 
@@ -1303,8 +1307,7 @@ class SPS_Plotting:
         Y_dead = part_dict['y'][dead_ind_final] / np.sqrt(df_twiss['bety'][ind_s_dead]) 
         PY_dead = df_twiss['alfy'][ind_s_dead] / np.sqrt(df_twiss['bety'][ind_s_dead]) * part_dict['y'][dead_ind_final] + np.sqrt(df_twiss['bety'][ind_s_dead]) * part_dict['py'][dead_ind_final]
         
-        ### First and last turn of normalized phase space
-
+        ### First and last turn of normalized phase space ####
         fig, ax = plt.subplots(2, 1, figsize = (8, 7.5), sharex=True, constrained_layout=True)
             
         # Final normalized X and Y
@@ -1327,13 +1330,60 @@ class SPS_Plotting:
         #ax[1].legend(loc='upper right', fontsize=13)
         ax[1].set_ylabel('$P_{Y}$')
         ax[1].set_xlabel('$Y$')
-        ax[1].text(0.03, 0.73, extra_text_string, transform=ax[1].transAxes, fontsize=10)
+        ax[1].text(0.01, 0.85, extra_text_string, transform=ax[1].transAxes, fontsize=9)
 
         # Adjust axis limits and plot turn
-        ax[1].set_xlim(-0.0065, 0.0065)
+        ax[1].set_xlim(-0.005, 0.005)
         for a in ax:
-            a.set_ylim(-0.01, 0.01)
+            a.set_ylim(-0.005, 0.005)
 
+        ### Plot physical X and Y coordinates - with colormap ###
+        fig01, ax01 = plt.subplots(1, 1, figsize = (8, 7), constrained_layout=True)
+        
+        # Create density map of dead particles
+        xy = np.vstack([part_dict['x'][dead_ind_final], part_dict['y'][dead_ind_final]]) # Calculate the point density
+        z = gaussian_kde(xy)(xy)
+        idx = z.argsort()  # Sort the points by density, so that the densest points are plotted last
+        x, y, z = part_dict['x'][dead_ind_final][idx], part_dict['y'][dead_ind_final][idx], z[idx]
+        
+        ax01.plot(part_dict['x'][alive_ind_final], part_dict['y'][alive_ind_final], '.', 
+                color='blue', markersize=3.6, label='Alive')
+        ax01.scatter(x, y, c=z, cmap='cool', s=2, label='Killed')
+        ax01.axvline(x=x_min_aperture, ls='-', color='red', alpha=0.7, label='Min. aperture')
+        ax01.axvline(x=-x_min_aperture, ls='-', color='red', alpha=0.7, label=None)
+        ax01.axhline(y=y_min_aperture, ls='-', color='red', alpha=0.7, label=None)
+        ax01.axhline(y=-y_min_aperture, ls='-', color='red', alpha=0.7, label=None)
+        ax01.legend(loc='upper right', fontsize=13)
+        ax01.set_ylabel('$y$ [m]')
+        ax01.set_xlabel('$x$ [m]')
+        ax01.set_ylim(-0.03, 0.03)
+        ax01.set_xlim(-0.05, 0.05)
+        ax01.text(0.01, 0.85, extra_text_string, transform=ax01.transAxes, fontsize=9)
+
+
+        ### Plot normalized X and Y coordinates - with colormap ###
+        fig1, ax1 = plt.subplots(1, 1, figsize = (8, 7), constrained_layout=True)
+        
+        # Create density map of dead particles
+        xy2 = np.vstack([X_dead, Y_dead]) # Calculate the point density
+        z2 = gaussian_kde(xy2)(xy2)
+        idx2 = z2.argsort()  # Sort the points by density, so that the densest points are plotted last
+        x2, y2, z2 = X_dead[idx2], Y_dead[idx2], z2[idx2]
+        
+        ax1.plot(X_alive, Y_alive, '.', 
+                color='blue', markersize=3.6, label='Alive')
+        ax1.scatter(x2, y2, c=z2, cmap='cool', s=2, label='Killed')
+        ax1.axvline(x=x_min_norm_aperture, ls='-', color='red', alpha=0.7, label='Min. aperture')
+        ax1.axvline(x=-x_min_norm_aperture, ls='-', color='red', alpha=0.7, label=None)
+        ax1.axhline(y=y_min_norm_aperture, ls='-', color='red', alpha=0.7, label=None)
+        ax1.axhline(y=-y_min_norm_aperture, ls='-', color='red', alpha=0.7, label=None)
+        ax1.legend(loc='upper right', fontsize=13)
+        ax1.set_ylabel('$Y$')
+        ax1.set_xlabel('$X$')
+        ax1.text(0.01, 0.85, extra_text_string, transform=ax1.transAxes, fontsize=9)
+        ax1.set_ylim(-0.0045, 0.0045)
+        ax1.set_xlim(-0.0045, 0.0045)
+        
         # Print signficant losses
         bin_heights_element_where_lost, bin_borders_element_where_lost = np.histogram(part_dict['s'][dead_ind_final], bins=400)
         bin_widths_element_where_lost = np.diff(bin_borders_element_where_lost)
@@ -1366,7 +1416,7 @@ class SPS_Plotting:
         ax2.set_ylabel('Lost particle count')
         ax2.set_xlabel('Lost at turn')
         ax2.set_ylim(0.0, 1000.)
-        ax2.text(0.03, 0.73, extra_text_string, transform=ax2.transAxes, fontsize=10)
+        ax2.text(0.01, 0.85, extra_text_string, transform=ax2.transAxes, fontsize=9)
 
         ## LOST PARTICLES: at which ELEMENT ##
         fig3, ax3 = plt.subplots(1,1,figsize=(8,6), constrained_layout=True)
@@ -1376,11 +1426,11 @@ class SPS_Plotting:
                 alpha=0.85, color='darkred', label='Killed particles')
         ax3.set_ylabel('Last particle count')
         ax3.set_xlabel('s [m]')
-        ax3.set_ylim(0.0, 4000.)
+        ax3.set_ylim(0.0, 10_000.)
         ax3.set_xlim(0.0, 7000.)
         ax3.text(0.03, 0.73, extra_text_string, transform=ax3.transAxes, fontsize=10)
 
-        return fig, fig2, fig3, loss_strings
+        return fig, fig01, fig1, fig2, fig3, loss_strings
 
 
     def plot_tracking_vs_analytical(self,

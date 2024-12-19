@@ -74,10 +74,10 @@ class SPS_sequence_maker:
         string = '_min_dx' if cycled_to_minimum_dx else ''
         try:
             df_twiss = pd.read_json('{}/twiss_sps_pandas{}.json'.format(sequence_path, string))
-            print('\nLoaded twiss table\n') 
+            print('\nLoaded twiss table - cycled_to_minimum_dx = {}\n'.format(cycled_to_minimum_dx)) 
         except FileNotFoundError:
-            line, twiss = self.load_xsuite_line_and_twiss(add_aperture=True)
-            df_twiss = twiss.to_pandas()
+            line = self.generate_xsuite_seq(add_aperture=True)
+            df_twiss = line.twiss().to_pandas()
             df_twiss.to_json('{}/twiss_sps_pandas{}.json'.format(sequence_path, string))
             print('\nFailed to load Twiss dataframe, generating new\n')
         return df_twiss
@@ -1116,12 +1116,18 @@ class SPS_sequence_maker:
         return line
 
 
-    def print_smallest_aperture(self, line: xt.Line):
+    def print_smallest_aperture(self, line: xt.Line, add_beta_beat=False):
         """function to return and print smallest aperture values"""
 
         # Get aperture table
         a0 = line.check_aperture()
         a = a0[a0['is_aperture']] # remove elements without aperture
+        
+        if add_beta_beat:
+            line.element_refs['qd.63510..1'].knl[1] = -1.07328640311457e-02
+            line.element_refs['qf.63410..1'].knl[1] = 1.08678014669101e-02
+            print('Beta-beat added: kk_QD = {:.6e}, kk_QF = {:.6e}'.format(line.element_refs['qd.63510..1'].knl[1]._value,
+                                                                           line.element_refs['qf.63410..1'].knl[1]._value))
         
         # Get Twiss values at the aperture
         df_twiss = line.twiss().to_pandas()
