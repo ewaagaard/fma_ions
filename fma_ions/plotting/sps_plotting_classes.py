@@ -85,6 +85,91 @@ class SPS_Plotting:
             print('Optics file not found: need to run find_WS_optics module in data folder first!')
 
 
+    def get_horizontal_aperture_size(self, el):
+        """Convenience function to compute horizontal aperture size and beam sizes"""
+        if hasattr(el, 'min_x'):
+            return el.min_x, el.max_x
+        if hasattr(el, 'max_x'):
+            return -el.max_x, el.max_x
+        return -el.a, el.a
+
+    def get_vertical_aperture_size(self, el):
+        """Convenience function to compute vertical aperture size and beam sizes"""
+        if hasattr(el, 'min_y'):
+            return el.min_y, el.max_y
+        if hasattr(el, 'max_y'):
+            return -el.max_y, el.max_y
+        return -el.a, el.a
+    
+    def plot_beam_envelope_and_aperture(self, n_sigmas=5, sigma_delta = 5e-4, add_beta_beat=False):
+        """Method to plot beam envope for given sigma, and aperture"""
+        
+        # Load default line, with aperture
+        sps_seq = SPS_sequence_maker()
+        line, _ = sps_seq.load_xsuite_line_and_twiss() 
+        
+        if add_beta_beat:
+            line.element_refs['qd.63510..1'].knl[1] = -1.07328640311457e-02
+            line.element_refs['qf.63410..1'].knl[1] = 1.08678014669101e-02
+            print('Beta-beat added: kk_QD = {:.6e}, kk_QF = {:.6e}'.format(line.element_refs['qd.63510..1'].knl[1]._value,
+                                                                           line.element_refs['qf.63410..1'].knl[1]._value))
+        
+        twiss = line.twiss()
+        survey = line.survey()
+        
+        tt = line.get_table()
+        apertypes = ['LimitEllipse', 'LimitRect', 'LimitRectEllipse', 'LimitRacetrack']
+        aper_idx = np.where([tt['element_type', nn] in apertypes for nn in survey.name])[0]
+        
+        tw_ap = twiss.rows[aper_idx]
+        sv_ap = survey.rows[aper_idx]
+        apX_extent = np.array([self.get_horizontal_aperture_size(line[nn]) for nn in tw_ap.name])
+        apX_offset = np.array([line[nn].shift_x for nn in tw_ap.name])
+        apY_extent = np.array([self.get_vertical_aperture_size(line[nn]) for nn in tw_ap.name])
+        apY_offset = np.array([line[nn].shift_y for nn in tw_ap.name])
+        
+        upperX = apX_offset + apX_extent[:, 0]
+        lowerX = apX_offset + apX_extent[:, 1]
+        upperY = apY_offset + apY_extent[:, 0]
+        lowerY = apY_offset + apY_extent[:, 1]
+        s_zero = 0.0
+        
+        # Find beam parameters
+        beamParams =  BeamParameters_SPS()
+        sigx = np.sqrt(beamParams.exn / twiss.gamma0 * twiss.betx) + abs(twiss.dx) * sigma_delta
+        sigy = np.sqrt(beamParams.eyn / twiss.gamma0 * twiss.bety)
+        n_sigx_aper = lowerX / sigx[aper_idx]
+        n_sigy_aper = lowerY / sigy[aper_idx]
+        
+        # X aperture #
+        fig, ax = plt.subplots(1, 1, figsize=(10, 6), constrained_layout=True)
+        ax.fill_between(tw_ap.s - s_zero, upperX, lowerX, alpha=1., color='lightgrey')
+        ax.plot(sv_ap.s - s_zero, upperX, color="k")
+        ax.plot(sv_ap.s - s_zero, lowerX, color="k")
+        ax.set_ylabel('x [m]')
+        ax.set_xlabel('s [m]')
+        ax.fill_between(twiss.s - s_zero, twiss.x - n_sigmas * sigx, twiss.x + n_sigmas * sigx, alpha=0.5, color='blue')
+        
+        # Y aperture #
+        fig2, ax2 = plt.subplots(1, 1, figsize=(10, 6), constrained_layout=True)
+        ax2.fill_between(tw_ap.s - s_zero, upperY, lowerY, alpha=1., color='lightgrey')
+        ax2.plot(sv_ap.s - s_zero, upperY, color="k")
+        ax2.plot(sv_ap.s - s_zero, lowerY, color="k")
+        ax2.set_ylabel('y [m]')
+        ax2.set_xlabel('s [m]')
+        ax2.fill_between(twiss.s - s_zero, twiss.y - n_sigmas * sigy, twiss.y + n_sigmas * sigy, alpha=0.5, color='red')
+        
+        # Available sigmas to aperture
+        fig3, ax3 = plt.subplots(1, 1, figsize=(10, 6), constrained_layout=True)
+        ax3.plot(sv_ap.s - s_zero, n_sigx_aper, color="blue", label='X')
+        ax3.plot(sv_ap.s - s_zero, n_sigy_aper, color="red", label='Y')
+        ax3.grid(alpha=0.5)
+        ax3.set_ylabel('Available $\sigma_{x,y}$ to aperture')
+        ax3.set_xlabel('s [m]')
+        ax3.legend(fontsize=10)
+
+        plt.show()
+
     def plot_tracking_data(self, 
                            tbt_dict=None, 
                            output_folder=None,

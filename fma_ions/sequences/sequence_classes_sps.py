@@ -67,19 +67,27 @@ class SPS_sequence_maker:
             self.Q_PS, self.Q_SPS = 1., 1.
             
 
-    def load_default_twiss_table(self, cycled_to_minimum_dx=True):
+    def load_default_twiss_table(self, cycled_to_minimum_dx=True, add_beta_beat=True):
         """
         Return pandas dataframe with twiss table of default SPS sequence. Create json if does not exist already
         """
         string = '_min_dx' if cycled_to_minimum_dx else ''
+        bb_string = '_with_beta_beat' if add_beta_beat else ''
         try:
-            df_twiss = pd.read_json('{}/twiss_sps_pandas{}.json'.format(sequence_path, string))
-            print('\nLoaded twiss table - cycled_to_minimum_dx = {}\n'.format(cycled_to_minimum_dx)) 
+            df_twiss = pd.read_json('{}/twiss_sps_pandas{}{}.json'.format(sequence_path, string, bb_string))
+            print('\nLoaded twiss table - cycled_to_minimum_dx = {}, beta_beat = {}\n'.format(cycled_to_minimum_dx, add_beta_beat)) 
         except FileNotFoundError:
             line = self.generate_xsuite_seq(add_aperture=True)
+            
+            if add_beta_beat:
+                line.element_refs['qd.63510..1'].knl[1] = -1.07328640311457e-02
+                line.element_refs['qf.63410..1'].knl[1] = 1.08678014669101e-02
+                print('Beta-beat added: kk_QD = {:.6e}, kk_QF = {:.6e}'.format(line.element_refs['qd.63510..1'].knl[1]._value,
+                                                                               line.element_refs['qf.63410..1'].knl[1]._value))
+            
             df_twiss = line.twiss().to_pandas()
-            df_twiss.to_json('{}/twiss_sps_pandas{}.json'.format(sequence_path, string))
-            print('\nFailed to load Twiss dataframe, generating new\n')
+            df_twiss.to_json('{}/twiss_sps_pandas{}{}.json'.format(sequence_path, string, bb_string))
+            print('\nFailed to load Twiss dataframe, generating new and saved to {}/twiss_sps_pandas{}{}.json'.format(sequence_path, string, bb_string))
         return df_twiss
 
     def load_xsuite_line_and_twiss(self,
