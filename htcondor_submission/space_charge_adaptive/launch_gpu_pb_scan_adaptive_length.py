@@ -15,7 +15,7 @@ master_name = 'Q26_Pb_ions_adaptive_SC_length_scan'
 num_turns = 15_000 # corresponds to 3s for SPS ions at flat bottom
 Qy = 26.10
 Qx = 26.31
-SC_adaptive_interval = [5, 10, 20] #[50, 100, 200, 500, 1000, 2000, 5000, 10_000]
+SC_adaptive_interval = [5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10_000]
 
 run_files = ['sps_run_sc_interval_{}.py'.format(i+1) for i in range(len(SC_adaptive_interval))]
 

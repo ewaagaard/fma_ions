@@ -524,14 +524,13 @@ class SPS_Plotting:
                 twiss = tbt_dict['twiss']
                 df_twiss = pd.DataFrame(twiss)
                 
-                # FIX original function
-                #fig_phase_space, fig2_lost_at_turn, fig3_lost_at_s, loss_string = self.plot_normalized_phase_space_from_tbt(particles_f,
-                #                                                                      extra_text_string=scan_string, df_twiss=df_twiss)
-                #fig_phase_space.savefig('output_transverse/losses/Norm_phase_space_{}.png'.format(output_folder), dpi=250)
-                #fig2_lost_at_turn.savefig('output_transverse/losses/Lost_at_turn_{}.png'.format(output_folder), dpi=250)
-                #fig3_lost_at_s.savefig('output_transverse/losses/Lost_at_s_{}.png'.format(output_folder), dpi=250)
-                #del fig_phase_space, fig2_lost_at_turn, fig3_lost_at_s
-                #all_loss_strings += '\n{}\n{}'.format(scan_string, loss_string)
+                fig_phase_space, fig2_lost_at_turn, fig3_lost_at_s, loss_string = self.plot_normalized_phase_space_from_tbt(particles_f,
+                                                                                      extra_text_string=scan_string, df_twiss=df_twiss)
+                fig_phase_space.savefig('output_transverse/losses/Norm_phase_space_{}.png'.format(output_folder), dpi=250)
+                fig2_lost_at_turn.savefig('output_transverse/losses/Lost_at_turn_{}.png'.format(output_folder), dpi=250)
+                fig3_lost_at_s.savefig('output_transverse/losses/Lost_at_s_{}.png'.format(output_folder), dpi=250)
+                del fig_phase_space, fig2_lost_at_turn, fig3_lost_at_s
+                all_loss_strings += '\n{}\n{}'.format(scan_string, loss_string)
 
                 # Initial emittances and bunch intensities
                 exn[0, i] =  tbt_dict['exn'][0]
@@ -1292,14 +1291,13 @@ class SPS_Plotting:
         PY_alive = df_twiss['alfy'][0] / np.sqrt(df_twiss['bety'][0]) * part_dict['y'][alive_ind_final] + np.sqrt(df_twiss['bety'][0]) * part_dict['py'][alive_ind_final]
         
         # DEAD particles - find normalized particle coordinates where last seen
-        #ind_s_dead = part_dict['s'][dead_ind_final]
+        dead_part_s = part_dict['s'][dead_ind_final]
         
-        '''
+        # Find where in Twiss table dead particles were seen last
         ind_s_dead = []
-        for s in part_s:
-            ind  = df_twiss.iloc[np.abs(df_twiss['s'] - s).argmin()]
+        for s in dead_part_s:
+            ind_s_dead.append(np.abs(df_twiss['s'] - s).argmin())
 
-        
         X_dead = part_dict['x'][dead_ind_final] / np.sqrt(df_twiss['betx'][ind_s_dead]) 
         PX_dead = df_twiss['alfx'][ind_s_dead] / np.sqrt(df_twiss['betx'][ind_s_dead]) * part_dict['x'][dead_ind_final] + np.sqrt(df_twiss['betx'][ind_s_dead]) * part_dict['px'][dead_ind_final]
         Y_dead = part_dict['y'][dead_ind_final] / np.sqrt(df_twiss['bety'][ind_s_dead]) 
@@ -1313,7 +1311,7 @@ class SPS_Plotting:
         ax[0].plot(X_alive, PX_alive, '.', 
                 color='blue', markersize=3.6, label='Alive')
         ax[0].plot(X_dead, PX_dead, '.', 
-                color='red', alpha=0.85, markersize=4.6, label='Finally dead')
+                color='red', alpha=0.65, markersize=4.6, label='Killed')
         ax[0].axvline(x=x_min_norm_aperture, ls='-', color='red', alpha=0.7, label='Min. aperture')
         ax[0].axvline(x=-x_min_norm_aperture, ls='-', color='red', alpha=0.7, label=None)
         ax[0].legend(loc='upper right', fontsize=13)
@@ -1323,13 +1321,13 @@ class SPS_Plotting:
         ax[1].plot(Y_alive, PY_alive, '.', 
                 color='blue', markersize=3.6, label='Alive')
         ax[1].plot(Y_dead, PY_dead, '.', 
-                color='red', alpha=0.85, markersize=4.6, label='Finally dead')
+                color='red', alpha=0.65, markersize=4.6, label='Killed')
         ax[1].axvline(x=y_min_norm_aperture, ls='-', color='red', alpha=0.7, label='Min. aperture')
         ax[1].axvline(x=-y_min_norm_aperture, ls='-', color='red', alpha=0.7, label=None)
         #ax[1].legend(loc='upper right', fontsize=13)
         ax[1].set_ylabel('$P_{Y}$')
         ax[1].set_xlabel('$Y$')
-        ax[1].text(0.83, 0.93, extra_text_string, transform=ax[1].transAxes, fontsize=12.8)
+        ax[1].text(0.03, 0.73, extra_text_string, transform=ax[1].transAxes, fontsize=10)
 
         # Adjust axis limits and plot turn
         ax[1].set_xlim(-0.0065, 0.0065)
@@ -1368,7 +1366,7 @@ class SPS_Plotting:
         ax2.set_ylabel('Lost particle count')
         ax2.set_xlabel('Lost at turn')
         ax2.set_ylim(0.0, 1000.)
-        ax2.text(0.83, 0.93, extra_text_string, transform=ax2.transAxes, fontsize=12.8)
+        ax2.text(0.03, 0.73, extra_text_string, transform=ax2.transAxes, fontsize=10)
 
         ## LOST PARTICLES: at which ELEMENT ##
         fig3, ax3 = plt.subplots(1,1,figsize=(8,6), constrained_layout=True)
@@ -1380,10 +1378,9 @@ class SPS_Plotting:
         ax3.set_xlabel('s [m]')
         ax3.set_ylim(0.0, 4000.)
         ax3.set_xlim(0.0, 7000.)
-        ax3.text(0.83, 0.93, extra_text_string, transform=ax3.transAxes, fontsize=12.8)
+        ax3.text(0.03, 0.73, extra_text_string, transform=ax3.transAxes, fontsize=10)
 
         return fig, fig2, fig3, loss_strings
-        '''
 
 
     def plot_tracking_vs_analytical(self,
