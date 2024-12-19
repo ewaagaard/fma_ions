@@ -20,7 +20,7 @@ run_files = ['sps_run_sc_interval_frozen.py']
 
 # Define script and folder names
 script_names = run_files.copy()
-folder_names = ['sps_Qy_{:.2f}_SC_interval_frozen']
+folder_names = ['sps_Qy_SC_interval_frozen']
 string_array = ['Qx = {:.2f}, Qy = {:.2f}. Frozen space charge element'.format(Qx, Qy)]    
 
 # Generate the scripts to be submitted
