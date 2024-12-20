@@ -101,23 +101,10 @@ class SPS_Plotting:
             return -el.max_y, el.max_y
         return -el.a, el.a
     
-    def plot_beam_envelope_and_aperture(self, n_sigmas=5, sigma_delta = 5e-4, add_beta_beat=False):
-        """Method to plot beam envope for given sigma, and aperture"""
-        
-        # Load default line, with aperture
-        sps_seq = SPS_sequence_maker()
-        line, _ = sps_seq.load_xsuite_line_and_twiss() 
-        
-        if add_beta_beat:
-            line.element_refs['qd.63510..1'].knl[1] = -1.07328640311457e-02
-            line.element_refs['qf.63410..1'].knl[1] = 1.08678014669101e-02
-            print('Beta-beat added: kk_QD = {:.6e}, kk_QF = {:.6e}'.format(line.element_refs['qd.63510..1'].knl[1]._value,
-                                                                           line.element_refs['qf.63410..1'].knl[1]._value))
-        
-        twiss = line.twiss()
-        survey = line.survey()
-        
+    def get_aperture(self, line, twiss):
+        """Aperture from twiss table"""
         tt = line.get_table()
+        survey = line.survey()
         apertypes = ['LimitEllipse', 'LimitRect', 'LimitRectEllipse', 'LimitRacetrack']
         aper_idx = np.where([tt['element_type', nn] in apertypes for nn in survey.name])[0]
         
@@ -132,8 +119,23 @@ class SPS_Plotting:
         lowerX = apX_offset + apX_extent[:, 1]
         upperY = apY_offset + apY_extent[:, 0]
         lowerY = apY_offset + apY_extent[:, 1]
-        s_zero = 0.0
+
+        return sv_ap, tw_ap, upperX, lowerX, upperY, lowerY, aper_idx
+
+
+    def plot_beam_envelope_and_aperture(self, n_sigmas=5, sigma_delta = 5e-4, add_beta_beat=False):
+        """Method to plot beam envope for given sigma, and aperture"""
         
+        # Load default line, with aperture
+        sps_seq = SPS_sequence_maker()
+        line, _ = sps_seq.load_xsuite_line_and_twiss() 
+        
+        if add_beta_beat:
+            line = sps_seq.add_beta_beat_to_line(line)
+
+        twiss = line.twiss()
+        sv_ap, tw_ap, upperX, lowerX, upperY, lowerY, aper_idx = self.get_aperture(line, twiss)
+
         # Find beam parameters
         beamParams =  BeamParameters_SPS()
         sigx = np.sqrt(beamParams.exn / twiss.gamma0 * twiss.betx) + abs(twiss.dx) * sigma_delta
@@ -143,26 +145,26 @@ class SPS_Plotting:
         
         # X aperture #
         fig, ax = plt.subplots(1, 1, figsize=(10, 6), constrained_layout=True)
-        ax.fill_between(tw_ap.s - s_zero, upperX, lowerX, alpha=1., color='lightgrey')
-        ax.plot(sv_ap.s - s_zero, upperX, color="k")
-        ax.plot(sv_ap.s - s_zero, lowerX, color="k")
+        ax.fill_between(tw_ap.s, upperX, lowerX, alpha=1., color='lightgrey')
+        ax.plot(sv_ap.s, upperX, color="k")
+        ax.plot(sv_ap.s, lowerX, color="k")
         ax.set_ylabel('x [m]')
         ax.set_xlabel('s [m]')
-        ax.fill_between(twiss.s - s_zero, twiss.x - n_sigmas * sigx, twiss.x + n_sigmas * sigx, alpha=0.5, color='blue')
+        ax.fill_between(twiss.s, twiss.x - n_sigmas * sigx, twiss.x + n_sigmas * sigx, alpha=0.5, color='blue')
         
         # Y aperture #
         fig2, ax2 = plt.subplots(1, 1, figsize=(10, 6), constrained_layout=True)
-        ax2.fill_between(tw_ap.s - s_zero, upperY, lowerY, alpha=1., color='lightgrey')
-        ax2.plot(sv_ap.s - s_zero, upperY, color="k")
-        ax2.plot(sv_ap.s - s_zero, lowerY, color="k")
+        ax2.fill_between(tw_ap.s, upperY, lowerY, alpha=1., color='lightgrey')
+        ax2.plot(sv_ap.s, upperY, color="k")
+        ax2.plot(sv_ap.s, lowerY, color="k")
         ax2.set_ylabel('y [m]')
         ax2.set_xlabel('s [m]')
-        ax2.fill_between(twiss.s - s_zero, twiss.y - n_sigmas * sigy, twiss.y + n_sigmas * sigy, alpha=0.5, color='red')
+        ax2.fill_between(twiss.s, twiss.y - n_sigmas * sigy, twiss.y + n_sigmas * sigy, alpha=0.5, color='red')
         
         # Available sigmas to aperture
         fig3, ax3 = plt.subplots(1, 1, figsize=(10, 6), constrained_layout=True)
-        ax3.plot(sv_ap.s - s_zero, n_sigx_aper, color="blue", label='X')
-        ax3.plot(sv_ap.s - s_zero, n_sigy_aper, color="red", label='Y')
+        ax3.plot(sv_ap.s, n_sigx_aper, color="blue", label='X')
+        ax3.plot(sv_ap.s, n_sigy_aper, color="red", label='Y')
         ax3.grid(alpha=0.5)
         ax3.set_ylabel('Available $\sigma_{x,y}$ to aperture')
         ax3.set_xlabel('s [m]')
