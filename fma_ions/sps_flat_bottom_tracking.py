@@ -248,10 +248,7 @@ class SPS_Flat_Bottom_Tracker:
 
         # Whether to add beta-beat, computed RMS values in sps_generate_beta_beat module under `sequences`
         if add_beta_beat:
-            line.element_refs['qd.63510..1'].knl[1] = -1.07328640311457e-02
-            line.element_refs['qf.63410..1'].knl[1] = 1.08678014669101e-02
-            print('Beta-beat added: kk_QD = {:.6e}, kk_QF = {:.6e}'.format(line.element_refs['qd.63510..1'].knl[1]._value,
-                                                                           line.element_refs['qf.63410..1'].knl[1]._value))
+            line = sps.add_beta_beat_to_line(line)
 
         # Add LSE errors, if desired
         if add_sextupolar_errors:

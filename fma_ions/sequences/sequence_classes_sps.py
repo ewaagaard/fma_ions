@@ -322,13 +322,24 @@ class SPS_sequence_maker:
                                                                                   err_str), beam=True)  
         # Save Xsuite sequence
         if save_xsuite_seq:
-            sps_fname = '{}/SPS_2021_{}{}{}{}{}.json'.format(self.seq_folder, self.ion_type, symmetric_string,
-                                                                      def_exp_str, err_str, proton_optics_str)
+            sps_fname = '{}/SPS_2021_{}{}{}{}{}{}.json'.format(self.seq_folder, self.ion_type, symmetric_string,
+                                                                      def_exp_str, err_str, proton_optics_str, 
+                                                                      aperture_str)
             with open(sps_fname, 'w') as fid:
                 json.dump(line.to_dict(), fid, cls=xo.JEncoder)
                 
         if return_xsuite_line:
             return line
+    
+
+    def add_beta_beat_to_line(self, line : xt.Line)->xt.Line:
+        """Add measured Q26 RMS beta-beat to line with kqd and kqf knobs"""
+
+        line.element_refs['qd.63510..1'].knl[1] = -1.07328640311457e-02
+        line.element_refs['qf.63410..1'].knl[1] = 1.08678014669101e-02
+        print('Beta-beat added: kk_QD = {:.6e}, kk_QF = {:.6e}'.format(line.element_refs['qd.63510..1'].knl[1]._value,
+                                                                        line.element_refs['qf.63410..1'].knl[1]._value))
+        return line
     
     
     def change_synchrotron_tune_by_factor(self, A, line, sigma_z=None, Nb=None):
