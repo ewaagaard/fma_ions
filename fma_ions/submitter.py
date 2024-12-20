@@ -81,7 +81,7 @@ output                = {os.path.join(settings['output_directory_afs'],"$(Cluste
 error                 = {os.path.join(settings['output_directory_afs'],"$(ClusterId).$(ProcId).err")}
 log                   = {os.path.join(settings['output_directory_afs'],"$(ClusterId).$(ProcId).log")}
 request_CPUs = {nr_of_CPUs_to_request}
-+MaxRuntime = 1209500
++MaxRuntime = 3209500
 queue'''
         )
         job_file.close()
@@ -168,7 +168,7 @@ output                = {os.path.join(settings['output_directory_afs'],"$(Cluste
 error                 = {os.path.join(settings['output_directory_afs'],"$(ClusterId).$(ProcId).err")}
 log                   = {os.path.join(settings['output_directory_afs'],"$(ClusterId).$(ProcId).log")}
 request_GPUs = 1
-+MaxRuntime = 1209500
++MaxRuntime = 3209500
 queue'''
         )
         # previously also included "requirements = regexp("V100", TARGET.CUDADeviceName) || regexp("A100", TARGET.CUDADeviceName)"
