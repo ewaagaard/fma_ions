@@ -699,7 +699,7 @@ class SPS_Plotting:
                 ax2.set_ylabel('Normalized counts')
                 ax2.set_xlabel('y [m]')
                 ax2.set_ylim(0, 1.1)
-                ax2.text(0.02, 0.55, '{} = {:.2f}'.format(label_for_x_axis, scan_array_for_x_axis[i]), transform=ax2.transAxes, fontsize=10.8)
+                ax2.text(0.02, 0.05, '{} = {:.2f}'.format(label_for_x_axis, scan_array_for_x_axis[i]), transform=ax2.transAxes, fontsize=10.8)
 
                 # Fit Gaussian for the emittance
                 popt_X, pcov_X = fits.fit_Gaussian(X_pos_data, X_profile_data, p0=(1.0, 0.0, 0.02))
