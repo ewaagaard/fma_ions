@@ -12,7 +12,7 @@ dir_path = pathlib.Path(__file__).parent.absolute()
 
 # Define run files and which parameters to change
 master_name = 'Q26_Pb_ions_50Hz_amplitude_scan_2k_turns_adaptive_SC'
-num_turns = 2_000
+num_turns = 20_000
 Qy = 26.19
 Qx = 26.31
 noise_amp = np.array([5, 23, 56, 79, 105, 132.8])
