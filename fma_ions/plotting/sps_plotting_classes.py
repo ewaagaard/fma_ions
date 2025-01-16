@@ -551,7 +551,8 @@ class SPS_Plotting:
                                          emittance_range = [0.0, 4.1],
                                          master_job_name=None,
                                          load_measured_profiles=False,
-                                         x_axis_quantity='Qx') -> None:
+                                         x_axis_quantity='Qx',
+                                         apply_uniform_xscale=False) -> None:
 
         """
         Open tbt data from e.g tune scan, plot transverse profiles and fit a q-Gaussian.
@@ -574,6 +575,8 @@ class SPS_Plotting:
             whether to plot measured profiles as well
         x_axis_quantity: str
             which quantity to use for x-axis, e.g. Qx or Qy
+        apply_uniform_xscale : bool
+            whether to force x axis scaling to be uniform, i.e. equal spacing for any value. Useful if want to plot uniformly values such as 1, 10 and 1000
         """
         # Generate directories, if not existing already
         os.makedirs('output_transverse', exist_ok=True)
@@ -587,9 +590,14 @@ class SPS_Plotting:
         # Create empty arrays
         n_profiles = len(output_str_array)
         sigmas_q_gaussian_X = np.zeros(n_profiles)
+        q0_vals_X = np.zeros(n_profiles)
+        q0_errors_X = np.zeros(n_profiles)
         q_vals_X = np.zeros(n_profiles)
         q_errors_X = np.zeros(n_profiles)
+        
         sigmas_q_gaussian_Y = np.zeros(n_profiles)
+        q0_vals_Y = np.zeros(n_profiles)
+        q0_errors_Y = np.zeros(n_profiles)         
         q_vals_Y = np.zeros(n_profiles)
         q_errors_Y = np.zeros(n_profiles) 
 
@@ -671,16 +679,20 @@ class SPS_Plotting:
                         print('Could not open measured Y BWS profile')
 
                 # Select index to plot, e.g last set of 100 turns
-                index_to_plot = [-1] #[0, -1]
-                plot_str = ['Simulated, last 100 turns'] #['First 100 turns', 'Last 100 turns']
+                index_to_plot = [0, -1] #[-1] #
+                plot_str = ['Simulated first 100 turns', 'Simulated last 100 turns'] #['Simulated, last 100 turns']
+                colors = ['blue', 'orange']
 
                 for j, ind in enumerate(index_to_plot):
                     # Normalize bin heights
                     x_bin_heights_sorted = np.array(sorted(tbt_dict['monitorH_x_intensity'][ind], reverse=True))
                     x_height_max_avg = np.mean(x_bin_heights_sorted[:3]) # take average of top 3 values
                     X_pos_data = tbt_dict['monitorH_x_grid']
-                    X_profile_data = tbt_dict['monitorH_x_intensity'][ind] / x_height_max_avg
-                    ax.plot(X_pos_data, X_profile_data, label=plot_str[j], color='orange')
+                    if ind == 0:
+                        X0_profile_data = tbt_dict['monitorH_x_intensity'][ind] / x_height_max_avg
+                    else:
+                        X_profile_data = tbt_dict['monitorH_x_intensity'][ind] / x_height_max_avg
+                        ax.plot(X_pos_data, X_profile_data, label=plot_str[j], color=colors[j])
                 
                 ax.set_xlabel('x [m]')
                 ax.set_ylabel('Normalized counts')
@@ -693,8 +705,12 @@ class SPS_Plotting:
                     y_bin_heights_sorted = np.array(sorted(tbt_dict['monitorV_y_intensity'][ind], reverse=True))
                     y_height_max_avg = np.mean(y_bin_heights_sorted[:3]) # take average of top 3 values
                     Y_pos_data = tbt_dict['monitorV_y_grid']
-                    Y_profile_data = tbt_dict['monitorV_y_intensity'][ind] / y_height_max_avg
-                    ax2.plot(Y_pos_data, Y_profile_data, label=plot_str[j], color='orange')
+                    if ind == 0:
+                        Y0_profile_data = tbt_dict['monitorV_y_intensity'][ind] / y_height_max_avg ### if changes fast, take particle histogram instead
+                        #particles_i = tbt_dict['particles_i']
+                    else:
+                        Y_profile_data = tbt_dict['monitorV_y_intensity'][ind] / y_height_max_avg
+                        ax2.plot(Y_pos_data, Y_profile_data, label=plot_str[j], color=colors[j])
                 
                 ax2.set_ylabel('Normalized counts')
                 ax2.set_xlabel('y [m]')
@@ -717,6 +733,10 @@ class SPS_Plotting:
                 p0_qX = [popt_X[1], q0, 1/popt_X[2]**2/(5-3*q0), 2*popt_X[0]]
                 p0_qY = [popt_Y[1], q0, 1/popt_Y[2]**2/(5-3*q0), 2*popt_Y[0]]
 
+                popt_Q_X0, pcov_Q_X0 = fits.fit_Q_Gaussian(X_pos_data, X0_profile_data, p0=p0_qX)
+                q0_vals_X[i] = popt_Q_X0[1]
+                q0_errors_X[i] = np.sqrt(np.diag(pcov_Q_X0))[1] # error from covarance_matrix
+
                 popt_Q_X, pcov_Q_X = fits.fit_Q_Gaussian(X_pos_data, X_profile_data, p0=p0_qX)
                 q_vals_X[i] = popt_Q_X[1]
                 q_errors_X[i] = np.sqrt(np.diag(pcov_Q_X))[1] # error from covarance_matrix
@@ -725,6 +745,11 @@ class SPS_Plotting:
                 popt_Q_Y, pcov_Q_Y = fits.fit_Q_Gaussian(Y_pos_data, Y_profile_data, p0=p0_qY)
                 q_vals_Y[i] = popt_Q_Y[1]
                 q_errors_Y[i] = np.sqrt(np.diag(pcov_Q_Y))[1] # error from covarance_matrix
+                
+                popt_Q_Y0, pcov_Q_Y0 = fits.fit_Q_Gaussian(Y_pos_data, Y0_profile_data, p0=p0_qY)
+                q0_vals_Y[i] = popt_Q_Y0[1]
+                q0_errors_Y[i] = np.sqrt(np.diag(pcov_Q_Y0))[1] # error from covarance_matrix
+                
                 sigmas_q_gaussian_Y[i] = fits.get_sigma_RMS_from_qGaussian_fit(popt_Q_Y)
                 
                 # Extract optics at Wire Scanner, correct for dispersion
@@ -772,26 +797,35 @@ class SPS_Plotting:
                 Nb[1, i] = np.nan
                 q_vals_X[i] = np.nan
                 q_vals_Y[i] = np.nan
+                q0_vals_X[i] = np.nan
+                q0_vals_Y[i] = np.nan
                 transmission[i] = np.nan
         
         # Save loss string to txt tile
         with open('output_transverse/large_losses.txt', 'w') as file:
             file.write(all_loss_strings)
         
-        ### Plot transmissions and final q-Gaussian emittances
+        ### Plot transmissions and final q-Gaussian emittances - use custom x axis spacing
         fig3, ax3 = plt.subplots(2, 1, figsize=(9, 7.5), sharex=True, constrained_layout=True)
-        ax3[0].plot(scan_array_for_x_axis, exn[1, :] * 1e6, c='b', marker="o", label="X - final")
-        ax3[0].plot(scan_array_for_x_axis, eyn[1, :] * 1e6, c='darkorange', marker="o", label="Y - final")
-        ax3[0].plot(scan_array_for_x_axis, exn[0, :] * 1e6, c='b', ls='--', lw=1.0, alpha=0.75, marker=".", label="X - initial")
-        ax3[0].plot(scan_array_for_x_axis, eyn[0, :] * 1e6, c='darkorange', ls='--', lw=1.0, alpha=0.75, marker=".", label="Y - initial")
+        if apply_uniform_xscale:
+            xx = np.arange(len(scan_array_for_x_axis))
+            xlabels = [str(x) for x in scan_array_for_x_axis]
+        else:
+            xx = scan_array_for_x_axis
+        ax3[0].plot(xx, exn[1, :] * 1e6, c='b', marker="o", label="X - final")
+        ax3[0].plot(xx, eyn[1, :] * 1e6, c='darkorange', marker="o", label="Y - final")
+        ax3[0].plot(xx, exn[0, :] * 1e6, c='b', ls='--', lw=1.0, alpha=0.75, marker=".", label="X - initial")
+        ax3[0].plot(xx, eyn[0, :] * 1e6, c='darkorange', ls='--', lw=1.0, alpha=0.75, marker=".", label="Y - initial")
+        ax3[1].set_xticks(xx)
+        if apply_uniform_xscale:
+            ax3[1].set_xticklabels(xlabels)
 
         ax3[0].set_ylabel("$\epsilon_{x, y}^n$ [$\mu$m]")       
-        ax3[1].plot(scan_array_for_x_axis, 100*transmission, c='red', marker='o', label='Transmission')
+        ax3[1].plot(xx, 100*transmission, c='red', marker='o', label='Transmission')
         ax3[1].set_ylabel("Transmission [%]")
         ax3[0].legend(fontsize=13)
         ax3[0].grid(alpha=0.55)
         ax3[1].grid(alpha=0.55)
-        ax3[1].set_xticks(scan_array_for_x_axis)
         ax3[1].tick_params(axis='x', which='major', rotation=35, labelsize=12.4)
         if extra_text_string is not None:
             ax3[1].text(0.024, 0.05, extra_text_string, transform=ax3[1].transAxes, fontsize=12.8)
@@ -807,13 +841,19 @@ class SPS_Plotting:
 
         # Also plot q-values
         fig1, ax1 = plt.subplots(1, 1, figsize=(8, 6), constrained_layout=True)
-        ax1.errorbar(scan_array_for_x_axis, y=q_vals_X, yerr=q_errors_X, fmt="o-", label="$q_{X}$ from simulations, from last 100 turns")
-        ax1.errorbar(scan_array_for_x_axis, y=q_vals_Y, yerr=q_errors_Y, fmt="o-", label="$q_{Y}$ from simulations, from last 100 turns")
+        if apply_uniform_xscale:
+            ax1.errorbar(xx, y=q0_vals_X, yerr=q0_errors_X, c='b', fmt=".--", lw=1.0, alpha=0.75, label="Simulated $q_{X}$, first 100 turns")
+            ax1.errorbar(xx, y=q0_vals_Y, yerr=q0_errors_Y, c='darkorange', fmt=".--", lw=1.0, alpha=0.75, label="Simulated $q_{Y}$ first 100 turns")
+        ax1.errorbar(xx, y=q_vals_X, yerr=q_errors_X, c='b', fmt="o-", label="Simulated $q_{X}$, last 100 turns")
+        ax1.errorbar(xx, y=q_vals_Y, yerr=q_errors_Y, c='darkorange',  fmt="o-", label="Simulated $q_{Y}$, last 100 turns")
+        ax1.set_xticks(xx)
+        if apply_uniform_xscale:
+            ax1.set_xticklabels(xlabels)
+        
         #ax[0].axhline(y=1.5, c='darkgreen', label=None)   # at extr, not end of flat bottom
         ax1.set_ylim(0, 2.0)
         ax1.set_ylabel("Fitted $q_{x,y}$")
         ax1.grid(alpha=0.5)
-        ax1.set_xticks(scan_array_for_x_axis)
         ax1.tick_params(axis='x', which='major', rotation=35, labelsize=12.4)
         ax1.set_xlabel(label_for_x_axis)
         ax1.legend(loc="upper left", fontsize=11.5)
