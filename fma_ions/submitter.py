@@ -168,11 +168,11 @@ output                = {os.path.join(settings['output_directory_afs'],"$(Cluste
 error                 = {os.path.join(settings['output_directory_afs'],"$(ClusterId).$(ProcId).err")}
 log                   = {os.path.join(settings['output_directory_afs'],"$(ClusterId).$(ProcId).log")}
 request_GPUs = 1
-+MaxRuntime = 1814250
++MaxRuntime = 1209500
 queue'''
         )
         # previously also included "requirements = regexp("V100", TARGET.CUDADeviceName) || regexp("A100", TARGET.CUDADeviceName)"
-        # 1814250 s = 21 days. old runtime 1209500 s = 14 days, had then changed to 3209500 = 37 days
+        # old runtime 1209500 s = 14 days, had then changed to 3209500 = 37 days. 1814250 s = 21 days
         job_file.close()
         
         # Find the least loaded cluster and submit job - better to do it before launching many jobs
