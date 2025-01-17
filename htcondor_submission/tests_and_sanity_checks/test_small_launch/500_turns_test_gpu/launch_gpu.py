@@ -14,7 +14,7 @@ string_array = ['IBS with BB']
 
 # Instantiate the submitter class and launch the two jobs
 sub = fma_ions.Submitter()
-master_name = '500_turns_test_37days_maxRunTime' 
+master_name = '500_turns_test_14days_maxRunTime' 
 master_job_name = '{:%Y_%m_%d__%H_%M_%S}_{}'.format(datetime.datetime.now(), master_name)
 
 # Launch the Python scripts in this folder
