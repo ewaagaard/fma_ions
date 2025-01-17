@@ -13,7 +13,8 @@ folder_names = ['sps_BB_only_ibs_500_turns']
 string_array = ['IBS with BB']    
 
 # Instantiate the submitter class and launch the two jobs
-sub = fma_ions.Submitter() 
+sub = fma_ions.Submitter()
+master_name = '500_turns_test_37days_maxRunTime' 
 master_job_name = '{:%Y_%m_%d__%H_%M_%S}_{}'.format(datetime.datetime.now(), master_name)
 
 # Launch the Python scripts in this folder
