@@ -101,7 +101,7 @@ queue'''
                    output_folder_eos : str = '/eos/user/e/elwaagaa/PhD/Projects/fma_ions/htcondor_submission/output',
                    master_job_name = None,
                    job_name = None,
-                   change_to_best_node : bool = True,
+                   change_to_best_node : bool = False, # some nodes faulty, apply manually for now...
                    copy_plot_scripts_to_output : bool = True,
                    output_format : str = 'json'
                    ):
