@@ -124,11 +124,11 @@ class SPS_Plotting:
 
 
     def plot_beam_envelope_and_aperture(self, n_sigmas=5, sigma_delta = 5e-4, add_beta_beat=False):
-        """Method to plot beam envope for given sigma, and aperture"""
+        """Method to plot beam envope for given sigma, and aperture. Assumed closed orbit x, y = 0 for now"""
         
         # Load default line, with aperture
         sps_seq = SPS_sequence_maker()
-        line, _ = sps_seq.load_xsuite_line_and_twiss() 
+        line, _ = sps_seq.load_xsuite_line_and_twiss(save_new_xtrack_line=True, add_aperture=True) 
         
         if add_beta_beat:
             line = sps_seq.add_beta_beat_to_line(line)
@@ -138,8 +138,8 @@ class SPS_Plotting:
 
         # Find beam parameters
         beamParams =  BeamParameters_SPS()
-        sigx = np.sqrt(beamParams.exn / twiss.gamma0 * twiss.betx) + abs(twiss.dx) * sigma_delta
-        sigy = np.sqrt(beamParams.eyn / twiss.gamma0 * twiss.bety)
+        sigx = np.sqrt(beamParams.exn / (twiss.gamma0 * twiss.beta0) * twiss.betx + (abs(twiss.dx) * sigma_delta)**2)
+        sigy = np.sqrt(beamParams.eyn / (twiss.gamma0 * twiss.beta0) * twiss.bety)
         n_sigx_aper = lowerX / sigx[aper_idx]
         n_sigy_aper = lowerY / sigy[aper_idx]
         
@@ -163,8 +163,8 @@ class SPS_Plotting:
         
         # Available sigmas to aperture
         fig3, ax3 = plt.subplots(1, 1, figsize=(10, 6), constrained_layout=True)
-        ax3.plot(sv_ap.s, n_sigx_aper, color="blue", label='X')
-        ax3.plot(sv_ap.s, n_sigy_aper, color="red", label='Y')
+        ax3.plot(sv_ap.s, n_sigx_aper, color="blue", alpha=0.85, label='X')
+        ax3.plot(sv_ap.s, n_sigy_aper, color="red", alpha=0.85, label='Y')
         ax3.grid(alpha=0.5)
         ax3.set_ylabel('Available $\sigma_{x,y}$ to aperture')
         ax3.set_xlabel('s [m]')
