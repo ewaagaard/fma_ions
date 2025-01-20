@@ -166,7 +166,7 @@ class SPS_Plotting:
         ax3.plot(sv_ap.s, n_sigx_aper, color="blue", alpha=0.85, label='X')
         ax3.plot(sv_ap.s, n_sigy_aper, color="red", alpha=0.85, label='Y')
         ax3.grid(alpha=0.5)
-        ax3.set_ylabel('Available $\sigma_{x,y}$ to aperture')
+        ax3.set_ylabel('Available aperture [$\sigma_{x,y}$]')
         ax3.set_xlabel('s [m]')
         ax3.legend(fontsize=10)
 
