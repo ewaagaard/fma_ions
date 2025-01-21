@@ -1277,7 +1277,9 @@ class SPS_Plotting:
                                                transmission_range=[0.0, 105],
                                                emittance_range = [0.0, 4.1],
                                                plot_starting_emittances=True,
-                                               master_job_name=None) -> None:
+                                               master_job_name=None,
+                                               apply_uniform_xscale=False,
+                                               figwidth=9) -> None:
         """
         Method to plot emittances and bunch intensities (final vs initial) for a 
 
@@ -1298,6 +1300,10 @@ class SPS_Plotting:
             whether to plot flat line with starting emittances
         master_job_name : str
             which name the plot should have. Default is None, then default name is given
+        apply_uniform_xscale : bool
+            whether to force x axis scaling to be uniform, i.e. equal spacing for any value. Useful if want to plot uniformly values such as 1, 10 and 1000
+        figwidth : float
+            figure width in size
         """
         os.makedirs('output', exist_ok=True)
         # Load TBT data and append bunch intensities and emittances
@@ -1332,20 +1338,31 @@ class SPS_Plotting:
 
         # Plot transmission and final emittances
         # Plot the transmission with emittance - ion tunes
-        fig, ax = plt.subplots(2, 1, figsize=(9, 7.5), sharex=True, constrained_layout=True)
-        ax[0].plot(scan_array_for_x_axis, exn[1, :] * 1e6, c='b', marker="o", label="X - final")
-        ax[0].plot(scan_array_for_x_axis, eyn[1, :] * 1e6, c='darkorange', marker="o", label="Y - final")
+        fig, ax = plt.subplots(2, 1, figsize=(figwidth, 7.5), sharex=True, constrained_layout=True)
+        
+        # Whether to space x axis uniformly or not
+        if apply_uniform_xscale:
+            xx = np.arange(len(scan_array_for_x_axis))
+            xlabels = [str(x) for x in scan_array_for_x_axis]
+        else:
+            xx = scan_array_for_x_axis
+
+        ax[0].plot(xx, exn[1, :] * 1e6, c='b', marker="o", label="X - final")
+        ax[0].plot(xx, eyn[1, :] * 1e6, c='darkorange', marker="o", label="Y - final")
         if plot_starting_emittances:
-            ax[0].plot(scan_array_for_x_axis, exn[0, :] * 1e6, c='b', ls='--', lw=1.0, alpha=0.75, marker=".", label="X - initial")
-            ax[0].plot(scan_array_for_x_axis, eyn[0, :] * 1e6, c='darkorange', ls='--', lw=1.0, alpha=0.75, marker=".", label="Y - initial")
+            ax[0].plot(xx, exn[0, :] * 1e6, c='b', ls='--', lw=1.0, alpha=0.75, marker=".", label="X - initial")
+            ax[0].plot(xx, eyn[0, :] * 1e6, c='darkorange', ls='--', lw=1.0, alpha=0.75, marker=".", label="Y - initial")
 
         ax[0].set_ylabel("$\epsilon_{x, y}^n$ [$\mu$m]")       
-        ax[1].plot(scan_array_for_x_axis, 100*transmission, c='red', marker='o', label='Transmission')
+        ax[1].plot(xx, 100*transmission, c='red', marker='o', label='Transmission')
         ax[1].set_ylabel("Transmission [%]")
         ax[0].legend(fontsize=13)
         ax[0].grid(alpha=0.55)
         ax[1].grid(alpha=0.55)
-        ax[1].set_xticks(scan_array_for_x_axis)
+        if apply_uniform_xscale:
+            ax[1].set_xticks(xx , xlabels)
+        else:
+            ax[1].set_xticks(scan_array_for_x_axis)
         ax[1].tick_params(axis='x', which='major', rotation=35, labelsize=12.4)
         if extra_text_string is not None:
             ax[1].text(0.024, 0.05, extra_text_string, transform=ax[1].transAxes, fontsize=12.8)
