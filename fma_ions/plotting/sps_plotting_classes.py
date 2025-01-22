@@ -553,7 +553,7 @@ class SPS_Plotting:
                                          master_job_name=None,
                                          load_measured_profiles=False,
                                          x_axis_quantity='Qx',
-                                         apply_uniform_xscale=False) -> None:
+                                         apply_uniform_xscale=True) -> None:
 
         """
         Open tbt data from e.g tune scan, plot transverse profiles and fit a q-Gaussian.
@@ -1279,7 +1279,7 @@ class SPS_Plotting:
                                                emittance_range = [0.0, 4.1],
                                                plot_starting_emittances=True,
                                                master_job_name=None,
-                                               apply_uniform_xscale=False,
+                                               apply_uniform_xscale=True,
                                                figwidth=9) -> None:
         """
         Method to plot emittances and bunch intensities (final vs initial) for a 
@@ -1344,7 +1344,7 @@ class SPS_Plotting:
         # Whether to space x axis uniformly or not
         if apply_uniform_xscale:
             xx = np.arange(len(scan_array_for_x_axis))
-            xlabels = [str(x) for x in scan_array_for_x_axis]
+            xlabels = ['{:.2f}'.format(x) for x in scan_array_for_x_axis]
         else:
             xx = scan_array_for_x_axis
 
@@ -1380,12 +1380,6 @@ class SPS_Plotting:
 
     def plot_normalized_phase_space_from_tbt(self, 
                                              part_dict,
-                                             x_min_norm_aperture=0.004147391486397011,
-                                             #x_min_norm_aperture_loc=5569.7227,
-                                             y_min_norm_aperture=0.003013704789098143,
-                                             #y_min_norm_aperture_loc=6886.404799999996,
-                                             x_min_aperture=0.03,
-                                             y_min_aperture=0.01615,
                                              extra_text_string='',
                                              df_twiss=None):
         """
@@ -1397,18 +1391,6 @@ class SPS_Plotting:
             path to data. default is 'None', assuming then that data is in the same directory
         part_dict : dict
             dictionary with particle data
-        include_density_map : bool
-            whether to add color gradient of how tightly packed particles are
-        plot_min_aperture : bool
-            whether to include line with minimum X and Y aperture along machine
-        x_min_norm_aperture : float
-            default minimum aperture in X
-        x_min_norm_aperture_loc : float
-            location of minimum X aperture
-        y_min_norm_aperture : float
-            default minimum aperture in Y
-        y_min_norm_aperture_loc : float
-            location of minimum Y aperture
         extra_text_string : str
             plot extra text in plots
         df_twiss : pd.DataFrame
@@ -1486,9 +1468,11 @@ class SPS_Plotting:
         ind = np.array(ind)
         
         # Find minimum PHYSICAL aperture
+        x_min_aperture = x_ap[np.argmin(x_ap)]
+        y_min_aperture = y_ap[np.argmin(y_ap)]
         print('\nPHYSICAL aperture:')
-        print('Minimum X aperture is x_min={} m at s={} m'.format(x_ap[np.argmin(x_ap)], s_ap[np.argmin(x_ap)]))
-        print('Minimum Y aperture is y_min={} m at s={} m'.format(y_ap[np.argmin(y_ap)], s_ap[np.argmin(y_ap)]))
+        print('Minimum X aperture is x_min={} m at s={} m'.format(x_min_aperture, s_ap[np.argmin(x_ap)]))
+        print('Minimum Y aperture is y_min={} m at s={} m'.format(y_min_aperture, s_ap[np.argmin(y_ap)]))
         
         # Find minimum NORMALIZED aperture
         x_min_norm_aperture = x_ap_norm[np.argmin(x_ap_norm)]
