@@ -11,11 +11,11 @@ import datetime
 dir_path = pathlib.Path(__file__).parent.absolute()
 
 # Define run files and which parameters to change
-master_name = 'Q26_Pb_ions_Qy_scan_ibs'
+master_name = 'Q26_Pb_ions_Qy_scan_ibs_50_150_300_Hz_ripple_adaptive_sc'
 num_turns = 130_000 # corresponds to 3s for SPS ions at flat bottom
 Qx = 26.31
 Qy_range = np.arange(26.10, 26.26, 0.01)
-run_files = ['sps_run_{}_tbt_qx_26dot30.py'.format(i+1) for i in range(len(Qy_range))]
+run_files = ['sps_run_{}_tbt_qx_26dot31.py'.format(i+1) for i in range(len(Qy_range))]
 
 # Define script and folder names
 script_names = run_files.copy()
@@ -31,16 +31,24 @@ for i, run_file in enumerate(run_files):
     run_file.truncate(0)  # remove existing content, if any
     run_file.write(
     '''import fma_ions
+import numpy as np
 output_dir = './'
 
 n_turns = {}
 num_part = 20_000
 
+# Desired ripple frequencies and amplitudes
+ripple_freqs = np.array([50., 150., 300.])
+kqf_amplitudes = np.array([9.7892e-7, 2.2421e-7, 3.1801e-7])
+kqd_amplitudes = np.array([9.6865e-7, 4.4711e-7, 5.5065e-7])
+kqf_phases = np.array([0.5564422, 1.3804799, -3.028577])
+kqd_phases = np.array([0.4732764, -2.0184917, -3.126138])
 
 # Tracking on GPU context
 sps = fma_ions.SPS_Flat_Bottom_Tracker(qx0={:.3f}, qy0={:.3f}, num_turns=n_turns, num_part=num_part)
 tbt = sps.track_SPS(which_context='gpu', distribution_type='qgaussian', install_SC_on_line=True, add_beta_beat=True,
-                add_non_linear_magnet_errors=True, apply_kinetic_IBS_kicks=True, ibs_step = 2000, SC_adaptive_interval_during_tracking=500)
+                add_non_linear_magnet_errors=True, apply_kinetic_IBS_kicks=True, ibs_step = 2000, add_tune_ripple=True, ripple_freqs = ripple_freqs,
+                    kqf_amplitudes = kqf_amplitudes, kqd_amplitudes = kqd_amplitudes, kqf_phases=kqf_phases, kqd_phases=kqd_phases, SC_adaptive_interval_during_tracking=100)
 tbt.to_json(output_dir)
     '''.format(num_turns, Qx, Qy_range[i])
     )

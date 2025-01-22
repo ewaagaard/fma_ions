@@ -11,11 +11,11 @@ import datetime
 dir_path = pathlib.Path(__file__).parent.absolute()
 
 # Define run files and which parameters to change
-master_name = 'Q26_Pb_ions_Qy_scan_ibs_50_Hz_ripple'
+master_name = 'Q26_Pb_ions_Qy_scan_ibs_adaptive_space_charge'
 num_turns = 130_000 # corresponds to 3s for SPS ions at flat bottom
 Qx = 26.31
 Qy_range = np.arange(26.10, 26.26, 0.01)
-run_files = ['sps_run_{}_tbt_qx_26dot31.py'.format(i+1) for i in range(len(Qy_range))]
+run_files = ['sps_run_{}_tbt_qx_26dot30.py'.format(i+1) for i in range(len(Qy_range))]
 
 # Define script and folder names
 script_names = run_files.copy()
@@ -40,7 +40,7 @@ num_part = 20_000
 # Tracking on GPU context
 sps = fma_ions.SPS_Flat_Bottom_Tracker(qx0={:.3f}, qy0={:.3f}, num_turns=n_turns, num_part=num_part)
 tbt = sps.track_SPS(which_context='gpu', distribution_type='qgaussian', install_SC_on_line=True, add_beta_beat=True,
-                add_non_linear_magnet_errors=True, apply_kinetic_IBS_kicks=True, ibs_step = 2000, add_tune_ripple=True, SC_adaptive_interval_during_tracking=100)
+                add_non_linear_magnet_errors=True, apply_kinetic_IBS_kicks=True, ibs_step = 2000, SC_adaptive_interval_during_tracking=100)
 tbt.to_json(output_dir)
     '''.format(num_turns, Qx, Qy_range[i])
     )
