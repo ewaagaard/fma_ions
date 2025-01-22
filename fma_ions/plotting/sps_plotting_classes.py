@@ -26,6 +26,7 @@ from ..helpers_and_functions import Fit_Functions
 # Load default emittance measurement data from 2023_10_16
 emittance_data_path = Path(__file__).resolve().parent.joinpath('../../data/emittance_data/full_WS_data_SPS_2023_10_16.json').absolute()
 Nb_data_path = Path(__file__).resolve().parent.joinpath('../../data/emittance_data/Nb_processed_SPS_2023_10_16.json').absolute()
+aperture_fixed_path = Path(__file__).resolve().parent.joinpath('../../data/aperture_fixed').absolute()
 
 # Load Pb longitudinal profile measured at PS extraction and SPS injection
 longitudinal_data_path = Path(__file__).resolve().parent.joinpath('../../data/longitudinal_profile_data/SPS_inj_longitudinal_data.npy').absolute()
@@ -1380,9 +1381,9 @@ class SPS_Plotting:
     def plot_normalized_phase_space_from_tbt(self, 
                                              part_dict,
                                              x_min_norm_aperture=0.004147391486397011,
-                                             x_min_norm_aperture_loc=5569.7227,
+                                             #x_min_norm_aperture_loc=5569.7227,
                                              y_min_norm_aperture=0.003013704789098143,
-                                             y_min_norm_aperture_loc=6886.404799999996,
+                                             #y_min_norm_aperture_loc=6886.404799999996,
                                              x_min_aperture=0.03,
                                              y_min_aperture=0.01615,
                                              extra_text_string='',
@@ -1428,10 +1429,75 @@ class SPS_Plotting:
                                                                        len(part_dict['x'])))
 
         # Convert to normalized phase space
-        sps = SPS_sequence_maker()
         if df_twiss is None:
-            df_twiss = sps.load_default_twiss_table(cycled_to_minimum_dx=True) # load twiss table with aperture
+            #df_twiss = sps.load_default_twiss_table(cycled_to_minimum_dx=True) # load twiss table with aperture
+            twiss_dict = Records.dict_from_json('tbt.json')['twiss']
+            df_twiss = pd.DataFrame(twiss_dict)
+            df_twiss.reset_index(inplace=True) # 
+            print('Loaded Twiss table from tbt.json\n')
 
+        # Get correct minimum aperture
+        try:
+            # Load index for aperture elements
+            aper_ind = pd.read_json('{}/a0_aper_ind.json'.format(aperture_fixed_path), typ='series').values
+            with open('{}/aper_dict.json'.format(aperture_fixed_path), 'r') as f:
+                aper_dict = json.load(f)
+            x_ap = aper_dict['x_ap']
+            y_ap = aper_dict['y_ap']
+            s_ap = aper_dict['s_ap']
+            ind = aper_dict['ind']
+            
+        except FileNotFoundError:
+            print('\nDid NOT find aperture index file! Generating new...')
+            sps_seq = SPS_sequence_maker()
+            line, _ = sps_seq.load_xsuite_line_and_twiss(add_aperture=True)
+            a0 = line.check_aperture()
+            aper_ind = a0['is_aperture']
+            a = a0[aper_ind] # remove elements without aperture
+    
+            # Loop over all elements to find aperture values
+            x_ap = []
+            y_ap = []
+            s_ap = [] # location of aperture
+            ind = []
+    
+            for i, ele in enumerate(a.element):
+                if ele is not None:
+                    x_ap.append(ele.max_x)
+                    y_ap.append(ele.max_y)
+                    s_ap.append(a.s.iloc[i])
+                    ind.append(i)
+                
+            # Save resulting aperture values
+            aper_dict = {'x_ap':x_ap, 'y_ap':y_ap, 's_ap':s_ap, 'ind':ind}
+            with open('{}/aper_dict.json'.format(aperture_fixed_path), 'w') as f:
+                json.dump(aper_dict, f, cls=xo.JEncoder)
+                
+        #df_twiss = df_twiss.iloc[ind]
+        df_twiss_aperture = df_twiss[aper_ind]
+        df_twiss_aperture = df_twiss_aperture.iloc[ind]
+
+        # Convert to numpy arrays
+        x_ap = np.array(x_ap)
+        x_ap_norm = x_ap / np.sqrt(df_twiss_aperture.betx.values)
+        y_ap = np.array(y_ap)
+        y_ap_norm = y_ap / np.sqrt(df_twiss_aperture.bety.values)
+        s_ap = np.array(s_ap)
+        ind = np.array(ind)
+        
+        # Find minimum PHYSICAL aperture
+        print('\nPHYSICAL aperture:')
+        print('Minimum X aperture is x_min={} m at s={} m'.format(x_ap[np.argmin(x_ap)], s_ap[np.argmin(x_ap)]))
+        print('Minimum Y aperture is y_min={} m at s={} m'.format(y_ap[np.argmin(y_ap)], s_ap[np.argmin(y_ap)]))
+        
+        # Find minimum NORMALIZED aperture
+        x_min_norm_aperture = x_ap_norm[np.argmin(x_ap_norm)]
+        y_min_norm_aperture = y_ap_norm[np.argmin(y_ap_norm)]
+        print('\nNORMALIZED aperture:')
+        print('Minimum norm X aperture is x_min={} m at s={} m'.format(x_min_norm_aperture, s_ap[np.argmin(x_ap_norm)]))
+        print('Minimum norm Y aperture is y_min={} m at s={} m\n'.format(y_min_norm_aperture, s_ap[np.argmin(y_ap_norm)]))
+
+        
         # ALIVE particles - find normalized particle coordinates at start of line
         X_alive = part_dict['x'][alive_ind_final] / np.sqrt(df_twiss['betx'][0]) 
         PX_alive = df_twiss['alfx'][0] / np.sqrt(df_twiss['betx'][0]) * part_dict['x'][alive_ind_final] + np.sqrt(df_twiss['betx'][0]) * part_dict['px'][alive_ind_final]
