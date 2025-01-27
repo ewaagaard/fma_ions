@@ -810,7 +810,7 @@ class SPS_Plotting:
         fig3, ax3 = plt.subplots(2, 1, figsize=(9, 7.5), sharex=True, constrained_layout=True)
         if apply_uniform_xscale:
             xx = np.arange(len(scan_array_for_x_axis))
-            xlabels = [str(x) for x in scan_array_for_x_axis]
+            xlabels = ['{:.2f}'.format(x) for x in scan_array_for_x_axis]
         else:
             xx = scan_array_for_x_axis
         ax3[0].plot(xx, exn[1, :] * 1e6, c='b', marker="o", label="X - final")
