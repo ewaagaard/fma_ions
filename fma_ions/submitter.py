@@ -217,41 +217,20 @@ sps.plot_multiple_sets_of_tracking_data(output_str_array=folder_names, string_ar
 
     def copy_plot_script_emittances_for_scan(self, master_job_name, folder_names, scan_array_for_x_axis,
                                              label_for_x_axis, extra_text_string):
-        """After parameter scan as been submitted, copy plotting script to plot emittances and transmission"""
+        """After parameter scan as been submitted, copy plotting script to process transverse profiles, emittances and transmission"""
 
         
         plot_file = open('plot_emittances_and_Nb_from_scan.py','w')
         plot_file.write(        
         f'''import fma_ions
-        sps = fma_ions.SPS_Plotting()
-        sps.fit_and_plot_transverse_profiles(scan_array_for_x_axis='{scan_array_for_x_axis}', 
-                                                label_for_x_axis='{label_for_x_axis}',
-                                                extra_text_string='{extra_text_string}',
-                                                output_str_array={folder_names},
-                                                master_job_name={master_job_name})
+sps = fma_ions.SPS_Plotting()
+sps.fit_and_plot_transverse_profiles(scan_array_for_x_axis='{scan_array_for_x_axis}', 
+                                        label_for_x_axis='{label_for_x_axis}',
+                                        extra_text_string='{extra_text_string}',
+                                        output_str_array={folder_names},
+                                        master_job_name={master_job_name})
         '''
         )
         plot_file.close()
         os.system(f'cp plot_emittances_and_Nb_from_scan.py {os.path.join(self.output_folder_eos,"plot_emittances_and_Nb_from_scan.py")}')
         print(f'Successfully copied scan plot file to {self.output_folder_eos}')
-        
-        
-    def copy_plot_script_fit_qgaussian_emittances_for_scan(self, master_job_name, folder_names, scan_array_for_x_axis,
-                                             label_for_x_axis, extra_text_string):
-        """After parameter scan as been submitted, copy plotting script to plot q-gaussian fitted emittances and transmission"""
-
-        
-        plot_file = open('plot_fit_qGaussian_emittances_from_scan_and_plot_profiles.py','w')
-        plot_file.write(        
-        f'''import fma_ions
-        sps = fma_ions.SPS_Plotting()
-        sps.fit_and_plot_transverse_profiles(scan_array_for_x_axis='{scan_array_for_x_axis}', 
-                                                label_for_x_axis='{label_for_x_axis}',
-                                                extra_text_string='{extra_text_string}',
-                                                output_str_array={folder_names},
-                                                master_job_name={master_job_name})
-        '''
-        )
-        plot_file.close()
-        os.system(f'cp plot_fit_qGaussian_emittances_from_scan_and_plot_profiles.py {os.path.join(self.output_folder_eos,"plot_fit_qGaussian_emittances_from_scan_and_plot_profiles.py")}')
-        print(f'Successfully copied q-gaussian analysis scan plot file to {self.output_folder_eos}')
