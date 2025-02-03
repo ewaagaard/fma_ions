@@ -224,7 +224,7 @@ sps.plot_multiple_sets_of_tracking_data(output_str_array=folder_names, string_ar
         plot_file.write(        
         f'''import fma_ions
         sps = fma_ions.SPS_Plotting()
-        sps.plot_final_emittances_and_Nb_over_scan(scan_array_for_x_axis='{scan_array_for_x_axis}', 
+        sps.fit_and_plot_transverse_profiles(scan_array_for_x_axis='{scan_array_for_x_axis}', 
                                                 label_for_x_axis='{label_for_x_axis}',
                                                 extra_text_string='{extra_text_string}',
                                                 output_str_array={folder_names},
