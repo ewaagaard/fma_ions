@@ -12,7 +12,7 @@ dir_path = pathlib.Path(__file__).parent.absolute()
 
 # Define run files and which parameters to change
 master_name = 'launch_gpu_Pb_lse_scan_with_ibs_and_50Hz_ripple_adaptive_sc_qx_26dot325'
-LSE_strengths = np.arange(0, 11.5, 2.0)
+LSE_strengths = np.arange(0, 12.5, 2.0)
 num_turns = 130_000 # corresponds to 3s for SPS ions at flat bottom
 Qx = 26.325
 Qy = 26.10
@@ -58,6 +58,6 @@ for i, script in enumerate(script_names):
     print(f"Submitting {file_name}")
     sub.submit_GPU(file_name, master_job_name=master_job_name, job_name=folder_names[i])
 sub.copy_master_plot_script(folder_names, string_array)
-sub.copy_plot_script_emittances_for_scan(master_name, folder_names, scan_array_for_x_axis='np.arange(0, 11.5, 2.0)',
+sub.copy_plot_script_emittances_for_scan(master_name, folder_names, scan_array_for_x_axis='np.arange(0, 12.5, 2.0)',
                                              label_for_x_axis='LSE [I]', 
                                              extra_text_string='$Q_{x, y}$ = 26.325, 26.10 - q-Gaussian beam\n Frozen SC, 10% $\\beta$-beat + non-linear magnet errors\nLSE excitation')
