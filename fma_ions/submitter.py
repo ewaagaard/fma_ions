@@ -229,7 +229,7 @@ sps.fit_and_plot_transverse_profiles(scan_array_for_x_axis='{scan_array_for_x_ax
                                         label_for_x_axis='{label_for_x_axis}',
                                         extra_text_string='{extra_text_string}',
                                         output_str_array={folder_names},
-                                        master_job_name={master_job_name})
+                                        master_job_name='{master_job_name}')
         '''
         )
         plot_file.close()

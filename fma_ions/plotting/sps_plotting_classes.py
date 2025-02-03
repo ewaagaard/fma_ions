@@ -553,7 +553,7 @@ class SPS_Plotting:
                                          master_job_name=None,
                                          load_measured_profiles=False,
                                          x_axis_quantity='Qx',
-                                         apply_uniform_xscale=True) -> None:
+                                         apply_uniform_xscale=False) -> None:
 
         """
         Open tbt data from e.g tune scan, plot transverse profiles and fit a q-Gaussian.

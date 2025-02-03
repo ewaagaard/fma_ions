@@ -113,6 +113,8 @@ class SPS_Flat_Bottom_Tracker:
                   voltage=3.0e6,
                   scale_factor_Qs=None,
                   install_beam_monitors=True,
+                  x_max_at_WS=None,
+                  y_max_at_WS=None,
                   nturns_profile_accumulation_interval = 100,
                   nbins = 140,
                   also_keep_delta_profiles=False,
@@ -181,6 +183,10 @@ class SPS_Flat_Bottom_Tracker:
             if not None, factor by which we scale Qs (V_RF, h) and divide sigma_z and Nb for similar space charge effects
         install_beam_monitors : bool
             whether to install beam profile monitors at H and V Wire Scanner locations in SPS, that will record beam profiles
+        x_max_at_WS : float
+            physical aperture limit at horizontal wire scanner BWS, X --> used as "effective aperture" if beam was not observed smaller than this limit
+        y_max_at_WS : float
+            physical aperture limit at horizontal wire scanner BWS, Y --> used as "effective aperture" if beam was not observed smaller than this limit 
         nturns_profile_accumulation_interval : int
             turn interval between which to aggregate transverse and longitudinal particles for histogram
         nbins : int
@@ -295,8 +301,10 @@ class SPS_Flat_Bottom_Tracker:
         line.unfreeze() # if you had already build the tracker
         line.append_element(element=xt.LongitudinalLimitRect(min_zeta=-bucket_length/2, max_zeta=bucket_length/2), name='long_limit')
         
-        # Create horizontal beam monitor
+        ### Beam monitors - to imitate wire scanners ###
         if install_beam_monitors:
+            
+            # Create horizontal beam monitor
             monitorH = xt.BeamProfileMonitor(
                 start_at_turn=nturns_profile_accumulation_interval/2, stop_at_turn=self.num_turns,
                 frev=1,
@@ -315,6 +323,16 @@ class SPS_Flat_Bottom_Tracker:
                 x_range=0.07,
                 y_range=0.07)
             line.insert_element(index='bwsrc.41677', element=monitorV, name='monitorV')
+            
+            # Also add rectangular collimator element, if beam size above certain limit was not observed
+            if x_max_at_WS is not None:
+                ws_effective_aperture_X = xt.LimitRect(min_x=-x_max_at_WS, max_x=x_max_at_WS)
+                line.insert_element(index='bwsrc.51637', element=ws_effective_aperture_X, name='ws_effective_aperture_X')
+                
+            # Also add a collimator element of given size
+            if y_max_at_WS is not None:
+                ws_effective_aperture_X = xt.LimitRect(min_y=-y_max_at_WS, max_y=y_max_at_WS)
+                line.insert_element(index='bwsrc.41677', element=ws_effective_aperture_X, name='ws_effective_aperture_Y')
 
             #### SPACE CHARGE sigma update, if desired ####
             # Also insert beam profile monitors at the start, at location s = 0 with lowest dispersion
