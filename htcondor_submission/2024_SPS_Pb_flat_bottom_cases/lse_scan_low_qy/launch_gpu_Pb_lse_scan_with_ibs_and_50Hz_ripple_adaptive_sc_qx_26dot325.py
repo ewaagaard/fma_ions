@@ -58,6 +58,6 @@ for i, script in enumerate(script_names):
     print(f"Submitting {file_name}")
     sub.submit_GPU(file_name, master_job_name=master_job_name, job_name=folder_names[i])
 sub.copy_master_plot_script(folder_names, string_array)
-sub.copy_plot_script_emittances_for_scan(master_name, folder_names, scan_array_for_x_axis='np.array([0.0, 0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1.0, 1.5, 2.0, 2.5])',
+sub.copy_plot_script_emittances_for_scan(master_name, folder_names, scan_array_for_x_axis='np.arange(0, 5.5, 0.5)',
                                              label_for_x_axis='LSE [I]', 
                                              extra_text_string='$Q_{x, y}$ = 26.325, 26.10 - q-Gaussian beam\n Frozen SC, 10% $\\beta$-beat + non-linear magnet errors\nLSE excitation')
