@@ -11,7 +11,7 @@ import datetime
 dir_path = pathlib.Path(__file__).parent.absolute()
 
 # Define run files and which parameters to change
-master_name = 'Q26_Pb_ions_Qy_scan_ibs_50_Hz_ripple'
+master_name = 'Q26_Pb_ions_Qy_scan_ibs_50_Hz_ripple_effective_aperture'
 num_turns = 130_000 # corresponds to 3s for SPS ions at flat bottom
 Qx = 26.31
 Qy_range = np.arange(26.10, 26.26, 0.01)
