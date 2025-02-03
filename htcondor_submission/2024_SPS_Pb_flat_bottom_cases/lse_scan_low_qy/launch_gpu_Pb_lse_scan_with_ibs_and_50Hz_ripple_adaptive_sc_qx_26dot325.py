@@ -12,7 +12,7 @@ dir_path = pathlib.Path(__file__).parent.absolute()
 
 # Define run files and which parameters to change
 master_name = 'launch_gpu_Pb_lse_scan_with_ibs_and_50Hz_ripple_adaptive_sc_qx_26dot325'
-LSE_strengths = np.arange(0, 5.5, 0.5)
+LSE_strengths = np.arange(0, 11.5, 2.0)
 num_turns = 130_000 # corresponds to 3s for SPS ions at flat bottom
 Qx = 26.325
 Qy = 26.10
