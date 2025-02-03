@@ -223,6 +223,7 @@ sps.plot_multiple_sets_of_tracking_data(output_str_array=folder_names, string_ar
         plot_file = open('plot_emittances_and_Nb_from_scan.py','w')
         plot_file.write(        
         f'''import fma_ions
+import numpy as np
 sps = fma_ions.SPS_Plotting()
 sps.fit_and_plot_transverse_profiles(scan_array_for_x_axis='{scan_array_for_x_axis}', 
                                         label_for_x_axis='{label_for_x_axis}',
