@@ -97,6 +97,7 @@ class SPS_Flat_Bottom_Tracker:
                   install_SC_on_line=True, 
                   SC_mode='frozen',
                   SC_adaptive_interval_during_tracking=None,
+                  adjust_integral_for_SC_adaptive_interval_during_tracking=False,
                   distribution_type='gaussian',
                   add_tune_ripple=False,
                   kqf_amplitudes = np.array([9.7892e-7]),
@@ -148,6 +149,9 @@ class SPS_Flat_Bottom_Tracker:
             type of space charge - 'frozen' (recommended), 'quasi-frozen' or 'PIC'
         SC_adaptive_interval_during_tracking : int
             if not None, interval between which frozen space charge element lengths are adjusted according to bunch intensity
+        adjust_integral_for_SC_adaptive_interval_during_tracking : bool
+            if adaptive space charge is used, boolean decides whether to adjust the space charge element length (and strength) 
+            from comparing the integral of the fit vs the integral of the distribution 
         distribution_type : str
             'gaussian' or 'qgaussian' or 'parabolic' or 'binomial': particle distribution for tracking
         add_tune_ripple : bool
@@ -335,6 +339,7 @@ class SPS_Flat_Bottom_Tracker:
                 line.insert_element(index='bwsrc.41677', element=ws_effective_aperture_X, name='ws_effective_aperture_Y')
 
             #### SPACE CHARGE sigma update, if desired ####
+            # Need to build this element before rebuilding the tracker
             # Also insert beam profile monitors at the start, at location s = 0 with lowest dispersion
             if SC_adaptive_interval_during_tracking:
                 monitor0 = xt.BeamProfileMonitor(
@@ -547,17 +552,53 @@ class SPS_Flat_Bottom_Tracker:
                 except ValueError:
                     print('Could not fit beam profiles!')
                     
-                
+                # Check if integral of fit and of Gaussian fit disagree
+                # Compare integral of normalized profile vs normalized Gaussian
+                if adjust_integral_for_SC_adaptive_interval_during_tracking:
+                    x_space = monitor0.x_grid.copy()
+                    y_space = monitor0.y_grid.copy()
+                    x_norm_profile = monitor0.x_intensity[sc_monitor_counter] / np.max(monitor0.x_intensity[sc_monitor_counter])
+                    y_norm_profile = monitor0.y_intensity[sc_monitor_counter] / np.max(monitor0.y_intensity[sc_monitor_counter])
+                    
+                    # Find parameters of normalized Gaussian
+                    popt_X_norm = popt_X.copy()
+                    popt_Y_norm = popt_X.copy()
+                    popt_X_norm[0] = 1.0
+                    popt_Y_norm[0] = 1.0
+                    
+                    # Compute numerical trapezoid integrals
+                    int_X_norm_profile = np.trapz(x_space, x_norm_profile)
+                    int_Y_norm_profile = np.trapz(y_space, y_norm_profile)
+                    int_X_fit = np.trapz(x_space, fits.Gaussian(x_space, *popt_X_norm))
+                    int_Y_fit = np.trapz(y_space, fits.Gaussian(y_space, *popt_Y_norm))
+                    
+                    ratioX = int_X_norm_profile/ int_X_fit
+                    ratioY = int_Y_norm_profile / int_Y_fit
+                    
+                    print('\nAdaptive space charge integral relaitve ratio profile vs fit: ratio X = {:.3e}, ratio Y = {:.3e}')
+                    
+                    # First adjusting only according to Y profiles
+                    norm_int_factor = ratioY if ratioY < 0.95 else 1.0
+            
+                    
+                # Scale length with bunch intensity
                 transmission = tbt.Nb[turn-1] / tbt.Nb[0]
                 for ii, ee in enumerate(line.elements):
                     if isinstance(ee, xf.SpaceChargeBiGaussian):
-                        # Scale length with bunch intensity
-                        ee.length = transmission*ee0_length
+                        
+                        if adjust_integral_for_SC_adaptive_interval_during_tracking:
+                            ee.length = transmission*ee0_length*norm_int_factor
+                        else:
+                            ee.length = transmission*ee0_length
 
                 # Also print adjustment if desired
                 if turn % self.turn_print_interval == 0:
                     print('Updating space charge element parameters. Fitting beam Profile index: {} out of {}'.format(sc_monitor_counter, len(monitor0.x_intensity)))
-                    print('Re-adjusted SC element length by {:.4f}\nFirst SC element beam sizes:\nsigma_x = {:.5f}m \nsigma_y = {:.5f} m\n'.format(transmission, sigma_X_sc_elements[0], 
+                    if adjust_integral_for_SC_adaptive_interval_during_tracking:
+                        print('Re-adjusted SC element length by {:.4f} * {:.4} [transmission*ratio normalized profile vs norm. Gaussian]\nFirst SC element beam sizes:\nsigma_x = {:.5f}m \nsigma_y = {:.5f} m\n'.format(transmission, norm_int_factor, sigma_X_sc_elements[0], 
+                                                                                                                                                   sigma_Y_sc_elements[0]))
+                    else:
+                        print('Re-adjusted SC element length by {:.4f}\nFirst SC element beam sizes:\nsigma_x = {:.5f}m \nsigma_y = {:.5f} m\n'.format(transmission, sigma_X_sc_elements[0], 
                                                                                                                                                    sigma_Y_sc_elements[0]))
             # Set counter to correct values for X and Y profile monitor for space charge
             if (turn+1) % nturns_profile_accumulation_interval == 0 and SC_adaptive_interval_during_tracking is not None and turn>100:
