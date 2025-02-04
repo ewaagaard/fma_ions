@@ -555,30 +555,39 @@ class SPS_Flat_Bottom_Tracker:
                 # Check if integral of fit and of Gaussian fit disagree
                 # Compare integral of normalized profile vs normalized Gaussian
                 if adjust_integral_for_SC_adaptive_interval_during_tracking:
+                
+                    #fig0, ax0 = plt.subplots(1, 2, figsize=(8, 6), sharey=True, constrained_layout=True)
+                    
                     x_space = monitor0.x_grid.copy()
                     y_space = monitor0.y_grid.copy()
                     x_norm_profile = monitor0.x_intensity[sc_monitor_counter] / np.max(monitor0.x_intensity[sc_monitor_counter])
                     y_norm_profile = monitor0.y_intensity[sc_monitor_counter] / np.max(monitor0.y_intensity[sc_monitor_counter])
                     
-                    # Find parameters of normalized Gaussian
-                    popt_X_norm = popt_X.copy()
-                    popt_Y_norm = popt_X.copy()
-                    popt_X_norm[0] = 1.0
-                    popt_Y_norm[0] = 1.0
-                    
                     # Compute numerical trapezoid integrals
                     int_X_norm_profile = np.trapz(x_space, x_norm_profile)
                     int_Y_norm_profile = np.trapz(y_space, y_norm_profile)
-                    int_X_fit = np.trapz(x_space, fits.Gaussian(x_space, *popt_X_norm))
-                    int_Y_fit = np.trapz(y_space, fits.Gaussian(y_space, *popt_Y_norm))
+                    int_X_fit = np.trapz(x_space, fits.Gaussian(x_space, *popt_X))
+                    int_Y_fit = np.trapz(y_space, fits.Gaussian(y_space, *popt_Y))
                     
-                    ratioX = int_X_norm_profile/ int_X_fit
-                    ratioY = int_Y_norm_profile / int_Y_fit
+                    ratioX = int_X_fit / int_X_norm_profile
+                    ratioY = int_Y_fit / int_Y_norm_profile
                     
-                    print('\nAdaptive space charge integral relaitve ratio profile vs fit: ratio X = {:.3e}, ratio Y = {:.3e}')
+                    print('\nAdaptive space charge integral relaitve ratio fit vs profile: ratio X = {:.3e}, ratio Y = {:.3e}'.format(ratioX, ratioY))
+                    
+                    """
+                    ax0[0].plot(x_space, x_norm_profile, color='b')
+                    ax0[0].plot(x_space, fits.Gaussian(x_space, *popt_X), color='limegreen', ls='--')
+                    ax0[1].plot(y_space, y_norm_profile, color='b')
+                    ax0[1].plot(y_space, fits.Gaussian(y_space, *popt_Y), color='limegreen', ls='--')
+                    ax0[0].set_ylabel('Norm. counts')
+                    ax0[0].set_xlabel('x [m]')
+                    ax0[1].set_xlabel('y [m]')
+                    plt.show()
+                    del fig0, ax0
+                    """
                     
                     # First adjusting only according to Y profiles
-                    norm_int_factor = ratioY if ratioY < 0.95 else 1.0
+                    norm_int_factor = ratioY #if ratioY < 0.95 else 1.0
             
                     
                 # Scale length with bunch intensity
@@ -595,7 +604,7 @@ class SPS_Flat_Bottom_Tracker:
                 if turn % self.turn_print_interval == 0:
                     print('Updating space charge element parameters. Fitting beam Profile index: {} out of {}'.format(sc_monitor_counter, len(monitor0.x_intensity)))
                     if adjust_integral_for_SC_adaptive_interval_during_tracking:
-                        print('Re-adjusted SC element length by {:.4f} * {:.4} [transmission*ratio normalized profile vs norm. Gaussian]\nFirst SC element beam sizes:\nsigma_x = {:.5f}m \nsigma_y = {:.5f} m\n'.format(transmission, norm_int_factor, sigma_X_sc_elements[0], 
+                        print('Re-adjusted SC element length by {:.4f} * {:.4f} [transmission*ratio normalized profile vs norm. Gaussian]\nFirst SC element beam sizes:\nsigma_x = {:.5f}m \nsigma_y = {:.5f} m\n'.format(transmission, norm_int_factor, sigma_X_sc_elements[0], 
                                                                                                                                                    sigma_Y_sc_elements[0]))
                     else:
                         print('Re-adjusted SC element length by {:.4f}\nFirst SC element beam sizes:\nsigma_x = {:.5f}m \nsigma_y = {:.5f} m\n'.format(transmission, sigma_X_sc_elements[0], 
