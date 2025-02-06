@@ -14,7 +14,7 @@ class Submitter:
                    master_job_name = None,
                    job_name = None,
                    nr_of_CPUs_to_request : int = 8,
-                   change_to_best_node : bool = True,
+                   change_to_best_node : bool = False,
                    copy_plot_scripts_to_output : bool = True,
                    output_format : str = 'json'
                    ):

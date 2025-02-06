@@ -556,7 +556,7 @@ class SPS_Flat_Bottom_Tracker:
                 # Compare integral of normalized profile vs normalized Gaussian
                 if adjust_integral_for_SC_adaptive_interval_during_tracking:
                 
-                    #fig0, ax0 = plt.subplots(1, 2, figsize=(8, 6), sharey=True, constrained_layout=True)
+                    #fig0, ax0 = plt.subplots(1, 2, figsize=(9, 6), sharey=True, constrained_layout=True)
                     
                     x_space = monitor0.x_grid.copy()
                     y_space = monitor0.y_grid.copy()
