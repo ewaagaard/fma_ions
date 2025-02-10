@@ -11,8 +11,8 @@ import datetime
 dir_path = pathlib.Path(__file__).parent.absolute()
 
 # Define run files and which parameters to change
-master_name = 'Q26_Pb_ions_bunch_intensity_scan_adaptive_sc_ibs_with_50Hz_ripple'
-num_turns = 300_000 # corresponds to about 6 s for SPS ions at flat bottom
+master_name = 'Q26_Pb_ions_bunch_intensity_scan_adaptive_sc_ibs_with_50Hz_ripple_130k_turns_effective_aperture'
+num_turns = 130_000 # corresponds to about 6 s for SPS ions at flat bottom
 Qy = 26.19
 Qx = 26.31
 
