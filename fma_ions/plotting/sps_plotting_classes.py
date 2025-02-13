@@ -641,6 +641,7 @@ class SPS_Plotting:
 
                 # Plot measured profiles if desired
                 if load_measured_profiles:
+                    print('\nTry to open: "measured_output_bws/X_average_bws_profiles_{}_{:.2f}.npy'.format(x_axis_quantity, scan_array_for_x_axis[i]))
                     try: 
                         with open('measured_output_bws/X_average_bws_profiles_{}_{:.2f}.npy'.format(x_axis_quantity, scan_array_for_x_axis[i]), 'rb') as f:
                             x_pos = np.load(f)
