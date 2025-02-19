@@ -232,7 +232,8 @@ class Tune_Ripple_SPS:
         return kqf_vals, kqd_vals, turns
         
       
-    def find_k_from_xtrack_matching(self, dq=0.05, nr_matches=10, use_symmetric_lattice=False, plane='both', show_plot=False):
+    def find_k_from_xtrack_matching(self, dq=0.05, nr_matches=10, use_symmetric_lattice=False, plane='both', show_plot=False,
+                                    proton_optics='q26'):
         """
         Find desired tune amplitude modulation dQx or dQy by matching the global
         variable kqf and kqd
@@ -258,7 +259,7 @@ class Tune_Ripple_SPS:
             range over turns the amplitude modulation corresponds to 
         """
         # Load Xsuite line with deferred expressions from MADx
-        sps = SPS_sequence_maker(qx0=self.qx0, qy0=self.qy0)
+        sps = SPS_sequence_maker(qx0=self.qx0, qy0=self.qy0, proton_optics=proton_optics)
         
         if use_symmetric_lattice:
             line, twiss = sps.load_SPS_line_with_deferred_madx_expressions(use_symmetric_lattice=use_symmetric_lattice)
