@@ -61,6 +61,6 @@ for i, script in enumerate(script_names):
     sub.submit_GPU(file_name, master_job_name=master_job_name, job_name=folder_names[i])
 sub.copy_master_plot_script(folder_names, string_array)
 sub.copy_plot_script_emittances_for_scan(master_name, folder_names, 
-                                         scan_array_for_x_axis='np.hstack((np.arange(10., 100., 10), np.arange(100., 600., 50), np.arange(600., 1200., 100))).ravel()',
+                                         scan_array_for_x_axis='np.hstack((np.arange(10., 100., 10), np.arange(100., 600., 50), np.arange(600., 1201., 100))).ravel()',
                                              label_for_x_axis='Ripple frequency [Hz]', 
                                              extra_text_string='$Q_{x, y}$ = 26.31, 26.19 - q-Gaussian beam\nAdaptive SC, IBS, ~10% $\\beta$-beat + non-linear magnet errors')
