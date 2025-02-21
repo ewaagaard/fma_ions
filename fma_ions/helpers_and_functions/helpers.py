@@ -61,6 +61,7 @@ class Records:
     particles_f: dict
     includes_profile_data: bool = False
     includes_seconds_array: bool = False
+    includes_centroid_array: bool = False
 
     def update_at_turn(self, turn: int, parts: xp.Particles, twiss: xt.TwissTable):
         """Automatically update the records at given turn from the xpart.Particles."""
@@ -144,6 +145,15 @@ class Records:
 
         self.includes_profile_data = True
         self.includes_seconds_array = True if seconds_array is not None else False
+        
+        
+    def append_centroid_data(self, X_data : np.ndarray, Y_data : np.ndarray):
+        """
+        Append X and Y centroid data to object
+        """
+        self.X_data = X_data.tolist()
+        self.Y_data = Y_data.tolist()
+        self.includes_centroid_array = True
 
 
     def to_dict(self, convert_to_numpy=True):
@@ -176,6 +186,9 @@ class Records:
                 data['delta_bin_heights'] = self.delta_bin_heights                
         if self.includes_seconds_array:
             data['Seconds'] = self.seconds_array
+        if self.includes_centroid_array:
+            data['X_data'] = self.X_data
+            data['Y_data'] = self.Y_data
 
         # Convert lists to numpy arrays if desired
         if convert_to_numpy:

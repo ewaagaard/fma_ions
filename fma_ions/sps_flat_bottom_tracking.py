@@ -105,6 +105,7 @@ class SPS_Flat_Bottom_Tracker:
                   kqf_phases=np.array([0.5564486]), 
                   kqd_phases=np.array([0.47329223]),
                   ripple_freqs=np.array([50.]),
+                  kick_beam=False,
                   apply_kinetic_IBS_kicks=False,
                   harmonic_nb = 4653,
                   ibs_step = 5000,
@@ -168,6 +169,8 @@ class SPS_Flat_Bottom_Tracker:
             ripple phases for desired frequencies of kqd --> obtained from normalized FFT spectrum of IQD and IQF. 
         ripple_freqs : np.ndarray
             array with desired ripple frequencies in Hz
+        kick_beam : bool
+            whether to add initial offset in X and Y to all particles 
         add_kinetic_IBS_kicks : bool
             whether to apply kinetic kicks from xibs 
         harmonic_nb : int
@@ -361,6 +364,17 @@ class SPS_Flat_Bottom_Tracker:
         particles = self.generate_particles(line=line, context=context, distribution_type=distribution_type,
                                             beamParams=beamParams, scale_factor_Qs=scale_factor_Qs, 
                                             matched_for_PS_extraction=matched_for_PS_extraction)
+        
+        # Kick beam if desired, by 1 mm.
+        if kick_beam:
+            particles.x += 1e-3
+            particles.y += 1e-3
+            
+            # Empty arrays to store data
+            X_data = np.zeros(self.num_turns)
+            Y_data = np.zeros(self.num_turns)
+            X_data[0] = np.mean(particles.x)
+            Y_data[0] = np.mean(particles.y)
         
         # Initialize the dataclasses and store the initial values
         tbt = Records.init_zeroes(self.num_turns)  # only emittances and bunch intensity
@@ -622,6 +636,11 @@ class SPS_Flat_Bottom_Tracker:
             # ----- Track and update records for tracked particles ----- #
             line.track(particles, num_turns=1)
 
+            # If beam is kicked, append the TBT data
+            if kick_beam:
+                X_data[turn] = np.mean(particles.x)
+                Y_data[turn] = np.mean(particles.y)
+
             # Update TBT, and save zetas
             tbt.update_at_turn(turn, particles, twiss)
             if install_beam_monitors:
@@ -656,6 +675,10 @@ class SPS_Flat_Bottom_Tracker:
         
         # Append final particle state
         tbt.store_final_particles(particles)
+        
+        # Append TBT data if beam was kicked
+        if kick_beam:
+            tbt.append_centroid_data(X_data, Y_data)
             
         return tbt
 
