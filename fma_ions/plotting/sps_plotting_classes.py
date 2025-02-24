@@ -608,204 +608,237 @@ class SPS_Plotting:
         Nb = np.zeros([2, len(output_str_array)])
         transmission = np.zeros(len(output_str_array))
         all_loss_strings = ''
-
-        # Load dictionary and append values
-        for i, output_folder in enumerate(output_str_array):
-            self.output_folder = output_folder
-            scan_string = '{} = {:.2f}'.format(label_for_x_axis, scan_array_for_x_axis[i])
-            try:
-                tbt_dict = self.load_records_dict_from_json(output_folder=output_folder)
-
-                particles_f = tbt_dict['particles_f']
-                twiss = tbt_dict['twiss']
-                df_twiss = pd.DataFrame(twiss)
-                
-                fig_phase_space, fig01_phase_space, fig1_phase_space, fig2_lost_at_turn, fig3_lost_at_s, loss_string = self.plot_normalized_phase_space_from_tbt(particles_f,
-                                                                                      extra_text_string=scan_string, df_twiss=df_twiss)
-                fig_phase_space.savefig('output_transverse/losses/Norm_phase_space_{}.png'.format(output_folder), dpi=250)
-                fig01_phase_space.savefig('output_transverse/losses/x_y_phase_space_{}.png'.format(output_folder), dpi=250)
-                fig1_phase_space.savefig('output_transverse/losses/X_Y_norm_phase_space_{}.png'.format(output_folder), dpi=250)
-                fig2_lost_at_turn.savefig('output_transverse/losses/Lost_at_turn_{}.png'.format(output_folder), dpi=250)
-                fig3_lost_at_s.savefig('output_transverse/losses/Lost_at_s_{}.png'.format(output_folder), dpi=250)
-                del fig_phase_space, fig2_lost_at_turn, fig3_lost_at_s
-                all_loss_strings += '\n{}\n{}'.format(scan_string, loss_string)
-
-                # Initial emittances and bunch intensities
-                exn[0, i] =  tbt_dict['exn'][0]
-                eyn[0, i] =  tbt_dict['eyn'][0]
-                Nb[0, i]  =  tbt_dict['Nb'][0] # initial
-                                
-                # Plot simulated particle profile
-                fig, ax = plt.subplots(1, 1, figsize = (8, 6), constrained_layout=True)
-                fig2, ax2 = plt.subplots(1, 1, figsize = (8, 6), constrained_layout=True)
-
-                # Plot measured profiles if desired
-                if load_measured_profiles:
-                    print('\nTry to open: "measured_output_bws/X_average_bws_profiles_{}_{:.2f}.npy'.format(x_axis_quantity, scan_array_for_x_axis[i]))
-                    try: 
-                        with open('measured_output_bws/X_average_bws_profiles_{}_{:.2f}.npy'.format(x_axis_quantity, scan_array_for_x_axis[i]), 'rb') as f:
-                            x_pos = np.load(f)
-                            x_prof_avg = np.load(f)
-
-                        # Convert to m, normalize height
-                        x_pos *= 1e-3
-                        x_measured_bin_heights_sorted = np.array(sorted(x_prof_avg, reverse=True))
-                        x_measured_height_max_avg = np.mean(x_measured_bin_heights_sorted[:5]) # take average of top 3 values
-                        x_prof_avg_norm = x_prof_avg / x_measured_height_max_avg
-
-                        # Fit Gaussian, center the profile and re-adjust heights
-                        popt_X_meas, _ = fits.fit_Gaussian(x_pos, x_prof_avg_norm, p0=(1.0, 0.0, 0.02))
-                        x_pos -= popt_X_meas[1]
-                        x_prof_avg_norm /= popt_X_meas[0]
-                        ax.plot(x_pos, x_prof_avg_norm, ls='-', color='blue', label='Measured BWS')
-
-                    except FileNotFoundError:
-                        print('Could not open measured X BWS profile')
-
-                    try: 
-                        with open('measured_output_bws/Y_average_bws_profiles_{}_{:.2f}.npy'.format(x_axis_quantity, scan_array_for_x_axis[i]), 'rb') as f:
-                            y_pos = np.load(f)
-                            y_prof_avg = np.load(f)
-
-                        # Convert to m, normalize height
-                        y_pos *= 1e-3
-                        y_measured_bin_heights_sorted = np.array(sorted(y_prof_avg, reverse=True))
-                        y_measured_height_max_avg = np.mean(y_measured_bin_heights_sorted[:5]) # take average of top 3 values
-                        y_prof_avg_norm = y_prof_avg / y_measured_height_max_avg
-                        # Fit Gaussian, center the profile and re-adjust heights
-                        popt_Y_meas, _ = fits.fit_Gaussian(y_pos, y_prof_avg_norm, p0=(1.0, 0.0, 0.02))
-                        y_pos -= popt_Y_meas[1]
-                        y_prof_avg_norm /= popt_Y_meas[0]
-                        ax2.plot(y_pos, y_prof_avg_norm, ls='-', color='blue', label='Measured BWS')
-                    except FileNotFoundError:
-                        print('Could not open measured Y BWS profile')
-
-                # Select index to plot, e.g last set of 100 turns
-                index_to_plot = [0, -1] #[-1] #
-                plot_str = ['Simulated first 100 turns', 'Simulated last 100 turns'] #['Simulated, last 100 turns']
-                colors = ['blue', 'orange']
-
-                for j, ind in enumerate(index_to_plot):
-                    # Normalize bin heights
-                    x_bin_heights_sorted = np.array(sorted(tbt_dict['monitorH_x_intensity'][ind], reverse=True))
-                    x_height_max_avg = np.mean(x_bin_heights_sorted[:3]) # take average of top 3 values
-                    X_pos_data = tbt_dict['monitorH_x_grid']
-                    if ind == 0:
-                        X0_profile_data = tbt_dict['monitorH_x_intensity'][ind] / x_height_max_avg
-                    else:
-                        X_profile_data = tbt_dict['monitorH_x_intensity'][ind] / x_height_max_avg
-                        ax.plot(X_pos_data, X_profile_data, label=plot_str[j], color=colors[j])
-                
-                ax.set_xlabel('x [m]')
-                ax.set_ylabel('Normalized counts')
-                ax.set_ylim(0, 1.1)
-                ax.text(0.02, 0.05, '{} = {:.2f}'.format(label_for_x_axis, scan_array_for_x_axis[i]), transform=ax.transAxes, fontsize=10.8)
-
-                # Plot profile of particles
-                for j, ind in enumerate(index_to_plot):
-                    # Normalize bin heights
-                    y_bin_heights_sorted = np.array(sorted(tbt_dict['monitorV_y_intensity'][ind], reverse=True))
-                    y_height_max_avg = np.mean(y_bin_heights_sorted[:3]) # take average of top 3 values
-                    Y_pos_data = tbt_dict['monitorV_y_grid']
-                    if ind == 0:
-                        Y0_profile_data = tbt_dict['monitorV_y_intensity'][ind] / y_height_max_avg ### if changes fast, take particle histogram instead
-                        #particles_i = tbt_dict['particles_i']
-                    else:
-                        Y_profile_data = tbt_dict['monitorV_y_intensity'][ind] / y_height_max_avg
-                        ax2.plot(Y_pos_data, Y_profile_data, label=plot_str[j], color=colors[j])
-                
-                ax2.set_ylabel('Normalized counts')
-                ax2.set_xlabel('y [m]')
-                ax2.set_ylim(0, 1.1)
-                ax2.text(0.02, 0.05, '{} = {:.2f}'.format(label_for_x_axis, scan_array_for_x_axis[i]), transform=ax2.transAxes, fontsize=10.8)
-
-                # Fit Gaussian for the emittance
-                popt_X, pcov_X = fits.fit_Gaussian(X_pos_data, X_profile_data, p0=(1.0, 0.0, 0.02))
-                popt_Y, pcov_Y = fits.fit_Gaussian(Y_pos_data, Y_profile_data, p0=(1.0, 0.0, 0.02))
-                sigma_raw_X = np.abs(popt_X[2])
-                sigma_raw_Y = np.abs(popt_Y[2])
-
-                ### Convert beam sizes to emittances ###
-                part = tbt_dict['particles_i']
-                gamma = part['gamma0'][0]
-                beta_rel = part['beta0'][0]
-
-                # Fit q-Gaussian to final X and Y profiles, to latest curves - initial guess from Gaussian
-                q0 = 1.02
-                p0_qX = [popt_X[1], q0, 1/popt_X[2]**2/(5-3*q0), 2*popt_X[0]]
-                p0_qY = [popt_Y[1], q0, 1/popt_Y[2]**2/(5-3*q0), 2*popt_Y[0]]
-
-                popt_Q_X0, pcov_Q_X0 = fits.fit_Q_Gaussian(X_pos_data, X0_profile_data, p0=p0_qX)
-                q0_vals_X[i] = popt_Q_X0[1]
-                q0_errors_X[i] = np.sqrt(np.diag(pcov_Q_X0))[1] # error from covarance_matrix
-
-                popt_Q_X, pcov_Q_X = fits.fit_Q_Gaussian(X_pos_data, X_profile_data, p0=p0_qX)
-                q_vals_X[i] = popt_Q_X[1]
-                q_errors_X[i] = np.sqrt(np.diag(pcov_Q_X))[1] # error from covarance_matrix
-                sigmas_q_gaussian_X[i] = fits.get_sigma_RMS_from_qGaussian_fit(popt_Q_X)
-
-                popt_Q_Y, pcov_Q_Y = fits.fit_Q_Gaussian(Y_pos_data, Y_profile_data, p0=p0_qY)
-                q_vals_Y[i] = popt_Q_Y[1]
-                q_errors_Y[i] = np.sqrt(np.diag(pcov_Q_Y))[1] # error from covarance_matrix
-                
-                popt_Q_Y0, pcov_Q_Y0 = fits.fit_Q_Gaussian(Y_pos_data, Y0_profile_data, p0=p0_qY)
-                q0_vals_Y[i] = popt_Q_Y0[1]
-                q0_errors_Y[i] = np.sqrt(np.diag(pcov_Q_Y0))[1] # error from covarance_matrix
-                
-                sigmas_q_gaussian_Y[i] = fits.get_sigma_RMS_from_qGaussian_fit(popt_Q_Y)
-                
-                # Extract optics at Wire Scanner, correct for dispersion
-                betx, bety, dx = self.optics_at_WS()
-                dpp = 1e-3
-                sigmaX_raw_for_betatronic = sigma_raw_X # sigmas_q_gaussian_X[i]
-                sigmaX_betatronic = np.sqrt((sigmaX_raw_for_betatronic)**2 - (dpp * dx)**2)
-                exf = sigmaX_betatronic**2 / betx
-
-                sigmaY_raw_for_betatronic = sigma_raw_Y # sigmas_q_gaussian_Y[i]
-                sigmaY_betatronic = np.abs(sigmaY_raw_for_betatronic) # no vertical dispersion
-                eyf = sigmaY_betatronic**2 / bety
-                exn[1, i] =  exf * beta_rel * gamma 
-                eyn[1, i] =  eyf * beta_rel * gamma 
-                Nb[1, i]  =  tbt_dict['Nb'][-1] # final
-                transmission[i] = Nb[1, i]/Nb[0, i]
-
-                print('X final profile: sigma = {:.3f} mm\nX q-Gaussian fit q={:.3f} +/- {:.2f}, sigma_RMS = {:.3f} mm'.format(sigma_raw_X*1e3, q_vals_X[i], q_errors_X[i], 1e3*sigmas_q_gaussian_X[i]))
-                print('Y final profile: sigma = {:.3f} mm\nY q-Gaussian fit q={:.3f} +/- {:.2f}, sigma_RMS = {:.3f} mm'.format(sigma_raw_Y*1e3, q_vals_Y[i], q_errors_Y[i], 1e3*sigmas_q_gaussian_Y[i]))
-
-                print('exn = {:.3e}, eyn = {:.3e}'.format(exn[1, i], eyn[1, i]))
-                print('Transmission = {:3f}\n'.format(transmission[i]))
-
-
-                # Add q-Gaussian fits to plots and save 
-                #ax.text(0.02, 0.65, 'Final simulated:\n$\epsilon_{{x}}^n$ = {:.3f} $\mu$m rad'.format(1e6 * exn[1, i], 1e6), fontsize=12.5, transform=ax.transAxes)
-                #ax2.text(0.02, 0.65, 'Final simulated\n$\epsilon_{{y}}^n$ = {:.3f} $\mu$m rad'.format(1e6 * eyn[1, i]), fontsize=12.5, transform=ax2.transAxes)
-
-                ax.plot(X_pos_data, fits.Q_Gaussian(X_pos_data, *popt_Q_X), ls='--', color='lime', label='q-Gaussian fit final\nsimulated profiles')
-                ax2.plot(Y_pos_data, fits.Q_Gaussian(Y_pos_data, *popt_Q_Y), ls='--', color='lime', label='q-Gaussian fit final\nsimulated profiles')
-                ax.legend(loc='upper left', fontsize=11.5)
-                ax2.legend(loc='upper left', fontsize=11.5)
-                fig.savefig('output_transverse/X_profiles/{}_SPS_X_Beam_Profile_WS.png'.format(output_folder), dpi=250)
-                fig2.savefig('output_transverse/Y_profiles/{}_SPS_Y_Beam_Profile_WS.png'.format(output_folder), dpi=250)
-                plt.close()
-
-
-            except FileNotFoundError:
-                print('Could not find values in {}!\n'.format(output_folder))
-                exn[0, i] = np.nan
-                exn[1, i] = np.nan
-                eyn[0, i] = np.nan
-                eyn[1, i] = np.nan
-                Nb[0, i] = np.nan
-                Nb[1, i] = np.nan
-                q_vals_X[i] = np.nan
-                q_vals_Y[i] = np.nan
-                q0_vals_X[i] = np.nan
-                q0_vals_Y[i] = np.nan
-                transmission[i] = np.nan
         
-        # Save loss string to txt tile
-        with open('output_transverse/large_losses.txt', 'w') as file:
-            file.write(all_loss_strings)
+        # Load values if already processed
+        try:
+            with open('output_transverse/simulated_emittances_transmissions_and_qvalues.npy', 'rb') as f:
+                scan_array_for_x_axis = np.load(f)
+                exn[1, :] = np.load(f)
+                eyn[1, :] = np.load(f)
+                exn[0, :] = np.load(f)
+                eyn[0, :] = np.load(f)
+                transmission  = np.load(f)
+                q_vals_X  = np.load(f)
+                q_vals_Y  = np.load(f)
+                q_errors_X  = np.load(f)
+                q_errors_Y  = np.load(f)
+                
+            data_is_loaded = True
+        
+        except FileNotFoundError:
+            
+            data_is_loaded = False
+            
+            # Load dictionary and append values
+            for i, output_folder in enumerate(output_str_array):
+                self.output_folder = output_folder
+                scan_string = '{} = {:.2f}'.format(label_for_x_axis, scan_array_for_x_axis[i])
+                try:
+                    tbt_dict = self.load_records_dict_from_json(output_folder=output_folder)
+    
+                    particles_f = tbt_dict['particles_f']
+                    twiss = tbt_dict['twiss']
+                    df_twiss = pd.DataFrame(twiss)
+                    
+                    fig_phase_space, fig01_phase_space, fig1_phase_space, fig2_lost_at_turn, fig3_lost_at_s, loss_string = self.plot_normalized_phase_space_from_tbt(particles_f,
+                                                                                          extra_text_string=scan_string, df_twiss=df_twiss)
+                    fig_phase_space.savefig('output_transverse/losses/Norm_phase_space_{}.png'.format(output_folder), dpi=250)
+                    fig01_phase_space.savefig('output_transverse/losses/x_y_phase_space_{}.png'.format(output_folder), dpi=250)
+                    fig1_phase_space.savefig('output_transverse/losses/X_Y_norm_phase_space_{}.png'.format(output_folder), dpi=250)
+                    fig2_lost_at_turn.savefig('output_transverse/losses/Lost_at_turn_{}.png'.format(output_folder), dpi=250)
+                    fig3_lost_at_s.savefig('output_transverse/losses/Lost_at_s_{}.png'.format(output_folder), dpi=250)
+                    del fig_phase_space, fig2_lost_at_turn, fig3_lost_at_s
+                    all_loss_strings += '\n{}\n{}'.format(scan_string, loss_string)
+    
+                    # Initial emittances and bunch intensities
+                    exn[0, i] =  tbt_dict['exn'][0]
+                    eyn[0, i] =  tbt_dict['eyn'][0]
+                    Nb[0, i]  =  tbt_dict['Nb'][0] # initial
+                                    
+                    # Plot simulated particle profile
+                    fig, ax = plt.subplots(1, 1, figsize = (8, 6), constrained_layout=True)
+                    fig2, ax2 = plt.subplots(1, 1, figsize = (8, 6), constrained_layout=True)
+    
+                    # Plot measured profiles if desired
+                    if load_measured_profiles:
+                        print('\nTry to open: "measured_output_bws/X_average_bws_profiles_{}_{:.2f}.npy'.format(x_axis_quantity, scan_array_for_x_axis[i]))
+                        try: 
+                            with open('measured_output_bws/X_average_bws_profiles_{}_{:.2f}.npy'.format(x_axis_quantity, scan_array_for_x_axis[i]), 'rb') as f:
+                                x_pos = np.load(f)
+                                x_prof_avg = np.load(f)
+    
+                            # Convert to m, normalize height
+                            x_pos *= 1e-3
+                            x_measured_bin_heights_sorted = np.array(sorted(x_prof_avg, reverse=True))
+                            x_measured_height_max_avg = np.mean(x_measured_bin_heights_sorted[:5]) # take average of top 3 values
+                            x_prof_avg_norm = x_prof_avg / x_measured_height_max_avg
+    
+                            # Fit Gaussian, center the profile and re-adjust heights
+                            popt_X_meas, _ = fits.fit_Gaussian(x_pos, x_prof_avg_norm, p0=(1.0, 0.0, 0.02))
+                            x_pos -= popt_X_meas[1]
+                            x_prof_avg_norm /= popt_X_meas[0]
+                            ax.plot(x_pos, x_prof_avg_norm, ls='-', color='blue', label='Measured BWS')
+    
+                        except FileNotFoundError:
+                            print('Could not open measured X BWS profile')
+    
+                        try: 
+                            with open('measured_output_bws/Y_average_bws_profiles_{}_{:.2f}.npy'.format(x_axis_quantity, scan_array_for_x_axis[i]), 'rb') as f:
+                                y_pos = np.load(f)
+                                y_prof_avg = np.load(f)
+    
+                            # Convert to m, normalize height
+                            y_pos *= 1e-3
+                            y_measured_bin_heights_sorted = np.array(sorted(y_prof_avg, reverse=True))
+                            y_measured_height_max_avg = np.mean(y_measured_bin_heights_sorted[:5]) # take average of top 3 values
+                            y_prof_avg_norm = y_prof_avg / y_measured_height_max_avg
+                            # Fit Gaussian, center the profile and re-adjust heights
+                            popt_Y_meas, _ = fits.fit_Gaussian(y_pos, y_prof_avg_norm, p0=(1.0, 0.0, 0.02))
+                            y_pos -= popt_Y_meas[1]
+                            y_prof_avg_norm /= popt_Y_meas[0]
+                            ax2.plot(y_pos, y_prof_avg_norm, ls='-', color='blue', label='Measured BWS')
+                        except FileNotFoundError:
+                            print('Could not open measured Y BWS profile')
+    
+                    # Select index to plot, e.g last set of 100 turns
+                    index_to_plot = [0, -1] #[-1] #
+                    plot_str = ['Simulated first 100 turns', 'Simulated last 100 turns'] #['Simulated, last 100 turns']
+                    colors = ['blue', 'orange']
+    
+                    for j, ind in enumerate(index_to_plot):
+                        # Normalize bin heights
+                        x_bin_heights_sorted = np.array(sorted(tbt_dict['monitorH_x_intensity'][ind], reverse=True))
+                        x_height_max_avg = np.mean(x_bin_heights_sorted[:3]) # take average of top 3 values
+                        X_pos_data = tbt_dict['monitorH_x_grid']
+                        if ind == 0:
+                            X0_profile_data = tbt_dict['monitorH_x_intensity'][ind] / x_height_max_avg
+                        else:
+                            X_profile_data = tbt_dict['monitorH_x_intensity'][ind] / x_height_max_avg
+                            ax.plot(X_pos_data, X_profile_data, label=plot_str[j], color=colors[j])
+                    
+                    ax.set_xlabel('x [m]')
+                    ax.set_ylabel('Normalized counts')
+                    ax.set_ylim(0, 1.1)
+                    ax.text(0.02, 0.05, '{} = {:.2f}'.format(label_for_x_axis, scan_array_for_x_axis[i]), transform=ax.transAxes, fontsize=10.8)
+    
+                    # Plot profile of particles
+                    for j, ind in enumerate(index_to_plot):
+                        # Normalize bin heights
+                        y_bin_heights_sorted = np.array(sorted(tbt_dict['monitorV_y_intensity'][ind], reverse=True))
+                        y_height_max_avg = np.mean(y_bin_heights_sorted[:3]) # take average of top 3 values
+                        Y_pos_data = tbt_dict['monitorV_y_grid']
+                        if ind == 0:
+                            Y0_profile_data = tbt_dict['monitorV_y_intensity'][ind] / y_height_max_avg ### if changes fast, take particle histogram instead
+                            #particles_i = tbt_dict['particles_i']
+                        else:
+                            Y_profile_data = tbt_dict['monitorV_y_intensity'][ind] / y_height_max_avg
+                            ax2.plot(Y_pos_data, Y_profile_data, label=plot_str[j], color=colors[j])
+                    
+                    ax2.set_ylabel('Normalized counts')
+                    ax2.set_xlabel('y [m]')
+                    ax2.set_ylim(0, 1.1)
+                    ax2.text(0.02, 0.05, '{} = {:.2f}'.format(label_for_x_axis, scan_array_for_x_axis[i]), transform=ax2.transAxes, fontsize=10.8)
+    
+                    # Fit Gaussian for the emittance
+                    popt_X, pcov_X = fits.fit_Gaussian(X_pos_data, X_profile_data, p0=(1.0, 0.0, 0.02))
+                    popt_Y, pcov_Y = fits.fit_Gaussian(Y_pos_data, Y_profile_data, p0=(1.0, 0.0, 0.02))
+                    sigma_raw_X = np.abs(popt_X[2])
+                    sigma_raw_Y = np.abs(popt_Y[2])
+    
+                    ### Convert beam sizes to emittances ###
+                    part = tbt_dict['particles_i']
+                    gamma = part['gamma0'][0]
+                    beta_rel = part['beta0'][0]
+    
+                    # Fit q-Gaussian to final X and Y profiles, to latest curves - initial guess from Gaussian
+                    q0 = 1.02
+                    p0_qX = [popt_X[1], q0, 1/popt_X[2]**2/(5-3*q0), 2*popt_X[0]]
+                    p0_qY = [popt_Y[1], q0, 1/popt_Y[2]**2/(5-3*q0), 2*popt_Y[0]]
+    
+                    popt_Q_X0, pcov_Q_X0 = fits.fit_Q_Gaussian(X_pos_data, X0_profile_data, p0=p0_qX)
+                    q0_vals_X[i] = popt_Q_X0[1]
+                    q0_errors_X[i] = np.sqrt(np.diag(pcov_Q_X0))[1] # error from covarance_matrix
+    
+                    popt_Q_X, pcov_Q_X = fits.fit_Q_Gaussian(X_pos_data, X_profile_data, p0=p0_qX)
+                    q_vals_X[i] = popt_Q_X[1]
+                    q_errors_X[i] = np.sqrt(np.diag(pcov_Q_X))[1] # error from covarance_matrix
+                    sigmas_q_gaussian_X[i] = fits.get_sigma_RMS_from_qGaussian_fit(popt_Q_X)
+    
+                    popt_Q_Y, pcov_Q_Y = fits.fit_Q_Gaussian(Y_pos_data, Y_profile_data, p0=p0_qY)
+                    q_vals_Y[i] = popt_Q_Y[1]
+                    q_errors_Y[i] = np.sqrt(np.diag(pcov_Q_Y))[1] # error from covarance_matrix
+                    
+                    popt_Q_Y0, pcov_Q_Y0 = fits.fit_Q_Gaussian(Y_pos_data, Y0_profile_data, p0=p0_qY)
+                    q0_vals_Y[i] = popt_Q_Y0[1]
+                    q0_errors_Y[i] = np.sqrt(np.diag(pcov_Q_Y0))[1] # error from covarance_matrix
+                    
+                    sigmas_q_gaussian_Y[i] = fits.get_sigma_RMS_from_qGaussian_fit(popt_Q_Y)
+                    
+                    # Extract optics at Wire Scanner, correct for dispersion
+                    betx, bety, dx = self.optics_at_WS()
+                    dpp = 1e-3
+                    sigmaX_raw_for_betatronic = sigma_raw_X # sigmas_q_gaussian_X[i]
+                    sigmaX_betatronic = np.sqrt((sigmaX_raw_for_betatronic)**2 - (dpp * dx)**2)
+                    exf = sigmaX_betatronic**2 / betx
+    
+                    sigmaY_raw_for_betatronic = sigma_raw_Y # sigmas_q_gaussian_Y[i]
+                    sigmaY_betatronic = np.abs(sigmaY_raw_for_betatronic) # no vertical dispersion
+                    eyf = sigmaY_betatronic**2 / bety
+                    exn[1, i] =  exf * beta_rel * gamma 
+                    eyn[1, i] =  eyf * beta_rel * gamma 
+                    Nb[1, i]  =  tbt_dict['Nb'][-1] # final
+                    transmission[i] = Nb[1, i]/Nb[0, i]
+    
+                    print('X final profile: sigma = {:.3f} mm\nX q-Gaussian fit q={:.3f} +/- {:.2f}, sigma_RMS = {:.3f} mm'.format(sigma_raw_X*1e3, q_vals_X[i], q_errors_X[i], 1e3*sigmas_q_gaussian_X[i]))
+                    print('Y final profile: sigma = {:.3f} mm\nY q-Gaussian fit q={:.3f} +/- {:.2f}, sigma_RMS = {:.3f} mm'.format(sigma_raw_Y*1e3, q_vals_Y[i], q_errors_Y[i], 1e3*sigmas_q_gaussian_Y[i]))
+    
+                    print('exn = {:.3e}, eyn = {:.3e}'.format(exn[1, i], eyn[1, i]))
+                    print('Transmission = {:3f}\n'.format(transmission[i]))
+    
+    
+                    # Add q-Gaussian fits to plots and save 
+                    #ax.text(0.02, 0.65, 'Final simulated:\n$\epsilon_{{x}}^n$ = {:.3f} $\mu$m rad'.format(1e6 * exn[1, i], 1e6), fontsize=12.5, transform=ax.transAxes)
+                    #ax2.text(0.02, 0.65, 'Final simulated\n$\epsilon_{{y}}^n$ = {:.3f} $\mu$m rad'.format(1e6 * eyn[1, i]), fontsize=12.5, transform=ax2.transAxes)
+    
+                    ax.plot(X_pos_data, fits.Q_Gaussian(X_pos_data, *popt_Q_X), ls='--', color='lime', label='q-Gaussian fit final\nsimulated profiles')
+                    ax2.plot(Y_pos_data, fits.Q_Gaussian(Y_pos_data, *popt_Q_Y), ls='--', color='lime', label='q-Gaussian fit final\nsimulated profiles')
+                    ax.legend(loc='upper left', fontsize=11.5)
+                    ax2.legend(loc='upper left', fontsize=11.5)
+                    fig.savefig('output_transverse/X_profiles/{}_SPS_X_Beam_Profile_WS.png'.format(output_folder), dpi=250)
+                    fig2.savefig('output_transverse/Y_profiles/{}_SPS_Y_Beam_Profile_WS.png'.format(output_folder), dpi=250)
+                    plt.close()
+    
+    
+                except FileNotFoundError:
+                    print('Could not find values in {}!\n'.format(output_folder))
+                    exn[0, i] = np.nan
+                    exn[1, i] = np.nan
+                    eyn[0, i] = np.nan
+                    eyn[1, i] = np.nan
+                    Nb[0, i] = np.nan
+                    Nb[1, i] = np.nan
+                    q_vals_X[i] = np.nan
+                    q_vals_Y[i] = np.nan
+                    q0_vals_X[i] = np.nan
+                    q0_vals_Y[i] = np.nan
+                    transmission[i] = np.nan
+            
+            # Save loss string to txt tile
+            with open('output_transverse/large_losses.txt', 'w') as file:
+                file.write(all_loss_strings)
+                
+            # Save values
+            with open('output_transverse/simulated_emittances_transmissions_and_qvalues.npy', 'wb') as f:
+                np.save(f, scan_array_for_x_axis)
+                np.save(f, exn[1, :])
+                np.save(f, eyn[1, :])
+                np.save(f, exn[0, :])
+                np.save(f, eyn[0, :])
+                np.save(f, transmission)
+                np.save(f, q_vals_X)
+                np.save(f, q_vals_Y)
+                np.save(f, q_errors_X)
+                np.save(f, q_errors_Y)
         
         ### Plot transmissions and final q-Gaussian emittances - use custom x axis spacing
         fig3, ax3 = plt.subplots(2, 1, figsize=(9, 7.5), sharex=True, constrained_layout=True)
@@ -839,7 +872,6 @@ class SPS_Plotting:
         if master_job_name is None:
             master_job_name = 'scan_result_final_emittances_and_bunch_intensity'
         fig3.savefig('output_transverse/emittance_evolution_qGaussian_fits_{}.png'.format(master_job_name), dpi=250)
-        plt.close()
 
         # Also plot q-values
         fig1, ax1 = plt.subplots(1, 1, figsize=(8, 6), constrained_layout=True)
@@ -860,20 +892,13 @@ class SPS_Plotting:
         ax1.set_xlabel(label_for_x_axis)
         ax1.legend(loc="upper left", fontsize=11.5)
         fig1.savefig('output_transverse/q_value_evolution_qGaussian_fits_{}.png'.format(master_job_name), dpi=250)
-        plt.close()
+        
+        if data_is_loaded:
+            plt.show()
+        else:
+            plt.close()
 
-        # Save values
-        with open('output_transverse/simulated_emittances_transmissions_and_qvalues.npy', 'wb') as f:
-            np.save(f, scan_array_for_x_axis)
-            np.save(f, exn[1, :])
-            np.save(f, eyn[1, :])
-            np.save(f, exn[0, :])
-            np.save(f, eyn[0, :])
-            np.save(f, transmission)
-            np.save(f, q_vals_X)
-            np.save(f, q_vals_Y)
-            np.save(f, q_errors_X)
-            np.save(f, q_errors_Y)
+
             
 
     def fit_transverse_profile_evolution(self, profile_step=100, output_folder_name='transverse_profile_evolution',
