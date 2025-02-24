@@ -15,7 +15,7 @@ master_name = 'Q26_Pb_ions_frequency_ripple_scan_adaptive_SC_excited_LSE_effecti
 num_turns = 60_000
 Qx = 26.36
 Qy = 26.19
-frequencies = np.hstack((np.arange(10., 100., 10), np.arange(100., 600., 50), np.arange(600., 1201., 100))).ravel()
+frequencies = np.hstack((np.arange(0., 100., 10), np.arange(100., 600., 50), np.arange(600., 1201., 100))).ravel()
 run_files = ['sps_run_{}_tbt.py'.format(i+1) for i in range(len(frequencies))]
 
 # Define script and folder names
@@ -43,9 +43,8 @@ ripple_freqs = np.array([{}])
 # Tracking on GPU context
 sps = fma_ions.SPS_Flat_Bottom_Tracker(qx0={:.3f}, qy0={:.3f}, num_turns=n_turns, num_part=num_part)
 tbt = sps.track_SPS(which_context='gpu', distribution_type='qgaussian', install_SC_on_line=True, add_beta_beat=True,
-                add_non_linear_magnet_errors=True, add_tune_ripple=True, 
-                ripple_freqs = ripple_freqs, SC_adaptive_interval_during_tracking=100, I_LSE=-3.,
-                x_max_at_WS=0.025, y_max_at_WS=0.013)
+                add_non_linear_magnet_errors=True, add_tune_ripple=False if ripple_freqs[0] == 0.0 else True,
+                ripple_freqs = ripple_freqs, SC_adaptive_interval_during_tracking=100, I_LSE=-3., x_max_at_WS=0.025, y_max_at_WS=0.013)
 tbt.to_json(output_dir)
     '''.format(num_turns, frequencies[i], Qx, Qy)
     )
