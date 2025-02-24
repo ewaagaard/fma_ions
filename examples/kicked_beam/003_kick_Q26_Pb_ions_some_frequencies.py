@@ -42,8 +42,8 @@ except FileNotFoundError:
     print('Did not find dictionary, tracking!\n')
     sps = fma_ions.SPS_Flat_Bottom_Tracker(num_turns=70_000, num_part=300, turn_print_interval=200)
     tbt = sps.track_SPS(which_context='cpu', distribution_type='gaussian', install_SC_on_line=False, 
-                        add_tune_ripple=True, ripple_freqs = ripple_freqs, kqf_amplitudes = kqf_amplitudes, add_beta_beat=False,
-                        add_non_linear_magnet_errors=False, kqd_amplitudes = kqd_amplitudes, kqf_phases=kqf_phases, kqd_phases=kqd_phases, 
+                        add_tune_ripple=True, ripple_freqs = ripple_freqs, kqf_amplitudes = kqf_amplitudes, add_beta_beat=True,
+                        add_non_linear_magnet_errors=True, kqd_amplitudes = kqd_amplitudes, kqf_phases=kqf_phases, kqd_phases=kqd_phases, 
                         kick_beam=True, x_max_at_WS=0.025, y_max_at_WS=0.013)
     tbt.to_json('output0_Pb/')
     tbt_dict = tbt.to_dict()
