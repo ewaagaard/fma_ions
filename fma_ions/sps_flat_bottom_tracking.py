@@ -370,10 +370,11 @@ class SPS_Flat_Bottom_Tracker:
                                             beamParams=beamParams, scale_factor_Qs=scale_factor_Qs, 
                                             matched_for_PS_extraction=matched_for_PS_extraction)
         
-        # Kick beam if desired, by 1 mm.
+        # Kick beam if desired, by 1 mm amplitude at wire scanner
         if kick_beam:
+            #particles.px += 0.000018
             particles.x += 1e-3
-            particles.y += 1e-3
+            #particles.y += 1e-3
             
             # Empty arrays to store data
             X_data = np.zeros(self.num_turns)

@@ -649,15 +649,19 @@ class SPS_Plotting:
                     twiss = tbt_dict['twiss']
                     df_twiss = pd.DataFrame(twiss)
                     
-                    fig_phase_space, fig01_phase_space, fig1_phase_space, fig2_lost_at_turn, fig3_lost_at_s, loss_string = self.plot_normalized_phase_space_from_tbt(particles_f,
-                                                                                          extra_text_string=scan_string, df_twiss=df_twiss)
-                    fig_phase_space.savefig('output_transverse/losses/Norm_phase_space_{}.png'.format(output_folder), dpi=250)
-                    fig01_phase_space.savefig('output_transverse/losses/x_y_phase_space_{}.png'.format(output_folder), dpi=250)
-                    fig1_phase_space.savefig('output_transverse/losses/X_Y_norm_phase_space_{}.png'.format(output_folder), dpi=250)
-                    fig2_lost_at_turn.savefig('output_transverse/losses/Lost_at_turn_{}.png'.format(output_folder), dpi=250)
-                    fig3_lost_at_s.savefig('output_transverse/losses/Lost_at_s_{}.png'.format(output_folder), dpi=250)
-                    del fig_phase_space, fig2_lost_at_turn, fig3_lost_at_s
-                    all_loss_strings += '\n{}\n{}'.format(scan_string, loss_string)
+                    try:
+                        fig_phase_space, fig01_phase_space, fig1_phase_space, fig2_lost_at_turn, fig3_lost_at_s, loss_string = self.plot_normalized_phase_space_from_tbt(particles_f,
+                                                                                              extra_text_string=scan_string, df_twiss=df_twiss)
+                        fig_phase_space.savefig('output_transverse/losses/Norm_phase_space_{}.png'.format(output_folder), dpi=250)
+                        fig01_phase_space.savefig('output_transverse/losses/x_y_phase_space_{}.png'.format(output_folder), dpi=250)
+                        fig1_phase_space.savefig('output_transverse/losses/X_Y_norm_phase_space_{}.png'.format(output_folder), dpi=250)
+                        fig2_lost_at_turn.savefig('output_transverse/losses/Lost_at_turn_{}.png'.format(output_folder), dpi=250)
+                        fig3_lost_at_s.savefig('output_transverse/losses/Lost_at_s_{}.png'.format(output_folder), dpi=250)
+                        del fig_phase_space, fig2_lost_at_turn, fig3_lost_at_s
+                        all_loss_strings += '\n{}\n{}'.format(scan_string, loss_string)
+                    except ValueError:
+                        print('Did not manage to plot phase space')
+                    
     
                     # Initial emittances and bunch intensities
                     exn[0, i] =  tbt_dict['exn'][0]
@@ -833,8 +837,11 @@ class SPS_Plotting:
                     transmission[i] = np.nan
             
             # Save loss string to txt tile
-            with open('output_transverse/large_losses.txt', 'w') as file:
-                file.write(all_loss_strings)
+            try:
+                with open('output_transverse/large_losses.txt', 'w') as file:
+                    file.write(all_loss_strings)
+            except UnboundLocalError:
+                print('Did not manage to write losses to file')
                 
             # Save values
             with open('output_transverse/simulated_emittances_transmissions_and_qvalues.npy', 'wb') as f:
