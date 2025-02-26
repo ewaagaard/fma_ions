@@ -550,10 +550,13 @@ class SPS_Plotting:
                                          extra_text_string,
                                          transmission_range=[0.0, 105],
                                          emittance_range = [0.0, 4.1],
+                                         plot_relative_emittance_growth = False,
+                                         use_x_log_scale=False,
                                          master_job_name=None,
                                          load_measured_profiles=False,
                                          x_axis_quantity='Qx',
-                                         apply_uniform_xscale=False) -> None:
+                                         apply_uniform_xscale=False,
+                                         custom_xticks=None) -> None:
 
         """
         Open tbt data from e.g tune scan, plot transverse profiles and fit a q-Gaussian.
@@ -572,12 +575,18 @@ class SPS_Plotting:
             in which range to plot transmission
         emittance_range : list
             in which range to plot emittances
+        plot_relative_emittance_growth : bool
+            whether to plot relative increase in emittance or absolute
+        use_x_log_scale : bool
+            whether to set x axis to log scale
         load_measured_profiles : bool
             whether to plot measured profiles as well
         x_axis_quantity: str
             which quantity to use for x-axis, e.g. Qx or Qy
         apply_uniform_xscale : bool
             whether to force x axis scaling to be uniform, i.e. equal spacing for any value. Useful if want to plot uniformly values such as 1, 10 and 1000
+        custom_xticks : np.ndarray
+            custom markers, can be different from scan_array_for_xaxis
         """
         # Generate directories, if not existing already
         os.makedirs('output_transverse', exist_ok=True)
@@ -847,16 +856,27 @@ class SPS_Plotting:
             xlabels = ['{:.2f}'.format(x) for x in scan_array_for_x_axis]
         else:
             xx = scan_array_for_x_axis
-        ax3[0].plot(xx, exn[1, :] * 1e6, c='b', marker="o", label="X - final")
-        ax3[0].plot(xx, eyn[1, :] * 1e6, c='darkorange', marker="o", label="Y - final")
-        ax3[0].plot(xx, exn[0, :] * 1e6, c='b', ls='--', lw=1.0, alpha=0.75, marker=".", label="X - initial")
-        ax3[0].plot(xx, eyn[0, :] * 1e6, c='darkorange', ls='--', lw=1.0, alpha=0.75, marker=".", label="Y - initial")
-        ax3[1].set_xticks(xx)
+        if plot_relative_emittance_growth:
+            ax3[0].plot(xx, exn[1, :] / exn[0, :], c='b', marker="o", label="X")
+            ax3[0].plot(xx, eyn[1, :] / eyn[0, :], c='darkorange', marker="o", label="Y")
+            ax3[0].set_ylabel("$\epsilon^n/\epsilon_{0}^n$") 
+        else:
+            ax3[0].plot(xx, exn[1, :] * 1e6, c='b', marker="o", label="X - final")
+            ax3[0].plot(xx, eyn[1, :] * 1e6, c='darkorange', marker="o", label="Y - final")
+            ax3[0].plot(xx, exn[0, :] * 1e6, c='b', ls='--', lw=1.0, alpha=0.75, marker=".", label="X - initial")
+            ax3[0].plot(xx, eyn[0, :] * 1e6, c='darkorange', ls='--', lw=1.0, alpha=0.75, marker=".", label="Y - initial")
+            ax3[0].set_ylabel("$\epsilon_{x, y}^n$ [$\mu$m]")
+            if emittance_range is not None:
+                ax3[0].set_ylim(emittance_range[0], emittance_range[1])
+        if custom_xticks is not None:
+            ax3[1].set_xticks(custom_xticks)
+        else:
+            ax3[1].set_xticks(xx)
+        if use_x_log_scale:
+            ax3[1].set_xscale('log')
+        ax3[1].plot(xx, 100*transmission, c='red', marker='o', label='Transmission')
         if apply_uniform_xscale:
             ax3[1].set_xticklabels(xlabels)
-
-        ax3[0].set_ylabel("$\epsilon_{x, y}^n$ [$\mu$m]")       
-        ax3[1].plot(xx, 100*transmission, c='red', marker='o', label='Transmission')
         ax3[1].set_ylabel("Transmission [%]")
         ax3[0].legend(fontsize=13)
         ax3[0].grid(alpha=0.55)
@@ -865,8 +885,6 @@ class SPS_Plotting:
         if extra_text_string is not None:
             ax3[1].text(0.024, 0.05, extra_text_string, transform=ax3[1].transAxes, fontsize=12.8)
         ax3[1].set_xlabel(label_for_x_axis)
-        if emittance_range is not None:
-            ax3[0].set_ylim(emittance_range[0], emittance_range[1])
         if transmission_range is not None:
             ax3[1].set_ylim(transmission_range[0], transmission_range[1])
         if master_job_name is None:
@@ -880,9 +898,14 @@ class SPS_Plotting:
             ax1.errorbar(xx, y=q0_vals_Y, yerr=q0_errors_Y, c='darkorange', fmt=".--", lw=1.0, alpha=0.75, label="Simulated $q_{Y}$ first 100 turns")
         ax1.errorbar(xx, y=q_vals_X, yerr=q_errors_X, c='b', fmt="o-", label="Simulated $q_{X}$, last 100 turns")
         ax1.errorbar(xx, y=q_vals_Y, yerr=q_errors_Y, c='darkorange',  fmt="o-", label="Simulated $q_{Y}$, last 100 turns")
-        ax1.set_xticks(xx)
+        if custom_xticks is not None:
+            ax1.set_xticks(custom_xticks)
+        else:
+            ax1.set_xticks(xx)
         if apply_uniform_xscale:
             ax1.set_xticklabels(xlabels)
+        if use_x_log_scale:
+            ax1.set_xscale('log')
         
         #ax[0].axhline(y=1.5, c='darkgreen', label=None)   # at extr, not end of flat bottom
         ax1.set_ylim(0, 2.0)
