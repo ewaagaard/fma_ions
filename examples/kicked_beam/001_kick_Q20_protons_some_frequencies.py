@@ -75,7 +75,7 @@ for plane in planes:
     # Analyze tunes
     tunes_singlebpm = []
     for i in range(i_start, i_stop-t4s):
-        if i % 100 == 0:
+        if i % 1000 == 0:
             print(f'Nr: {i}')
         # Get tune using PyNAFF
         d = delta[i:i+t4s]
@@ -104,7 +104,7 @@ for plane in planes:
     
     # Calculate and plot FFT of tune evolution
     N = len(tunes[plane])
-    T = 23.03e-6 + 0.06e-6  # SPS revolution period
+    T =  2.3069302183004387e-05 # 23.03e-6 + 0.06e-6  # SPS revolution period
     Q_vals = tunes[plane][~np.isnan(tunes[plane])]
     Q_mean = np.nanmean(tunes[plane])
     yf = fftshift(fft(Q_vals - Q_mean, N))

@@ -35,7 +35,7 @@ kqd_phases = 0.4732764 * np.ones(len(ripple_freqs))
 sps_plot = fma_ions.SPS_Plotting()
 
 try:
-    tbt_dict = sps_plot.load_records_dict_from_json('output_Pb/')
+    tbt_dict = sps_plot.load_records_dict_from_json('output0_Pb/')
     print('Loaded dictionary\n')
     
 except FileNotFoundError:
@@ -75,7 +75,7 @@ for plane in planes:
     # Analyze tunes
     tunes_singlebpm = []
     for i in range(i_start, i_stop-t4s):
-        if i % 100 == 0:
+        if i % 2000 == 0:
             print(f'Nr: {i}')
         # Get tune using PyNAFF
         d = delta[i:i+t4s]
@@ -88,7 +88,7 @@ for plane in planes:
     tunes[plane] = np.array(tunes_singlebpm)
 
 # Setup plot style
-integer_tune=20
+integer_tune=26
 colors = {'H': 'b', 'V': 'g'}
 fig, (ax_tune, ax_spectrum_H, ax_spectrum_V) = plt.subplots(3, 1, figsize=(12,11), constrained_layout=True)
 ax_spectrum = {
@@ -104,7 +104,7 @@ for plane in planes:
     
     # Calculate and plot FFT of tune evolution
     N = len(tunes[plane])
-    T = 23.03e-6 + 0.06e-6  # SPS revolution period
+    T = 2.3272740444182327e-05 # SPS revolution period for Pb ions
     Q_vals = tunes[plane][~np.isnan(tunes[plane])]
     Q_mean = np.nanmean(tunes[plane])
     yf = fftshift(fft(Q_vals - Q_mean, N))
@@ -128,6 +128,4 @@ ax_tune.legend()
 ax_tune.grid(True)
 
 ax_spectrum_V.set_xlabel('Frequency [Hz]')
-plt.show()
-
 plt.show()

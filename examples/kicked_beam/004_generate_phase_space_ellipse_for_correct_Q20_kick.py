@@ -1,5 +1,5 @@
 """
-Small example to kick beam and plot TBT data for 200 macroparticles
+Example to reproduce external kick given to Q20 proton experiments in Oct/Nov 2018
 """
 import fma_ions
 import numpy as np
@@ -7,25 +7,9 @@ import matplotlib.pyplot as plt
 from scipy.fft import fft, fftfreq, fftshift
 import PyNAFF as pnf
 
-def get_tune_pnaf(data, turns=40):
-    """
-    Calculate tune using PyNAFF algorithm.
-    
-    Args:
-        data: Turn-by-turn position data
-        turns: Number of turns to analyze
-    
-    Returns:
-        Tune value (frequency)
-    """
-    # Subtract the mean to remove the DC component
-    data = data - np.mean(data)
-    result = pnf.naff(data, turns=turns, nterms=1, skipTurns=0, getFullSpectrum=False, window=1)
-    return result[0][1]  # Return the frequency (tune)
-
 
 # Generate spectrum with frequencies, then add same amplitudes and phases as the known 50 Hz component
-ripple_freqs = np.hstack((np.arange(10., 100., 10), np.arange(100., 600., 50), np.arange(600., 1201., 100))).ravel()
+ripple_freqs = np.array([10., 50., 150., 600., 1200.])
 kqf_amplitudes = 9.7892e-7 * np.ones(len(ripple_freqs))
 kqd_amplitudes = 9.6865e-7 * np.ones(len(ripple_freqs))
 kqf_phases = 0.5564422 * np.ones(len(ripple_freqs))
@@ -35,17 +19,17 @@ kqd_phases = 0.4732764 * np.ones(len(ripple_freqs))
 sps_plot = fma_ions.SPS_Plotting()
 
 try:
-    tbt_dict = sps_plot.load_records_dict_from_json('output')
+    tbt_dict = sps_plot.load_records_dict_from_json('output0/')
     print('Loaded dictionary\n')
     
 except FileNotFoundError:
     print('Did not find dictionary, tracking!\n')
-    sps = fma_ions.SPS_Flat_Bottom_Tracker(qx0=20.145, qy0=20.22, num_turns=70_000, num_part=200, turn_print_interval=500, proton_optics='q20',)
+    sps = fma_ions.SPS_Flat_Bottom_Tracker(num_turns=70_000, num_part=300, turn_print_interval=200, proton_optics='q20',)
     tbt = sps.track_SPS(ion_type='proton', which_context='cpu', distribution_type='gaussian', install_SC_on_line=False, 
-                        add_tune_ripple=True, ripple_freqs = ripple_freqs, kqf_amplitudes = kqf_amplitudes, add_beta_beat=True,
-                        add_non_linear_magnet_errors=True, kqd_amplitudes = kqd_amplitudes, kqf_phases=kqf_phases, kqd_phases=kqd_phases, 
+                        add_tune_ripple=True, ripple_freqs = ripple_freqs, kqf_amplitudes = kqf_amplitudes, add_beta_beat=False,
+                        add_non_linear_magnet_errors=False, kqd_amplitudes = kqd_amplitudes, kqf_phases=kqf_phases, kqd_phases=kqd_phases, 
                         kick_beam=True, x_max_at_WS=0.025, y_max_at_WS=0.013)
-    tbt.to_json('output')
+    tbt.to_json('output0/')
     tbt_dict = tbt.to_dict()
 
 # plot turn-by-turn data
@@ -104,7 +88,7 @@ for plane in planes:
     
     # Calculate and plot FFT of tune evolution
     N = len(tunes[plane])
-    T = 2.3069302183004387e-05 #23.03e-6 + 0.06e-6  # SPS revolution period
+    T = 23.03e-6 + 0.06e-6  # SPS revolution period
     Q_vals = tunes[plane][~np.isnan(tunes[plane])]
     Q_mean = np.nanmean(tunes[plane])
     yf = fftshift(fft(Q_vals - Q_mean, N))
