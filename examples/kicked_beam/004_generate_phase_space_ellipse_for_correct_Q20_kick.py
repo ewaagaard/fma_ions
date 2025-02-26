@@ -4,114 +4,104 @@ Example to reproduce external kick given to Q20 proton experiments in Oct/Nov 20
 import fma_ions
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.fft import fft, fftfreq, fftshift
-import PyNAFF as pnf
+import xtrack as xt
+import xobjects as xo
 
-
-# Generate spectrum with frequencies, then add same amplitudes and phases as the known 50 Hz component
-ripple_freqs = np.array([10., 50., 150., 600., 1200.])
-kqf_amplitudes = 9.7892e-7 * np.ones(len(ripple_freqs))
-kqd_amplitudes = 9.6865e-7 * np.ones(len(ripple_freqs))
-kqf_phases = 0.5564422 * np.ones(len(ripple_freqs))
-kqd_phases = 0.4732764 * np.ones(len(ripple_freqs))
-
-# Load data and plot
-sps_plot = fma_ions.SPS_Plotting()
-
-try:
-    tbt_dict = sps_plot.load_records_dict_from_json('output0/')
-    print('Loaded dictionary\n')
+def transfer_matrix(beta_B, alpha_B, beta_A, alpha_A, delta_mu):
+    """
+    Compute the transfer matrix between two locations in a beamline
+    using the Twiss parameters and the phase advance.
     
-except FileNotFoundError:
-    print('Did not find dictionary, tracking!\n')
-    sps = fma_ions.SPS_Flat_Bottom_Tracker(num_turns=70_000, num_part=300, turn_print_interval=200, proton_optics='q20',)
-    tbt = sps.track_SPS(ion_type='proton', which_context='cpu', distribution_type='gaussian', install_SC_on_line=False, 
-                        add_tune_ripple=True, ripple_freqs = ripple_freqs, kqf_amplitudes = kqf_amplitudes, add_beta_beat=False,
-                        add_non_linear_magnet_errors=False, kqd_amplitudes = kqd_amplitudes, kqf_phases=kqf_phases, kqd_phases=kqd_phases, 
-                        kick_beam=True, x_max_at_WS=0.025, y_max_at_WS=0.013)
-    tbt.to_json('output0/')
-    tbt_dict = tbt.to_dict()
-
-# plot turn-by-turn data
-fig, ax = plt.subplots(2, 1, sharex=True, constrained_layout=True)
-ax[0].plot(tbt_dict['X_data'], color='b')
-ax[1].plot(tbt_dict['Y_data'], color='darkorange')
-ax[0].set_ylabel('X [m]')
-ax[1].set_ylabel('Y [m]')
-ax[1].set_xlabel('Turns')
-
-
-### Find FFT spectrum ###
-
-# Analysis parameters
-t4s = 40  # number of turns for NAFF analysis
-i_start = 180 #200  # first turn after the kick
-
-# Process each plane
-planes = ['H', 'V']
-data = {'H': tbt_dict['X_data'], 'V': tbt_dict['Y_data']}
-tunes = {}
-
-for plane in planes:
-    delta = data[plane]
-    i_stop = len(delta)
+    Parameters:
+    beta_B : float  -> Beta function at location B (start)
+    alpha_B : float -> Alpha function at location B (start)
+    beta_A : float  -> Beta function at location A (WS)
+    alpha_A : float -> Alpha function at location A (WS)
+    delta_mu : float -> Phase advance (in radians) from B to A
     
-    # Analyze tunes
-    tunes_singlebpm = []
-    for i in range(i_start, i_stop-t4s):
-        if i % 100 == 0:
-            print(f'Nr: {i}')
-        # Get tune using PyNAFF
-        d = delta[i:i+t4s]
-        try:
-            tune = get_tune_pnaf(d, turns=t4s)
-        except IndexError:
-            tune = np.nan
-        tunes_singlebpm.append(tune)
+    Returns:
+    numpy.ndarray -> 2x2 transfer matrix
+    """
+    R11 = np.sqrt(beta_A / beta_B) * (np.cos(delta_mu) + alpha_B * np.sin(delta_mu))
+    R12 = np.sqrt(beta_A * beta_B) * np.sin(delta_mu)
+    R21 = (alpha_A - alpha_B) / np.sqrt(beta_A * beta_B) * np.cos(delta_mu) - (1 + alpha_A * alpha_B) / np.sqrt(beta_A * beta_B) * np.sin(delta_mu)
+    R22 = np.sqrt(beta_B / beta_A) * (np.cos(delta_mu) - alpha_A * np.sin(delta_mu))
     
-    tunes[plane] = np.array(tunes_singlebpm)
+    return np.array([[R11, R12], [R21, R22]])
 
-# Setup plot style
-integer_tune=20
-colors = {'H': 'b', 'V': 'g'}
-fig, (ax_tune, ax_spectrum_H, ax_spectrum_V) = plt.subplots(3, 1, figsize=(12,11), constrained_layout=True)
-ax_spectrum = {
-    'H': ax_spectrum_H,
-    'V': ax_spectrum_V
-}
+# Define parameters and desired amplitudes
+X_amp_at_BWS = 1e-3
 
-for plane in planes:
-    # Plot tune evolution
-    turns = np.arange(len(tunes[plane]))
-    ax_tune.plot(turns, integer_tune + tunes[plane], 
-                label=plane, color=colors[plane])
+# Generate the line
+sps_seq = fma_ions.SPS_sequence_maker()
+line, twiss_sps = sps_seq.load_xsuite_line_and_twiss(add_aperture=True)
+
+# Find the beta function and phase advance
+df = twiss_sps.to_pandas()
+betx0 = df.iloc[0].betx
+betx = df[df['name'] == 'bwsrc.51637'].betx.values[0]
+alfx0 = df.iloc[0].alfx
+alfx = df[df['name'] == 'bwsrc.51637'].alfx.values[0]
+mux = df[df['name'] == 'bwsrc.51637'].mux.values[0]
+kick = X_amp_at_BWS / (np.sqrt(betx*betx0) * np.sin(mux))
+
+# Also compute the values 
+R = transfer_matrix(betx0, alfx0, betx, alfx, mux)
+V1 = np.array([0., kick])
+V2 = R.dot(V1)
+print('X vector at WS location with initial computed kick: {}\n'.format(V2))
+
+# Generate particles to track, kick a copy of particles
+num_turns = 100
+num_particles = 100
+sps = fma_ions.SPS_Flat_Bottom_Tracker(num_part = num_particles, num_turns = num_turns)
+particles = sps.generate_particles(line)
+particles0 = particles.copy()
+#particles2 = particles.copy()
+#particles.x -= np.mean(particles.x)
+particles.px += kick
+#particles2.x += 1e-3
+
+# Install a beam position monitor to check
+monitor = xt.ParticlesMonitor(start_at_turn=0, stop_at_turn=num_turns-1,
+                                    num_particles=num_particles)
+monitor2 = xt.ParticlesMonitor(start_at_turn=0, stop_at_turn=num_turns-1,
+                                    num_particles=num_particles)
+line.unfreeze() # if you had already build the tracker
+line.insert_element(index='bwsrc.51637', element=monitor, name='mymon')
+line.insert_element(index='bwsrc.51637', element=monitor2, name='mymon2')
+line.build_tracker(_context=xo.ContextCpu(omp_num_threads='auto'))
+
+mean = []
+mean2 = []
+
+for iturn in range(num_turns):
+    mean.append(np.mean(particles.x))
+    #mean2.append(np.mean(particles2.x))
+    monitor.track(particles)
+    #monitor2.track(particles2)
+    line.track(particles)
+    #line.track(particles2)
+    if iturn % 10 == 0:
+        print(f'Turn {iturn}')
+        
+
+
+# Plot the centroids
+fig0, ax0 = plt.subplots(1, 1, figsize=(8,6))
+ax0.plot(mean, color='b', marker='o', alpha=0.8)
+#ax0.plot(mean2, color='r', marker='v', alpha=0.75)
+
+fig00, ax00 = plt.subplots(1, 1, figsize=(8,6))
+ax00.plot(np.mean(monitor.x, axis=0), color='b', marker='o', alpha=0.8)
+ax00.set_ylabel("X")
+ax00.set_xlabel("Turn")
+#ax00.plot(np.mean(monitor2.x, axis=0), color='r', marker='v', alpha=0.75)
     
-    # Calculate and plot FFT of tune evolution
-    N = len(tunes[plane])
-    T = 23.03e-6 + 0.06e-6  # SPS revolution period
-    Q_vals = tunes[plane][~np.isnan(tunes[plane])]
-    Q_mean = np.nanmean(tunes[plane])
-    yf = fftshift(fft(Q_vals - Q_mean, N))
-    xf = fftshift(fftfreq(N, T))
-    
-    ax_spectrum[plane].semilogy(xf, 1.0/N * np.abs(yf), color=colors[plane])
-    ax_spectrum[plane].set_ylabel(f'{plane} amplitude')
-    ax_spectrum[plane].set_xlim(0, 1500)
-    ax_spectrum[plane].set_ylim(1e-7, 1e-1)
-    ax_spectrum[plane].grid(True)
-
-    # Add markers at 50 Hz intervals
-    marker_indices = [np.argmin(np.abs(xf - f)) for f in ripple_freqs]
-    ax_spectrum[plane].plot(xf[marker_indices], 1.0/N * np.abs(yf)[marker_indices], 
-                    'r.', markersize=8, label='50 Hz intervals')
-
-# Finalize plots
-ax_tune.set_xlabel('Turn')
-ax_tune.set_ylabel('Tune')
-ax_tune.legend()
-ax_tune.grid(True)
-
-ax_spectrum_V.set_xlabel('Frequency [Hz]')
-plt.show()
-
+# Plot the resulting phase space
+fig, ax = plt.subplots(1, 1, figsize=(8,6))
+ax.plot(monitor.x, monitor.px, color='b', ls='None', marker='o', alpha=0.8)
+ax.plot(monitor2.x, monitor2.px, color='r', ls='None', marker='v', alpha=0.75)
+ax.set_ylabel("X'")
+ax.set_xlabel("X")
 plt.show()
