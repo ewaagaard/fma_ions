@@ -100,10 +100,10 @@ class SPS_Flat_Bottom_Tracker:
                   adjust_integral_for_SC_adaptive_interval_during_tracking=False,
                   distribution_type='gaussian',
                   add_tune_ripple=False,
-                  kqf_amplitudes = np.array([9.7892e-7]),
-                  kqd_amplitudes = np.array([9.6865e-7]),
-                  kqf_phases=np.array([0.5564486]), 
-                  kqd_phases=np.array([0.47329223]),
+                  kqf_amplitudes = np.array([1.0141062492337905e-06]),
+                  kqd_amplitudes = np.array([1.0344583265981035e-06]),
+                  kqf_phases=np.array([0.7646995873548973]), 
+                  kqd_phases=np.array([0.6225130389353318]),
                   ripple_freqs=np.array([50.]),
                   kick_beam=False,
                   apply_kinetic_IBS_kicks=False,
@@ -115,8 +115,9 @@ class SPS_Flat_Bottom_Tracker:
                   voltage=3.0e6,
                   scale_factor_Qs=None,
                   install_beam_monitors=True,
-                  x_max_at_WS=None,
-                  y_max_at_WS=None,
+                  use_effective_aperture=True,
+                  x_max_at_WS=0.025,
+                  y_max_at_WS=0.013,
                   nturns_profile_accumulation_interval = 100,
                   nbins = 140,
                   also_keep_delta_profiles=False,
@@ -190,6 +191,8 @@ class SPS_Flat_Bottom_Tracker:
             if not None, factor by which we scale Qs (V_RF, h) and divide sigma_z and Nb for similar space charge effects
         install_beam_monitors : bool
             whether to install beam profile monitors at H and V Wire Scanner locations in SPS, that will record beam profiles
+        use_effective_aperture : bool
+            whether to install an effective aperture element at the Wire Scanner according to measured beam profiles
         x_max_at_WS : float
             physical aperture limit at horizontal wire scanner BWS, X --> used as "effective aperture" if beam was not observed smaller than this limit
         y_max_at_WS : float
@@ -332,14 +335,16 @@ class SPS_Flat_Bottom_Tracker:
             line.insert_element(index='bwsrc.41677', element=monitorV, name='monitorV')
             
             # Also add rectangular collimator element, if beam size above certain limit was not observed
-            if x_max_at_WS is not None:
+            if x_max_at_WS is not None and use_effective_aperture:
                 ws_effective_aperture_X = xt.LimitRect(min_x=-x_max_at_WS, max_x=x_max_at_WS)
                 line.insert_element(index='bwsrc.51637', element=ws_effective_aperture_X, name='ws_effective_aperture_X')
+                print('Inserted effective X aperture at BWS H element with half width" {}\n'.format(x_max_at_WS))
                 
             # Also add a collimator element of given size
-            if y_max_at_WS is not None:
+            if y_max_at_WS is not None and use_effective_aperture:
                 ws_effective_aperture_X = xt.LimitRect(min_y=-y_max_at_WS, max_y=y_max_at_WS)
                 line.insert_element(index='bwsrc.41677', element=ws_effective_aperture_X, name='ws_effective_aperture_Y')
+                print('Inserted effective Y aperture at BWS V element with half width" {}\n'.format(y_max_at_WS))
 
             #### SPACE CHARGE sigma update, if desired ####
             # Need to build this element before rebuilding the tracker
