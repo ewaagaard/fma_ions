@@ -11,7 +11,7 @@ import datetime
 dir_path = pathlib.Path(__file__).parent.absolute()
 
 # Define run files and which parameters to change
-master_name = 'Q26_Pb_ions_Qx_scan_LSE_excitation_3_with_ibs_and_adaptive_sc'
+master_name = 'Q26_Pb_ions_Qx_scan_LSE_excitation_3_with_ibs_and_adaptive_sc_effective_aperture'
 num_turns = 130_000 # corresponds to 3s for SPS ions at flat bottom
 Qy = 26.19
 Qx_range = np.arange(26.28, 26.42, 0.01)
@@ -40,8 +40,7 @@ num_part = 20_000
 # Tracking on GPU context
 sps = fma_ions.SPS_Flat_Bottom_Tracker(qx0={:.3f}, qy0={:.3f}, num_turns=n_turns, num_part=num_part)
 tbt = sps.track_SPS(which_context='gpu', distribution_type='qgaussian', install_SC_on_line=True, add_beta_beat=True, add_non_linear_magnet_errors=True, 
-                    I_LSE=-3.0, apply_kinetic_IBS_kicks=True, ibs_step = 2000,
-                    SC_adaptive_interval_during_tracking=100)
+                    I_LSE=-3.0, apply_kinetic_IBS_kicks=True, ibs_step = 2000, SC_adaptive_interval_during_tracking=100)
 tbt.to_json(output_dir)
     '''.format(num_turns, Qx_range[i], Qy)
     )
@@ -58,6 +57,6 @@ for i, script in enumerate(script_names):
     print(f"Submitting {file_name}")
     sub.submit_GPU(file_name, master_job_name=master_job_name, job_name=folder_names[i])
 sub.copy_master_plot_script(folder_names, string_array)
-sub.copy_plot_script_emittances_for_scan(master_name, folder_names, scan_array_for_x_axis=Qx_range,
+sub.copy_plot_script_emittances_for_scan(master_name, folder_names, scan_array_for_x_axis='np.arange(26.28, 26.42, 0.01)',
                                              label_for_x_axis='$Q_{x}$', 
-                                             extra_text_string='$Q_{y}$ = 26.19 - q-Gaussian beam\n Frozen SC, 15% $\\beta$-beat + non-linear magnet errors\nLSE excitation')
+                                             extra_text_string='$Q_{y}$ = 26.19 - q-Gaussian beam\\nAdaptive SC, ~10% $\\beta$-beat + non-linear magnet errors\\nLSE excitation')

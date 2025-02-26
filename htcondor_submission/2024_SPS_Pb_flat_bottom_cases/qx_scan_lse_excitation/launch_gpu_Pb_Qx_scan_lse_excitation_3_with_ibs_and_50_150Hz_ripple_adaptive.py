@@ -11,7 +11,7 @@ import datetime
 dir_path = pathlib.Path(__file__).parent.absolute()
 
 # Define run files and which parameters to change
-master_name = 'Q26_Pb_ions_adaptive_SC_frozen_Qx_scan_LSE_excitation_3_with_ibs_and_summed_50_150_ripple'
+master_name = 'Q26_Pb_ions_adaptive_SC_adaptive_Qx_scan_LSE_excitation_3_with_ibs_and_summed_50_150_ripple_effective_aperture'
 num_turns = 130_000 # corresponds to 3s for SPS ions at flat bottom
 Qy = 26.19
 Qx_range = np.arange(26.28, 26.42, 0.01)
@@ -39,10 +39,10 @@ num_part = 20_000
 
 # Desired ripple frequencies and amplitudes
 ripple_freqs = np.array([50., 150.])
-kqf_amplitudes = np.array([9.7892e-7, 2.2421e-7])
-kqd_amplitudes = np.array([9.6865e-7, 4.4711e-7])
-kqf_phases = np.array([0.5564422, 1.3804799])
-kqd_phases = np.array([0.4732764, -2.0184917])
+kqf_amplitudes = np.array([1.0141062492337905e-06, 1.9665396648867768e-07])
+kqd_amplitudes = np.array([1.0344583265981035e-06, 4.5225494700433166e-07])
+kqf_phases = np.array([0.7646995873548973, 2.3435670020522825])
+kqd_phases = np.array([0.6225130389353318, -1.044380492147742])
 
 # Tracking on GPU context
 sps = fma_ions.SPS_Flat_Bottom_Tracker(qx0={:.3f}, qy0={:.3f}, num_turns=n_turns, num_part=num_part)
@@ -66,6 +66,6 @@ for i, script in enumerate(script_names):
     print(f"Submitting {file_name}")
     sub.submit_GPU(file_name, master_job_name=master_job_name, job_name=folder_names[i])
 sub.copy_master_plot_script(folder_names, string_array)
-sub.copy_plot_script_emittances_for_scan(master_name, folder_names, scan_array_for_x_axis=Qx_range,
+sub.copy_plot_script_emittances_for_scan(master_name, folder_names, scan_array_for_x_axis='np.arange(26.28, 26.42, 0.01)',
                                              label_for_x_axis='$Q_{x}$', 
-                                             extra_text_string='$Q_{y}$ = 26.19 - q-Gaussian beam\n Frozen SC, IBS, 10% $\\beta$-beat + non-linear magnet errors\nLSE excitation')
+                                             extra_text_string='$Q_{y}$ = 26.19 - q-Gaussian beam\\nAdaptive SC, IBS, ~10% $\\beta$-beat + non-linear magnet errors\\nLSE excitation')
