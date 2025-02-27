@@ -40,11 +40,10 @@ try:
     
 except FileNotFoundError:
     print('Did not find dictionary, tracking!\n')
-    sps = fma_ions.SPS_Flat_Bottom_Tracker(num_turns=20_000, num_part=200, turn_print_interval=200, proton_optics='q26',)
+    sps = fma_ions.SPS_Flat_Bottom_Tracker(dqx0=0.0, dqy0=0.0, num_turns=20_000, num_part=200, turn_print_interval=200, proton_optics='q26',)
     tbt = sps.track_SPS(ion_type='proton', which_context='cpu', distribution_type='gaussian', install_SC_on_line=False, 
-                        add_tune_ripple=True, ripple_freqs = ripple_freqs, kqf_amplitudes = kqf_amplitudes, add_beta_beat=False,
-                        add_non_linear_magnet_errors=False, kqd_amplitudes = kqd_amplitudes, kqf_phases=kqf_phases, kqd_phases=kqd_phases, 
-                        kick_beam=True, x_max_at_WS=0.025, y_max_at_WS=0.013)
+                        add_tune_ripple=True, ripple_freqs = ripple_freqs, kqf_amplitudes = kqf_amplitudes, kqd_amplitudes = kqd_amplitudes, 
+                        kqf_phases=kqf_phases, kqd_phases=kqd_phases, kick_beam=True)
     tbt.to_json('output0_q26_protons/')
     tbt_dict = tbt.to_dict()
 
