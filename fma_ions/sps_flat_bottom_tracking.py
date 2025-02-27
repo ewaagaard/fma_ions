@@ -38,6 +38,8 @@ class SPS_Flat_Bottom_Tracker:
     turn_print_interval : int = 10_000
     qx0: float = 26.30
     qy0: float = 26.19
+    dqx0: float = None
+    dqy0: float = None
     ion_inj_ctime : float = 0.725 # ion injection happens at this time in cycle, important for WS
     proton_optics : str = 'q26'
 
@@ -275,6 +277,9 @@ class SPS_Flat_Bottom_Tracker:
             line = sps.set_LOE_octupolar_errors(line)
 
         # Rematch tunes and chromaticity to ensure correct values
+        dq1_to_set = self.dqx0 if self.dqx0 is not None else sps.dq1
+        dq2_to_set = self.dqy0 if self.dqy0 is not None else sps.dq2
+        
         line.match(
             vary=[
                 xt.Vary('kqf', step=1e-8),
@@ -285,8 +290,8 @@ class SPS_Flat_Bottom_Tracker:
             targets = [
                 xt.Target('qx', self.qx0, tol=1e-8),
                 xt.Target('qy', self.qy0, tol=1e-8),
-                xt.Target('dqx', sps.dq1, tol=1e-7),
-                xt.Target('dqy', sps.dq2, tol=1e-7),
+                xt.Target('dqx', dq1_to_set, tol=1e-7),
+                xt.Target('dqy', dq2_to_set, tol=1e-7),
             ])
         tw = line.twiss()
         print('After matching: Qx = {:.4f}, Qy = {:.4f}, dQx = {:.4f}, dQy = {:.4f}\n'.format(tw['qx'], tw['qy'], tw['dqx'], tw['dqy']))
