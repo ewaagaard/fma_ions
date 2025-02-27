@@ -375,10 +375,11 @@ class SPS_Flat_Bottom_Tracker:
                                             beamParams=beamParams, scale_factor_Qs=scale_factor_Qs, 
                                             matched_for_PS_extraction=matched_for_PS_extraction)
         
-        # Kick beam if desired, by 1 mm amplitude at wire scanner
+        # Kick beam if desired
         if kick_beam:
-            #particles.px += 0.000018
-            particles.x += 1e-3
+            kick = 2.10434e-05 # for 1.8 mm X amplitude at wire scanner, 1.169078e-05 for 1 mm 
+            particles.px += kick
+            #particles.x += 1e-3
             #particles.y += 1e-3
             
             # Empty arrays to store data
@@ -386,6 +387,7 @@ class SPS_Flat_Bottom_Tracker:
             Y_data = np.zeros(self.num_turns)
             X_data[0] = np.mean(particles.x)
             Y_data[0] = np.mean(particles.y)
+            print(f'\nBeam kicked with {kick} in X'' at start\n')
         
         # Initialize the dataclasses and store the initial values
         tbt = Records.init_zeroes(self.num_turns)  # only emittances and bunch intensity
