@@ -387,7 +387,7 @@ class SPS_Flat_Bottom_Tracker:
             Y_data = np.zeros(self.num_turns)
             X_data[0] = np.mean(particles.x)
             Y_data[0] = np.mean(particles.y)
-            print(f'\nBeam kicked with {kick} in X'' at start\n')
+            print(f"\nBeam kicked with {kick} in X' at start\n")
         
         # Initialize the dataclasses and store the initial values
         tbt = Records.init_zeroes(self.num_turns)  # only emittances and bunch intensity
