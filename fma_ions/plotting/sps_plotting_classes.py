@@ -857,7 +857,7 @@ class SPS_Plotting:
                 np.save(f, q_errors_Y)
         
         ### Plot transmissions and final q-Gaussian emittances - use custom x axis spacing
-        fig3, ax3 = plt.subplots(2, 1, figsize=(9, 7.5), sharex=True, constrained_layout=True)
+        fig3, ax3 = plt.subplots(2, 1, figsize=(11, 7.5), sharex=True, constrained_layout=True)
         if apply_uniform_xscale:
             xx = np.arange(len(scan_array_for_x_axis))
             xlabels = ['{:.2f}'.format(x) for x in scan_array_for_x_axis]
