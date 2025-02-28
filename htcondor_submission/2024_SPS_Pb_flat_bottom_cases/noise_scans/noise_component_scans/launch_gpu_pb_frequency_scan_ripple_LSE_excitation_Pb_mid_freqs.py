@@ -11,7 +11,7 @@ import datetime
 dir_path = pathlib.Path(__file__).parent.absolute()
 
 # Define run files and which parameters to change
-master_name = 'Q26_Pb_ions_frequency_ripple_scan_adaptive_SC_excited_LSE_effective_aperture_higher_freqs'
+master_name = 'Q26_Pb_ions_frequency_ripple_scan_adaptive_SC_excited_LSE_effective_aperture_mid_freqs'
 num_turns = 60_000
 Qx = 26.36
 Qy = 26.19
