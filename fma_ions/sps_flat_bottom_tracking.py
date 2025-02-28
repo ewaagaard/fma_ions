@@ -377,17 +377,20 @@ class SPS_Flat_Bottom_Tracker:
         
         # Kick beam if desired
         if kick_beam:
-            kick = 2.10434e-05 # for 1.8 mm X amplitude at wire scanner, 1.169078e-05 for 1 mm 
-            particles.px += kick
-            #particles.x += 1e-3
-            #particles.y += 1e-3
+            #kick = 2.10434e-05 # for 1.8 mm X amplitude at wire scanner, 1.169078e-05 for 1 mm 
+            #particles.px += kick
+            particles.x += 1e-4
+            particles.y += 1e-4
             
             # Empty arrays to store data
             X_data = np.zeros(self.num_turns)
             Y_data = np.zeros(self.num_turns)
+            kqf_data = np.zeros(self.num_turns)
+            kqd_data = np.zeros(self.num_turns)
             X_data[0] = np.mean(particles.x)
             Y_data[0] = np.mean(particles.y)
-            print(f"\nBeam kicked with {kick} in X' at start\n")
+            kqf_data[0] = line.vars['kqf']._value
+            kqd_data[0] = line.vars['kqd']._value
         
         # Initialize the dataclasses and store the initial values
         tbt = Records.init_zeroes(self.num_turns)  # only emittances and bunch intensity
@@ -653,6 +656,8 @@ class SPS_Flat_Bottom_Tracker:
             if kick_beam:
                 X_data[turn] = np.mean(particles.x)
                 Y_data[turn] = np.mean(particles.y)
+                kqf_data[turn] = kqf0 + kqf_ripple[turn-1]
+                kqd_data[turn] = kqd0 + kqd_ripple[turn-1]
 
             # Update TBT, and save zetas
             tbt.update_at_turn(turn, particles, twiss)
@@ -691,7 +696,7 @@ class SPS_Flat_Bottom_Tracker:
         
         # Append TBT data if beam was kicked
         if kick_beam:
-            tbt.append_centroid_data(X_data, Y_data)
+            tbt.append_centroid_data(X_data, Y_data, kqf_data, kqd_data)
             
         return tbt
 

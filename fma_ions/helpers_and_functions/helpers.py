@@ -147,12 +147,15 @@ class Records:
         self.includes_seconds_array = True if seconds_array is not None else False
         
         
-    def append_centroid_data(self, X_data : np.ndarray, Y_data : np.ndarray):
+    def append_centroid_data(self, X_data : np.ndarray, Y_data : np.ndarray, 
+                             kqf_data : np.ndarray, kqd_data : np.ndarray):
         """
-        Append X and Y centroid data to object
+        Append X and Y centroid data and quadrupolar knob from Twiss to object
         """
         self.X_data = X_data.tolist()
         self.Y_data = Y_data.tolist()
+        self.kqf_data = kqf_data.tolist()
+        self.kqd_data = kqd_data.tolist()
         self.includes_centroid_array = True
 
 
@@ -189,6 +192,8 @@ class Records:
         if self.includes_centroid_array:
             data['X_data'] = self.X_data
             data['Y_data'] = self.Y_data
+            data['kqf_data'] = self.kqf_data
+            data['kqd_data'] = self.kqd_data
 
         # Convert lists to numpy arrays if desired
         if convert_to_numpy:
