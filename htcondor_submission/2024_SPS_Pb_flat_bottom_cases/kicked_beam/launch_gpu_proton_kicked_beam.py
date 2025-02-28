@@ -41,7 +41,7 @@ num_part = 10_000
 
 # Generate beam parameters
 beamParams = fma_ions.BeamParameters_SPS_Proton()
-beamParams.sigma_z = 0.17
+beamParams.sigma_z = 0.19
 beamParams.exn = 0.5e-6
 beamParams.eyn = 0.5e-6
 
@@ -54,9 +54,9 @@ kqd_phases = 0.4732764 * np.ones(len(ripple_freqs))
 
 # Tracking on GPU context
 sps = fma_ions.SPS_Flat_Bottom_Tracker(qx0={:.3f}, qy0={:.3f}, dqx0=0.0, dqy0=0.0, num_turns=n_turns, num_part=num_part)
-tbt = sps.track_SPS(ion_type='proton', which_context='gpu', beamParams=beamParams, distribution_type='gaussian', install_SC_on_line=False, add_beta_beat=False,
-                add_non_linear_magnet_errors=False, add_tune_ripple=True, ripple_freqs = ripple_freqs, kqf_amplitudes = kqf_amplitudes, 
-                kqd_amplitudes = kqd_amplitudes, kqf_phases=kqf_phases, kqd_phases=kqd_phases, kick_beam=True)
+tbt = sps.track_SPS(ion_type='proton', which_context='gpu', beamParams=beamParams, distribution_type='gaussian', install_SC_on_line=False, 
+                    add_tune_ripple=True, ripple_freqs = ripple_freqs, kqf_amplitudes = kqf_amplitudes, 
+                    kqd_amplitudes = kqd_amplitudes, kqf_phases=kqf_phases, kqd_phases=kqd_phases, kick_beam=True)
 tbt.to_json(output_dir)
     '''.format(num_turns, Qx, Qy)
     )
