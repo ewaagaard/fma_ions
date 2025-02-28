@@ -656,8 +656,8 @@ class SPS_Flat_Bottom_Tracker:
             if kick_beam:
                 X_data[turn] = np.mean(particles.x)
                 Y_data[turn] = np.mean(particles.y)
-                kqf_data[turn] = kqf0 + kqf_ripple[turn-1]
-                kqd_data[turn] = kqd0 + kqd_ripple[turn-1]
+                kqf_data[turn] = line.vars['kqf']
+                kqd_data[turn] = line.vars['kqd']
 
             # Update TBT, and save zetas
             tbt.update_at_turn(turn, particles, twiss)
