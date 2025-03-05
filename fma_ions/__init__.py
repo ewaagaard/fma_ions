@@ -17,6 +17,6 @@ from .longitudinal import generate_binomial_distribution
 from .longitudinal import generate_binomial_distribution_from_PS_extr
 from .longitudinal import generate_particles_transverse_gaussian, build_particles_linear_in_zeta, return_separatrix_coordinates
 
-from .plotting import SPS_Plotting
+from .plotting import SPS_Plotting, SPS_Kick_Plotter
 
 from .helpers_and_functions import Fit_Functions, Records, Records_Growth_Rates, Full_Records, Zeta_Container, Longitudinal_Monitor

@@ -1,1 +1,2 @@
 from .sps_plotting_classes import SPS_Plotting
+from .kicked_beam_analyzer import SPS_Kick_Plotter
