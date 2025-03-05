@@ -58,7 +58,7 @@ class SPS_Flat_Bottom_Tracker:
         line: xt.Line
         context : xo.context
         distribution_type : str
-            'gaussian', 'qgaussian', 'parabolic', 'binomial' or 'linear_in_zeta'
+            'gaussian', 'qgaussian', 'parabolic', 'binomial', 'single' or 'linear_in_zeta'
         beamParams : dataclass
             container of exn, eyn, Nb and sigma_z. Default 'None' will load nominal SPS beam parameters 
         matched_for_PS_extraction : bool
@@ -80,6 +80,8 @@ class SPS_Flat_Bottom_Tracker:
         # Generate particles
         if distribution_type == 'linear_in_zeta':
             particles = build_particles_linear_in_zeta(beamParams, line, scale_factor_Qs=scale_factor_Qs)
+        elif distribution_type == 'single':
+            particles = xp.build_particles(_context=context, particle_ref=line.particle_ref, x=[0.0])
         else:
             particles = generate_particles_transverse_gaussian(beamParams, line, longitudinal_distribution_type=distribution_type, num_part=self.num_part, 
                                                                _context=context, matched_for_PS_extraction=matched_for_PS_extraction)
@@ -656,8 +658,8 @@ class SPS_Flat_Bottom_Tracker:
             if kick_beam:
                 X_data[turn] = np.mean(particles.x)
                 Y_data[turn] = np.mean(particles.y)
-                kqf_data[turn] = line.vars['kqf']
-                kqd_data[turn] = line.vars['kqd']
+                kqf_data[turn] = line.vars['kqf']._value
+                kqd_data[turn] = line.vars['kqd']._value
 
             # Update TBT, and save zetas
             tbt.update_at_turn(turn, particles, twiss)

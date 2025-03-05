@@ -5,8 +5,9 @@ import fma_ions
 import numpy as np
 import matplotlib.pyplot as plt
 
+# Try single particle
 sps = fma_ions.SPS_Flat_Bottom_Tracker(num_turns=500, num_part=200, turn_print_interval=20)
-tbt = sps.track_SPS(which_context='cpu', distribution_type='gaussian', install_SC_on_line=False, 
+tbt = sps.track_SPS(which_context='cpu', distribution_type='single', install_SC_on_line=False, 
                     add_tune_ripple=True, kick_beam=True)
 tbt_dict = tbt.to_dict()
 
