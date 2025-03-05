@@ -11,7 +11,7 @@ import datetime
 dir_path = pathlib.Path(__file__).parent.absolute()
 
 # Define run files and which parameters to change
-master_name = 'Q26_Pb_ions_Qx_scan_LSE_excitation_3_with_summed_50_150_300_600_ripple_effective_aperture_WITH_COMP_2024_11_25_IPAC'
+master_name = 'Q26_Pb_ions_Qx_scan_LSE_excitation_3_with_summed_50_150_300_600_ripple_effective_aperture_NO_COMP_2024_11_25_IPAC_IBS'
 num_turns = 130_000 # corresponds to 3s for SPS ions at flat bottom
 Qy = 26.19
 Qx_range = np.arange(26.28, 26.42, 0.01)
@@ -39,10 +39,10 @@ num_part = 20_000
 
 # Desired ripple frequencies and amplitudes
 ripple_freqs = np.array([50.0, 150.0, 300.0, 600.0])
-kqf_amplitudes = np.array([1.6384433351717334e-08, 2.1158318710898557e-07, 3.2779826135772383e-07, 4.7273849059164697e-07])
-kqd_amplitudes = np.array([1.6331206486868624e-08, 2.108958328708343e-07, 3.2673336803004776e-07, 4.7120274094403095e-07])
-kqf_phases = np.array([0.9192671763874849, 0.030176158557178895, 0.5596488397663701, 0.050511945653341016])
-kqd_phases = np.array([-2.2223254772020873, -3.1114164950326417, -2.581943813823403, -3.0910807079364635])
+kqf_amplitudes = np.array([1.0141062492337905e-06, 1.9665396648867768e-07, 3.1027971430227987e-07, 4.5102937494506313e-07])
+kqd_amplitudes = np.array([1.0344583265981035e-06, 4.5225494700433166e-07, 5.492718035100028e-07, 4.243698659233664e-07])
+kqf_phases = np.array([0.7646995873548973, 2.3435670020522825, -1.1888958255027886, 2.849205512655574])
+kqd_phases = np.array([0.6225130389353318, -1.044380492147742, -1.125401419249802, -0.30971750008702853])
 
 # Tracking on GPU context
 sps = fma_ions.SPS_Flat_Bottom_Tracker(qx0={:.3f}, qy0={:.3f}, num_turns=n_turns, num_part=num_part)
