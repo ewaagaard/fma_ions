@@ -11,7 +11,7 @@ import datetime
 dir_path = pathlib.Path(__file__).parent.absolute()
 
 # Define run files and which parameters to change
-master_name = 'Q26_Pb_ions_Qx_scan_LSE_excitation_3_with_summed_50_150_300_600_ripple_effective_aperture_NO_COMP_2024_11_25_IPAC_IBS'
+master_name = 'Q26_Pb_ions_Qx_scan_LSE_excitation_3_with_summed_50_150_300_600_ripple_effective_aperture_NO_COMP_2024_11_25_IPAC_ibs_adaptive_20'
 num_turns = 130_000 # corresponds to 3s for SPS ions at flat bottom
 Qy = 26.19
 Qx_range = np.arange(26.28, 26.42, 0.01)
@@ -49,7 +49,7 @@ sps = fma_ions.SPS_Flat_Bottom_Tracker(qx0={:.3f}, qy0={:.3f}, num_turns=n_turns
 tbt = sps.track_SPS(which_context='gpu', distribution_type='qgaussian', install_SC_on_line=True, add_beta_beat=True, add_non_linear_magnet_errors=True, 
                     I_LSE=-3.0, apply_kinetic_IBS_kicks=True, ibs_step = 2000, add_tune_ripple=True, ripple_freqs = ripple_freqs,
                     kqf_amplitudes = kqf_amplitudes, kqd_amplitudes = kqd_amplitudes, kqf_phases=kqf_phases, kqd_phases=kqd_phases,
-                    SC_adaptive_interval_during_tracking=100)
+                    SC_adaptive_interval_during_tracking=20)
 tbt.to_json(output_dir)
     '''.format(num_turns, Qx_range[i], Qy)
     )
