@@ -31,12 +31,4 @@ except FileNotFoundError:
     tbt.to_json(output_folder)
     tbt_dict = tbt.to_dict()
 
-# plot turn-by-turn data
-fig, ax = plt.subplots(2, 1, sharex=True, constrained_layout=True)
-ax[0].plot(tbt_dict['X_data'], color='b')
-ax[1].plot(tbt_dict['Y_data'], color='darkorange')
-ax[0].set_ylabel('X [m]')
-ax[1].set_ylabel('Y [m]')
-ax[1].set_xlabel('Turns')
-
 sps_kick.plot_tbt_data_to_spectrum(output_folder=output_folder, ripple_freqs=ripple_freqs)
