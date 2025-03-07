@@ -12,10 +12,10 @@ dir_path = pathlib.Path(__file__).parent.absolute()
 
 # Define run files and which parameters to change
 master_name = 'Q26_Pb_ions_adaptive_SC_length_scan_LSE_excited'
-num_turns = 10_000 # corresponds to 3s for SPS ions at flat bottom
+num_turns = 130_000 # corresponds to 3s for SPS ions at flat bottom
 Qx = 26.39
 Qy = 26.19
-SC_adaptive_interval = [5, 10, 20, 50, 100]
+SC_adaptive_interval = [3, 5, 10, 20, 50, 100]
 
 run_files = ['sps_run_sc_interval_{}.py'.format(i+1) for i in range(len(SC_adaptive_interval))]
 
