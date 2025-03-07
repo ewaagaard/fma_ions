@@ -59,6 +59,7 @@ class Records:
     twiss: dict
     particles_i: dict
     particles_f: dict
+    includes_particle_and_twiss_data: bool = False
     includes_profile_data: bool = False
     includes_seconds_array: bool = False
     includes_centroid_array: bool = False
@@ -91,14 +92,17 @@ class Records:
     def store_twiss(self, df_twiss: pd.DataFrame):
         """Store twiss table, before collective elements"""
         self.twiss = df_twiss.to_dict()
+        self.includes_particle_and_twiss_data = True
 
     def store_initial_particles(self, parts: xp.Particles):
         """Store initial particle object"""
         self.particles_i = parts.to_dict()
+        self.includes_particle_and_twiss_data = True
 
     def store_final_particles(self, parts: xp.Particles):
         """Store final particle object"""
         self.particles_f = parts.to_dict()
+        self.includes_particle_and_twiss_data = True
 
     def append_profile_monitor_data(self, 
                                     monitorH, 
@@ -171,11 +175,12 @@ class Records:
             'bunch_length': self.bunch_length.tolist(),
             'Nb' : self.Nb.tolist(),
             'includes_profile_data' : self.includes_profile_data,
-            'Turns': self.turns.tolist(),
-            'twiss': self.twiss,
-            'particles_i': self.particles_i,
-            'particles_f': self.particles_f 
+            'Turns': self.turns.tolist()
         }
+        if self.includes_particle_and_twiss_data:
+            data['twiss'] = self.twiss
+            data['particles_i'] = self.particles_i
+            data['particles_f'] = self.particles_f 
         if self.includes_profile_data:
             data['monitorH_x_grid'] = self.monitorH_x_grid
             data['monitorH_x_intensity'] = self.monitorH_x_intensity

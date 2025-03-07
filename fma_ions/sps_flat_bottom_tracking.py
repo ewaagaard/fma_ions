@@ -122,6 +122,7 @@ class SPS_Flat_Bottom_Tracker:
                   use_effective_aperture=True,
                   x_max_at_WS=0.025,
                   y_max_at_WS=0.013,
+                  store_particles=False,
                   nturns_profile_accumulation_interval = 100,
                   nbins = 140,
                   also_keep_delta_profiles=False,
@@ -203,6 +204,8 @@ class SPS_Flat_Bottom_Tracker:
             physical aperture limit at horizontal wire scanner BWS, Y --> used as "effective aperture" if beam was not observed smaller than this limit 
         nturns_profile_accumulation_interval : int
             turn interval between which to aggregate transverse and longitudinal particles for histogram
+        store_particles : bool
+            whether to store xp.Particles object and Twiss table in output file
         nbins : int
             number of bins for histograms of transverse and longitudinal monitors
         z_kick_num_integ_per_sigma : int
@@ -397,8 +400,9 @@ class SPS_Flat_Bottom_Tracker:
         # Initialize the dataclasses and store the initial values
         tbt = Records.init_zeroes(self.num_turns)  # only emittances and bunch intensity
         tbt.update_at_turn(0, particles, twiss)
-        tbt.store_initial_particles(particles)
-        tbt.store_twiss(twiss.to_pandas())
+        if store_particles:
+            tbt.store_initial_particles(particles)
+            tbt.store_twiss(twiss.to_pandas())
         
         # Track particles for one turn         
         if matched_for_PS_extraction:
@@ -694,7 +698,8 @@ class SPS_Flat_Bottom_Tracker:
                                             also_keep_delta_profiles=also_keep_delta_profiles)
         
         # Append final particle state
-        tbt.store_final_particles(particles)
+        if store_particles:
+            tbt.store_final_particles(particles)
         
         # Append TBT data if beam was kicked
         if kick_beam:

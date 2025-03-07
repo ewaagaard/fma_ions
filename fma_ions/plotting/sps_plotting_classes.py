@@ -644,12 +644,12 @@ class SPS_Plotting:
                 scan_string = '{} = {:.2f}'.format(label_for_x_axis, scan_array_for_x_axis[i])
                 try:
                     tbt_dict = self.load_records_dict_from_json(output_folder=output_folder)
-    
-                    particles_f = tbt_dict['particles_f']
-                    twiss = tbt_dict['twiss']
-                    df_twiss = pd.DataFrame(twiss)
-                    
+                        
                     try:
+                        particles_f = tbt_dict['particles_f']
+                        twiss = tbt_dict['twiss']
+                        df_twiss = pd.DataFrame(twiss)
+                        
                         fig_phase_space, fig01_phase_space, fig1_phase_space, fig2_lost_at_turn, fig3_lost_at_s, loss_string = self.plot_normalized_phase_space_from_tbt(particles_f,
                                                                                               extra_text_string=scan_string, df_twiss=df_twiss)
                         fig_phase_space.savefig('output_transverse/losses/Norm_phase_space_{}.png'.format(output_folder), dpi=250)
