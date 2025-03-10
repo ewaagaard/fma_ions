@@ -659,7 +659,7 @@ class SPS_Plotting:
                         fig3_lost_at_s.savefig('output_transverse/losses/Lost_at_s_{}.png'.format(output_folder), dpi=250)
                         del fig_phase_space, fig2_lost_at_turn, fig3_lost_at_s
                         all_loss_strings += '\n{}\n{}'.format(scan_string, loss_string)
-                    except ValueError:
+                    except (ValueError, KeyError):
                         print('Did not manage to plot phase space')
                     
     
@@ -758,47 +758,54 @@ class SPS_Plotting:
                     sigma_raw_X = np.abs(popt_X[2])
                     sigma_raw_Y = np.abs(popt_Y[2])
     
-                    ### Convert beam sizes to emittances ###
-                    part = tbt_dict['particles_i']
-                    gamma = part['gamma0'][0]
-                    beta_rel = part['beta0'][0]
-    
-                    # Fit q-Gaussian to final X and Y profiles, to latest curves - initial guess from Gaussian
-                    q0 = 1.02
-                    p0_qX = [popt_X[1], q0, 1/popt_X[2]**2/(5-3*q0), 2*popt_X[0]]
-                    p0_qY = [popt_Y[1], q0, 1/popt_Y[2]**2/(5-3*q0), 2*popt_Y[0]]
-    
-                    popt_Q_X0, pcov_Q_X0 = fits.fit_Q_Gaussian(X_pos_data, X0_profile_data, p0=p0_qX)
-                    q0_vals_X[i] = popt_Q_X0[1]
-                    q0_errors_X[i] = np.sqrt(np.diag(pcov_Q_X0))[1] # error from covarance_matrix
-    
-                    popt_Q_X, pcov_Q_X = fits.fit_Q_Gaussian(X_pos_data, X_profile_data, p0=p0_qX)
-                    q_vals_X[i] = popt_Q_X[1]
-                    q_errors_X[i] = np.sqrt(np.diag(pcov_Q_X))[1] # error from covarance_matrix
-                    sigmas_q_gaussian_X[i] = fits.get_sigma_RMS_from_qGaussian_fit(popt_Q_X)
-    
-                    popt_Q_Y, pcov_Q_Y = fits.fit_Q_Gaussian(Y_pos_data, Y_profile_data, p0=p0_qY)
-                    q_vals_Y[i] = popt_Q_Y[1]
-                    q_errors_Y[i] = np.sqrt(np.diag(pcov_Q_Y))[1] # error from covarance_matrix
-                    
-                    popt_Q_Y0, pcov_Q_Y0 = fits.fit_Q_Gaussian(Y_pos_data, Y0_profile_data, p0=p0_qY)
-                    q0_vals_Y[i] = popt_Q_Y0[1]
-                    q0_errors_Y[i] = np.sqrt(np.diag(pcov_Q_Y0))[1] # error from covarance_matrix
-                    
-                    sigmas_q_gaussian_Y[i] = fits.get_sigma_RMS_from_qGaussian_fit(popt_Q_Y)
-                    
-                    # Extract optics at Wire Scanner, correct for dispersion
-                    betx, bety, dx = self.optics_at_WS()
-                    dpp = 1e-3
-                    sigmaX_raw_for_betatronic = sigma_raw_X # sigmas_q_gaussian_X[i]
-                    sigmaX_betatronic = np.sqrt((sigmaX_raw_for_betatronic)**2 - (dpp * dx)**2)
-                    exf = sigmaX_betatronic**2 / betx
-    
-                    sigmaY_raw_for_betatronic = sigma_raw_Y # sigmas_q_gaussian_Y[i]
-                    sigmaY_betatronic = np.abs(sigmaY_raw_for_betatronic) # no vertical dispersion
-                    eyf = sigmaY_betatronic**2 / bety
-                    exn[1, i] =  exf * beta_rel * gamma 
-                    eyn[1, i] =  eyf * beta_rel * gamma 
+                    ### Convert beam sizes to emittances if saved particles, otherwise take numerical object ###
+                    try:
+                        part = tbt_dict['particles_i']
+                        gamma = part['gamma0'][0]
+                        beta_rel = part['beta0'][0]
+        
+                        # Fit q-Gaussian to final X and Y profiles, to latest curves - initial guess from Gaussian
+                        q0 = 1.02
+                        p0_qX = [popt_X[1], q0, 1/popt_X[2]**2/(5-3*q0), 2*popt_X[0]]
+                        p0_qY = [popt_Y[1], q0, 1/popt_Y[2]**2/(5-3*q0), 2*popt_Y[0]]
+        
+                        popt_Q_X0, pcov_Q_X0 = fits.fit_Q_Gaussian(X_pos_data, X0_profile_data, p0=p0_qX)
+                        q0_vals_X[i] = popt_Q_X0[1]
+                        q0_errors_X[i] = np.sqrt(np.diag(pcov_Q_X0))[1] # error from covarance_matrix
+        
+                        popt_Q_X, pcov_Q_X = fits.fit_Q_Gaussian(X_pos_data, X_profile_data, p0=p0_qX)
+                        q_vals_X[i] = popt_Q_X[1]
+                        q_errors_X[i] = np.sqrt(np.diag(pcov_Q_X))[1] # error from covarance_matrix
+                        sigmas_q_gaussian_X[i] = fits.get_sigma_RMS_from_qGaussian_fit(popt_Q_X)
+        
+                        popt_Q_Y, pcov_Q_Y = fits.fit_Q_Gaussian(Y_pos_data, Y_profile_data, p0=p0_qY)
+                        q_vals_Y[i] = popt_Q_Y[1]
+                        q_errors_Y[i] = np.sqrt(np.diag(pcov_Q_Y))[1] # error from covarance_matrix
+                        
+                        popt_Q_Y0, pcov_Q_Y0 = fits.fit_Q_Gaussian(Y_pos_data, Y0_profile_data, p0=p0_qY)
+                        q0_vals_Y[i] = popt_Q_Y0[1]
+                        q0_errors_Y[i] = np.sqrt(np.diag(pcov_Q_Y0))[1] # error from covarance_matrix
+                        
+                        sigmas_q_gaussian_Y[i] = fits.get_sigma_RMS_from_qGaussian_fit(popt_Q_Y)
+                        
+                        # Extract optics at Wire Scanner, correct for dispersion
+                        betx, bety, dx = self.optics_at_WS()
+                        dpp = 1e-3
+                        sigmaX_raw_for_betatronic = sigma_raw_X # sigmas_q_gaussian_X[i]
+                        sigmaX_betatronic = np.sqrt((sigmaX_raw_for_betatronic)**2 - (dpp * dx)**2)
+                        exf = sigmaX_betatronic**2 / betx
+        
+                        sigmaY_raw_for_betatronic = sigma_raw_Y # sigmas_q_gaussian_Y[i]
+                        sigmaY_betatronic = np.abs(sigmaY_raw_for_betatronic) # no vertical dispersion
+                        eyf = sigmaY_betatronic**2 / bety
+                        exn[1, i] =  exf * beta_rel * gamma 
+                        eyn[1, i] =  eyf * beta_rel * gamma
+                        
+                        ax.plot(X_pos_data, fits.Q_Gaussian(X_pos_data, *popt_Q_X), ls='--', color='lime', label='q-Gaussian fit final\nsimulated profiles')
+                        ax2.plot(Y_pos_data, fits.Q_Gaussian(Y_pos_data, *popt_Q_Y), ls='--', color='lime', label='q-Gaussian fit final\nsimulated profiles')
+                    except KeyError:
+                        exn[1, i] =  tbt_dict['exn'][-1]
+                        eyn[1, i] =  tbt_dict['eyn'][-1]
                     Nb[1, i]  =  tbt_dict['Nb'][-1] # final
                     transmission[i] = Nb[1, i]/Nb[0, i]
     
@@ -807,20 +814,17 @@ class SPS_Plotting:
     
                     print('exn = {:.3e}, eyn = {:.3e}'.format(exn[1, i], eyn[1, i]))
                     print('Transmission = {:3f}\n'.format(transmission[i]))
-    
-    
-                    # Add q-Gaussian fits to plots and save 
-                    #ax.text(0.02, 0.65, 'Final simulated:\n$\epsilon_{{x}}^n$ = {:.3f} $\mu$m rad'.format(1e6 * exn[1, i], 1e6), fontsize=12.5, transform=ax.transAxes)
-                    #ax2.text(0.02, 0.65, 'Final simulated\n$\epsilon_{{y}}^n$ = {:.3f} $\mu$m rad'.format(1e6 * eyn[1, i]), fontsize=12.5, transform=ax2.transAxes)
-    
-                    ax.plot(X_pos_data, fits.Q_Gaussian(X_pos_data, *popt_Q_X), ls='--', color='lime', label='q-Gaussian fit final\nsimulated profiles')
-                    ax2.plot(Y_pos_data, fits.Q_Gaussian(Y_pos_data, *popt_Q_Y), ls='--', color='lime', label='q-Gaussian fit final\nsimulated profiles')
+                    
                     ax.legend(loc='upper left', fontsize=11.5)
                     ax2.legend(loc='upper left', fontsize=11.5)
                     fig.savefig('output_transverse/X_profiles/{}_SPS_X_Beam_Profile_WS.png'.format(output_folder), dpi=250)
                     fig2.savefig('output_transverse/Y_profiles/{}_SPS_Y_Beam_Profile_WS.png'.format(output_folder), dpi=250)
                     plt.close()
     
+                    # Add q-Gaussian fits to plots and save 
+                    #ax.text(0.02, 0.65, 'Final simulated:\n$\epsilon_{{x}}^n$ = {:.3f} $\mu$m rad'.format(1e6 * exn[1, i], 1e6), fontsize=12.5, transform=ax.transAxes)
+                    #ax2.text(0.02, 0.65, 'Final simulated\n$\epsilon_{{y}}^n$ = {:.3f} $\mu$m rad'.format(1e6 * eyn[1, i]), fontsize=12.5, transform=ax2.transAxes)
+        
     
                 except FileNotFoundError:
                     print('Could not find values in {}!\n'.format(output_folder))
