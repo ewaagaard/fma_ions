@@ -11,7 +11,7 @@ import datetime
 dir_path = pathlib.Path(__file__).parent.absolute()
 
 # Define run files and which parameters to change
-master_name = 'Q26_Pb_ions_bunch_intensity_scan_adaptive_sc_ibs_with_compensated_50_150_300_600_Hz_ripple_130k_turns_TRANSFER_FUNCTION'
+master_name = 'Q26_Pb_ions_bunch_intensity_scan_adaptive_sc_ibs_with_compensated_50_150_300_600_Hz_ripple_130k_turns_TRANSFER_FUNCTION_no_beta_beat'
 num_turns = 130_000 # corresponds to about 6 s for SPS ions at flat bottom
 Qy = 26.19
 Qx = 26.31
@@ -62,7 +62,7 @@ kqd_phases = np.array([-2.2223254772020873, -3.1114164950326417, -2.581943813823
 
 # Tracking on GPU context
 sps = fma_ions.SPS_Flat_Bottom_Tracker(qx0={:.3f}, qy0={:.3f}, num_turns=n_turns, num_part=num_part)
-tbt = sps.track_SPS(which_context='gpu', distribution_type='qgaussian', beamParams=beamParams, install_SC_on_line=True, add_beta_beat=True, 
+tbt = sps.track_SPS(which_context='gpu', distribution_type='qgaussian', beamParams=beamParams, install_SC_on_line=True, add_beta_beat=False, 
                     add_non_linear_magnet_errors=True, apply_kinetic_IBS_kicks=True, ibs_step = 2000, add_tune_ripple=True, ripple_freqs = ripple_freqs,
                     kqf_amplitudes = kqf_amplitudes, kqd_amplitudes = kqd_amplitudes, kqf_phases=kqf_phases, kqd_phases=kqd_phases,
                     SC_adaptive_interval_during_tracking=100)
