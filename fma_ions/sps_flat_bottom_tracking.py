@@ -474,7 +474,7 @@ class SPS_Flat_Bottom_Tracker:
 
             # Create ripple in quadrupolar knobs, convert phases to turns
             turns_per_sec = 1/twiss['T_rev0']
-            ripple_periods = (turns_per_sec/ripple_freqs).astype(int)  # number of turns particle makes during one ripple oscillation
+            ripple_periods = turns_per_sec/ripple_freqs #).astype(int)  # number of turns particle makes during one ripple oscillation
             kqf_phases_turns = kqf_phases * turns_per_sec # convert time domain to turn domain, i.e. multiply with turns/sec
             kqd_phases_turns = kqd_phases * turns_per_sec # convert time domain to turn domain, i.e. multiply with turns/sec
 
