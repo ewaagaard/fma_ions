@@ -87,7 +87,7 @@ class SPS_Kick_Plotter:
     
     
     def plot_tbt_data_to_spectrum(self, tbt_dict=None, output_folder = 'output_tbt', t4s = 40, i_start = 200,
-                             Q_int = 26, ripple_freqs=None, ion_type='Pb'):
+                             Q_int = 26, ripple_freqs=None, ion_type='Pb', transfer_function_bounds = [10., 1500.]):
         """
         Convert turn-by-turn data to normalized FFT spectrum
         
@@ -107,6 +107,8 @@ class SPS_Kick_Plotter:
             array with excited frequencies, if given
         ion_type : str
             'Pb' or 'proton'
+        transfer_function_bounds : list
+            upper and lower limit to analyze for transfer function
         """
         # Extra path lengths from kicks
         extra_time = 0.0 #0.55e-6 # to account for extra path length
@@ -204,6 +206,8 @@ class SPS_Kick_Plotter:
         
         #### FFT from TBT data ####
         planes = ['H', 'V']
+        tbt_spectrum = {}
+        transfer_function = {}
         for i, plane in enumerate(planes):
             # Plot tune evolution
             turns_tbt = np.arange(len(tunes[plane]))
@@ -212,14 +216,16 @@ class SPS_Kick_Plotter:
             
             # Calculate and plot FFT of TBT tune evolution
             N = len(tunes[plane])
-            yf = fftshift(fft(tunes[plane] - np.nanmean(tunes[plane]), N))
+            yf = np.abs(fftshift(fft(tunes[plane] - np.nanmean(tunes[plane]), N))) / N
             xf = fftshift(fftfreq(N, T))
                         
-            ax_spectrum[plane].semilogy(xf, np.abs(yf) / N, color=colors[plane], label='TBT tune spectrum')
+            ax_spectrum[plane].semilogy(xf, yf, color=colors[plane], label='TBT tune spectrum')
             ax_spectrum[plane].set_ylabel(f'{plane}: norm. FFT amplitude')
             ax_spectrum[plane].set_xlim(0, 1500)
             ax_spectrum[plane].set_ylim(1e-7, 1e-1)
             ax_spectrum[plane].grid(True)
+            
+            tbt_spectrum[plane] = yf
         
                 
         ### FFT from current spectrum ### 
@@ -227,9 +233,9 @@ class SPS_Kick_Plotter:
             ax_tune.plot(turns_tbt+t4s/2, tunes_knob[key][ind], 
                         label=f'{planes[i]} tune from knobs k', alpha=0.85, color=colors2[i])
             N_knob = len(tunes_knob[key][ind])
-            yf_knob = fftshift(fft(tunes_knob[key][ind] - np.nanmean(tunes_knob[key][ind]), N_knob))
+            yf_knob = np.abs(fftshift(fft(tunes_knob[key][ind] - np.nanmean(tunes_knob[key][ind]), N_knob))) / N_knob
             xf_knob = fftshift(fftfreq(N_knob, T))
-            ax_spectrum[planes[i]].semilogy(xf_knob, np.abs(yf_knob) / N_knob, ls='--', alpha=0.85, color=colors2[i], label='Knobs k tune spectrum')
+            ax_spectrum[planes[i]].semilogy(xf_knob, yf_knob, ls='--', alpha=0.85, color=colors2[i], label='Knobs k tune spectrum')
             ax_spectrum[plane].legend(fontsize=13)
             
             # Add markers at 50 Hz intervals
@@ -237,6 +243,10 @@ class SPS_Kick_Plotter:
                 marker_indices = [np.argmin(np.abs(xf - f)) for f in ripple_freqs]
                 ax_spectrum[planes[i]].plot(xf[marker_indices], 1.0/N * np.abs(yf)[marker_indices], 
                                 'r.', markersize=8, label='50 Hz intervals')
+                
+            # Compute and append transfer function
+            print('Transfer function: TBT spectrum {} divided by current {}'.format(planes[i], key))
+            transfer_function[planes[i]] = tbt_spectrum[planes[i]] / yf_knob
         
         # Finalize plots
         ax_tune.set_title('Tune evolution TBT vs knobs data')
@@ -247,4 +257,30 @@ class SPS_Kick_Plotter:
         
         ax_spectrum_V.set_xlabel('Frequency [Hz]')
         fig.savefig(f'{output_folder}/Tune_spectrum_TBT_knobs{extra_time_str}.png', dpi=400)
+        
+        ### Transfer function plot ###
+        ind_t = np.where((xf_knob > transfer_function_bounds[0]) & (xf_knob < transfer_function_bounds[1]))
+        
+        fig2, ax2 = plt.subplots(2,1,figsize=(8,6), sharex=True, constrained_layout=True)
+        ax2[0].plot(xf_knob[ind_t], transfer_function['H'][ind_t])
+        #ax[0].plot(frequencies_tf, fitted_transfer_function_combined, label=None, linestyle='-', color='cyan')
+        ax2[1].plot(xf_knob[ind_t], transfer_function['V'][ind_t])
+        #ax[1].plot(frequencies_tf, fitted_transfer_function_combined, label='Combined LC filter + C section', linestyle='-', color='cyan')
+        
+        # --- Add red dots for specific frequencies on the combined fit ---
+        #specific_frequencies_for_plot = np.array(specific_frequencies) # Convert to numpy array for plotting
+        #values_for_plot = np.array(list(combined_function_values_at_freqs.values())) # Get corresponding function values
+        #ax[1].loglog(specific_frequencies_for_plot, values_for_plot, 'ro', label='Combined Fit Values') # Red dots
+            
+        ax2[1].set_xlabel('Frequency [Hz]')
+        ax2[0].set_ylabel('X Transfer function [a.u.]', fontsize=14)
+        ax2[1].set_ylabel('Y Transfer function [a.u.]', fontsize=14)
+        #ax2[1].legend(fontsize=11)
+        for a in ax2:
+            a.set_yscale('log')
+            a.set_xscale('log')
+            a.grid(alpha=0.55)
+            #a.set_xlim(10, 1500)
+        fig2.savefig(f'{output_folder}/Transfer_functions_TBT_knobs{extra_time_str}.png', dpi=400)
+        
         plt.show()
