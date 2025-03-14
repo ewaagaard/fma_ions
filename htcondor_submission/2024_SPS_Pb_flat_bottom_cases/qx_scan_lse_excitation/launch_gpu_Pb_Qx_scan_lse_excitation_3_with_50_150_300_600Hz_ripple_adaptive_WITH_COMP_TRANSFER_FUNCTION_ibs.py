@@ -38,7 +38,7 @@ n_turns = {}
 num_part = 20_000
 
 # Transfer function factors
-a_50 = 1.7170
+a_50 = 1.0 #1.7170
 a_150 = 0.5098
 a_300 = 0.2360
 a_600 = 0.1095
