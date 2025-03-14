@@ -98,6 +98,7 @@ class SPS_Flat_Bottom_Tracker:
                   add_aperture=True,
                   add_beta_beat=False, 
                   beamParams=None,
+                  use_symmetric_lattice=False,
                   install_SC_on_line=True, 
                   SC_mode='frozen',
                   SC_adaptive_interval_during_tracking=None,
@@ -150,6 +151,8 @@ class SPS_Flat_Bottom_Tracker:
             whether to add computed beta beat, i.e. relative difference between max beta function and max original beta function
         beamParams : dataclass
             container of exn, eyn, Nb and sigma_z. Default 'None' will load nominal SPS beam parameters 
+        use_symmetric_lattice : bool
+            whether to replace QDA and QFA with normal quads for symmetry
         install_SC_on_line : bool
             whether to install space charge
         SC_mode : str
@@ -260,8 +263,7 @@ class SPS_Flat_Bottom_Tracker:
         
         # Extract line with aperture, beta-beat and non-linear magnet errors if desired
         line, twiss = sps.load_xsuite_line_and_twiss(add_aperture=add_aperture, add_non_linear_magnet_errors=add_non_linear_magnet_errors, 
-                                                   deferred_expressions=True, # needed for tune matching
-                                                   plane=plane_for_beta_beat, voltage=voltage)
+                                                   use_symmetric_lattice=use_symmetric_lattice, voltage=voltage)
         print('{} optics: Qx = {:.3f}, Qy = {:.3f}'.format(self.proton_optics, twiss['qx'], twiss['qy']))
         
         # Check aperture on copy of line

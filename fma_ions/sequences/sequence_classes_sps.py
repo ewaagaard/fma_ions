@@ -186,7 +186,6 @@ class SPS_sequence_maker:
             # Make new line with beta-beat and/or non-linear chromatic errors
             if beta_beat is None:
                 sps_line = self.generate_xsuite_seq(use_symmetric_lattice=use_symmetric_lattice, 
-                                                    deferred_expressions=deferred_expressions,
                                                     add_non_linear_magnet_errors=add_non_linear_magnet_errors, 
                                                     add_aperture=add_aperture, voltage=voltage) 
             else:
@@ -230,6 +229,8 @@ class SPS_sequence_maker:
             wether to return generated xtrack line
         voltage : float
             RF voltage in V
+        use_symmetric_lattice : bool
+            whether to replace QFA and QDA with normal quads for symmetry
         add_non_linear_magnet_errors : bool
             whether to add line with non-linear chromatic errors
         deferred_expressions : bool
@@ -269,7 +270,7 @@ class SPS_sequence_maker:
         
         # Load madx instance with SPS sequence
         madx = self.load_simple_madx_seq(add_non_linear_magnet_errors=add_non_linear_magnet_errors, 
-                                         add_aperture=add_aperture,
+                                         add_aperture=add_aperture, use_symmetric_lattice=use_symmetric_lattice,
                                          nr_slices=nr_slices)
                 
         line = xt.Line.from_madx_sequence(madx.sequence['sps'], deferred_expressions=deferred_expressions,
@@ -823,6 +824,7 @@ class SPS_sequence_maker:
 
     def load_simple_madx_seq(self,
                              add_non_linear_magnet_errors=False, 
+                             use_symmetric_lattice=False,
                              make_thin=True, 
                              add_aperture=False,
                              nr_slices=5):
@@ -833,6 +835,8 @@ class SPS_sequence_maker:
         -----------
         add_non_linear_magnet_errors : bool
             whether to add line with non-linear chromatic errors
+        use_symmetric_lattice : bool
+            whether to replace QFA and QDA with normal quads for symmetry
         make_thin : bool
             whether to slice the sequence or not
         add_aperture : bool
@@ -852,6 +856,50 @@ class SPS_sequence_maker:
 
         # Load madx instance
         madx = self.load_madx_SPS_from_job(use_Pb_ions=use_Pb_ions)
+
+
+        # Make symmetric if desired, by replacing QFA and QDA with normal QD and QF
+        if use_symmetric_lattice:
+            #Print all QFA and QDA elements
+            dash = '-' * 65
+            header = '\n{:<27} {:>12} {:>15} {:>8}\n{}'.format("Element", "Location", "Type", "Length", dash)
+            print(header)
+            for ele in madx.sequence['sps'].elements:
+                if ele.name[:3] == 'qfa' or ele.name[:3] == 'qda':   
+                    print('{:<27} {:>12.6f} {:>15} {:>8.3}'.format(ele.name, ele.at, ele.base_type.name, ele.length))
+            print(dash)
+            print('Printed all QFA and QDA magnets\n')
+    
+            # Reference quadrupoles
+            ref_qf = madx.sequence['sps'].elements['qf.11010']
+            ref_qd = madx.sequence['sps'].elements['qd.10110']
+    
+            # Initiate seqedit and replace all QFA and QDA magnets with a given QF
+            madx.command.seqedit(sequence='sps')
+            madx.command.flatten()
+            for ele in madx.sequence['sps'].elements:
+                if ele.name[:3] == 'qfa': 
+                    madx.command.replace(element=ele.name, by=ref_qf.name)
+                    print('Replacing {} by {}'.format(ele, ref_qf))
+                elif ele.name[:3] == 'qda':   
+                    madx.command.replace(element=ele.name, by=ref_qd.name)
+                    print('Replacing {} by {}'.format(ele, ref_qd))
+            madx.command.endedit()
+    
+            print('\nNew sequence quadrupoles:')
+            print(header)
+            for ele in madx.sequence['sps'].elements:
+                if ele.name[:2] == 'qf' or ele.name[:2] == 'qd': 
+                    print('{:<27} {:>12.6f} {:>15} {:>8.3}'.format(ele.name, ele.at, ele.base_type.name, ele.length))
+            print(dash)
+    
+            # Check if remaining QFAs or QDAs
+            print("\nRemaining QFAs or QDAs")
+            print(header)
+            for ele in madx.sequence['sps'].elements:
+                if ele.name[:3] == 'qfa' or ele.name[:3] == 'qda':   
+                    print('{:<27} {:>12.6f} {:>15} {:>8.3}'.format(ele.name, ele.at, ele.base_type.name, ele.length))
+            print(dash)
 
         # Flatten and slice line --> start at zero-dispersion location
         if make_thin:
@@ -1059,7 +1107,7 @@ class SPS_sequence_maker:
         madx.use(sequence='sps')
         twiss_thin = madx.twiss()  
         
-        line = xt.Line.from_madx_sequence(madx.sequence['sps'])
+        line = xt.Line.from_madx_sequence(madx.sequence['sps'], deferred_expressions=True)
         line.build_tracker()
         #madx_beam = madx.sequence['sps'].beam
         
