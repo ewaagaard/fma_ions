@@ -39,7 +39,8 @@ output_dir = './'
 
 # Tracking on GPU context
 fma_sps = fma_ions.FMA(n_linear=200)
-fma_sps.run_SPS(qx0={:.3f}, qy0={:.3f}, which_context = 'gpu')
+tbt = fma_sps.run_SPS(qx0={:.3f}, qy0={:.3f}, which_context = 'gpu')
+tbt.to_json(output_dir)
         '''.format(Qx_range[i], Qy_range[j])
         )
         run_file.close()
