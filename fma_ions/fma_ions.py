@@ -453,7 +453,7 @@ class FMA:
         print(beamParams)
         
         # Load line
-        line0, twiss_sps =  sps_seq.load_xsuite_line_and_twiss(use_symmetric_lattice=use_symmetric_lattice,
+        line, twiss_sps =  sps_seq.load_xsuite_line_and_twiss(use_symmetric_lattice=use_symmetric_lattice,
                                                                add_non_linear_magnet_errors=add_non_linear_magnet_errors)
         if add_beta_beat:
             line = sps_seq.add_beta_beat_to_line(line)
@@ -463,7 +463,7 @@ class FMA:
             line = sps_seq.excite_LSE_sextupole_from_current(line, I_LSE=I_LSE, which_LSE='lse.12402')      
 
         # Add space charge elements to line, build tracker, generate particles
-        line = self.install_SC_and_get_line(line0, beamParams, context=context)
+        line = self.install_SC_and_get_line(line, beamParams, context=context)
         line.build_tracker(_context=context)    
         particles = self.generate_particles(line, beamParams, make_single_Jy_trace, context=context)
 
