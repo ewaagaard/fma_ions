@@ -9,7 +9,7 @@ import xpart as xp
 import xfields as xf
 import xobjects as xo
 import os 
-from scipy.interpolate import griddata
+import time
 
 ##### Plot settings 
 import matplotlib.pyplot as plt
@@ -467,9 +467,16 @@ class FMA:
         line.build_tracker(_context=context)    
         particles = self.generate_particles(line, beamParams, make_single_Jy_trace, context=context)
 
+        # Time the tracking
+        time00 = time.time()
+        
         # Track particles, run FMA analysis
         tbt = self.track_particles(particles, line, context)
         Qx, Qy, d = self.run_FMA(tbt, Qmin=self.Q_min_SPS)
+
+        time01 = time.time()
+        dt0 = time01-time00
+        print('\nTracking time: {:.1f} s = {:.1f} h'.format(dt0, dt0/3600))
 
         # Add interger tunes to fractional tunes, then store in dictionary
         Qx += int(twiss_sps['qx'])

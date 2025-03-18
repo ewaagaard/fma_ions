@@ -249,5 +249,5 @@ for folder in folder_names:
         '''
         )
         plot_file.close()
-        os.system(f'cp master_plot_fma {os.path.join(self.output_folder_eos,"master_plot_fma")}')
+        os.system(f'cp master_plot_fma.py {os.path.join(self.output_folder_eos,"master_plot_fma.py")}')
         print(f'Successfully copied master FMA plot file to {self.output_folder_eos}')
