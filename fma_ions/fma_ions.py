@@ -526,7 +526,7 @@ class FMA_plotter:
 
 
     def plot_FMA(self, tbt_dict=None, case_name='', 
-                    plot_initial_distribution=True):   
+                    plot_initial_distribution=True, show_plot=False):   
         """
         Plots FMA diffusion and possibly initial distribution
         
@@ -578,7 +578,10 @@ class FMA_plotter:
         if plot_initial_distribution:
             self.plot_initial_distribution(tbt_dict, case_name, output_loc)
 
-        plt.show()
+        if show_plot:
+            plt.show()
+        else:
+            plt.close()
 
 
     def plot_initial_distribution(self, tbt_dict, case_name=''): 
