@@ -12,47 +12,49 @@ dir_path = pathlib.Path(__file__).parent.absolute()
 
 # Define run files and which parameters to change
 master_name = 'Q26_Pb_FMA_LSE_excitation_3_on_momentum_ideal_lattice'
-num_turns = 130_000 # corresponds to 3s for SPS ions at flat bottom
-Qy = 26.25
-Qx_range = np.arange(26.28, 26.4, 0.02)
-run_files = ['sps_run_qx_{}_tbt_qy_26dot19_ripple.py'.format(i+1) for i in range(len(Qx_range))]
 
-# Define script and folder names
-script_names = run_files.copy()
-folder_names = ['sps_Qx_{:.2f}_Qy_{:.2f}'.format(Qx_range[i], Qy) for i in range(len(Qx_range))]
-string_array = ['Qx = {:.2f}, Qy = {:.2f} space charge'.format(Qx_range[i], Qy) for i in range(len(Qx_range))]    
+Qx_range = np.arange(26.28, 26.4, 0.02)
+Qy_range = np.array([26.19, 26.25, 26.27])
+run_files, folder_names, string_array = [], [] , []
+for i in range(len(Qx_range)):
+    run_files0 = []
+    for j in range(len(Qy_range)):
+        run_files0.append('sps_run_qx_{}_tbt_qy_{}_ripple.py'.format(i+1, j+1))
+        folder_names.append('sps_Qx_{:.2f}_Qy_{:.2f}'.format(Qx_range[i], Qy_range[j]))
+        string_array.append('Qx = {:.2f}, Qy = {:.2f} space charge'.format(Qx_range[i], Qy_range[j]))
+    run_files.append(run_files0)
 
 # Generate the scripts to be submitted
-for i, run_file in enumerate(run_files):
-    
-    # Write run file for given tune
-    print('Generating launch script {}\n'.format(run_file))
-    run_file = open(run_file, 'w')
-    run_file.truncate(0)  # remove existing content, if any
-    run_file.write(
-    '''import fma_ions
+for i in range(len(Qx_range)):
+    for j in range(len(Qy_range)):
+        run_file = run_files[i][j]
+
+        # Write run file for given tune
+        print('Generating launch script {}\n'.format(run_file))
+        run_file = open(run_file, 'w')
+        run_file.truncate(0)  # remove existing content, if any
+        run_file.write(
+        '''import fma_ions
 import numpy as np
 output_dir = './'
 
-
 # Tracking on GPU context
-fma_sps = fma_ions.FMA(output_folder=output_dir, z0=0., n_linear=200)
-fma_sps.run_SPS()
-    '''.format(num_turns, Qx_range[i], Qy)
-    )
-    run_file.close()
+fma_sps = fma_ions.FMA(output_folder=output_dir, n_linear=200)
+fma_sps.run_SPS(qx0={:.3f}, qy0={:.3f})
+        '''.format(Qx_range[i], Qy_range[j])
+        )
+        run_file.close()
     
-    
+# Flatten list to define script names
+script_names = [x for xs in run_files for x in xs]
+
 # Instantiate the submitter class and launch the jobs
 sub = fma_ions.Submitter() 
 master_job_name = '{:%Y_%m_%d__%H_%M_%S}_{}'.format(datetime.datetime.now(), master_name)
 
 # Launch the Python scripts in this folder
-for i, script in enumerate(script_names):
+for k, script in enumerate(script_names):
     file_name = os.path.join(dir_path, script)
     print(f"Submitting {file_name}")
-    sub.submit_GPU(file_name, master_job_name=master_job_name, job_name=folder_names[i])
-sub.copy_master_plot_script(folder_names, string_array)
-sub.copy_plot_script_emittances_for_scan(master_name, folder_names, scan_array_for_x_axis='np.arange(26.28, 26.42, 0.01)',
-                                             label_for_x_axis='$Q_{x}$', 
-                                             extra_text_string='$Q_{y}$ = 26.19 - q-Gaussian beam\\nAdaptive SC, IBS, ~10% $\\beta$-beat + non-linear magnet errors\\nLSE excitation')
+    sub.submit_GPU(file_name, master_job_name=master_job_name, job_name=folder_names[k])
+sub.copy_master_fma_plot_script(folder_names)

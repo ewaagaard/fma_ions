@@ -19,4 +19,4 @@ from .longitudinal import generate_particles_transverse_gaussian, build_particle
 
 from .plotting import SPS_Plotting, SPS_Kick_Plotter
 
-from .helpers_and_functions import Fit_Functions, Records, Records_Growth_Rates, Full_Records, Zeta_Container, Longitudinal_Monitor
+from .helpers_and_functions import Fit_Functions, FMA_keeper, Records, Records_Growth_Rates, Full_Records, Zeta_Container, Longitudinal_Monitor

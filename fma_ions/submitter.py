@@ -235,3 +235,19 @@ sps.fit_and_plot_transverse_profiles(scan_array_for_x_axis='{scan_array_for_x_ax
         plot_file.close()
         os.system(f'cp plot_emittances_and_Nb_from_scan.py {os.path.join(self.output_folder_eos,"plot_emittances_and_Nb_from_scan.py")}')
         print(f'Successfully copied scan plot file to {self.output_folder_eos}')
+
+
+    def copy_master_fma_plot_script(self, folder_names):
+        """Create a simple TBT data plot script in the output directory"""
+        plot_file = open('master_plot_fma.py','w')
+        plot_file.write(
+        f'''import fma_ions\nfolder_names = {folder_names}\n
+# Load data and plot
+for folder in folder_names:
+    fma_plot = fma_ions.FMA_plotter(output_folder=folder)
+    fma_plot.plot_FMA(output_folder=folder)
+        '''
+        )
+        plot_file.close()
+        os.system(f'cp master_plot_fma {os.path.join(self.output_folder_eos,"master_plot_fma")}')
+        print(f'Successfully copied master FMA plot file to {self.output_folder_eos}')

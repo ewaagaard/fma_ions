@@ -48,8 +48,12 @@ class FMA_keeper:
     """
     Data class to store particle object properties
     """
+    Qx0: float
+    Qy0: float
     x: np.ndarray
     y: np.ndarray
+    x0_norm: np.ndarray
+    y0_norm: np.ndarray
     px: np.ndarray
     py: np.ndarray
     Qx: np.ndarray
@@ -58,13 +62,17 @@ class FMA_keeper:
     tune_data_is_available = False
 
     @classmethod
-    def init_zeroes(cls, n_turns: int) -> Self:  # noqa: F821
+    def init_zeroes(cls, n_turns: int, num_part : int, x0_norm: np.ndarray, y0_norm: np.ndarray) -> Self:  # noqa: F821
         """Initialize the dataclass with arrays of zeroes."""
         return cls(
-            x=np.zeros(n_turns, dtype=float),
-            y=np.zeros(n_turns, dtype=float),
-            px=np.zeros(n_turns, dtype=float),
-            py=np.zeros(n_turns, dtype=float),
+            Qx0 = 0.0,
+            Qy0 = 0.0, 
+            x=np.zeros([num_part, n_turns], dtype=float),
+            y=np.zeros([num_part, n_turns], dtype=float),
+            x0_norm=x0_norm,
+            y0_norm=y0_norm,
+            px=np.zeros([num_part, n_turns], dtype=float),
+            py=np.zeros([num_part, n_turns], dtype=float),
             Qx=np.zeros(n_turns, dtype=float),
             Qy=np.zeros(n_turns, dtype=float),
             d=np.zeros(n_turns, dtype=float),
@@ -74,10 +82,10 @@ class FMA_keeper:
         """Automatically update the keeper class"""
 
         # Store the particle ensemble quantities
-        self.x[turn] = context.nparray_from_context_array(parts.x)
-        self.y[turn] = context.nparray_from_context_array(parts.y)
-        self.px[turn] = context.nparray_from_context_array(parts.px)
-        self.py[turn] = context.nparray_from_context_array(parts.py)
+        self.x[:, turn] = context.nparray_from_context_array(parts.x)
+        self.y[:, turn] = context.nparray_from_context_array(parts.y)
+        self.px[:, turn] = context.nparray_from_context_array(parts.px)
+        self.py[:, turn] = context.nparray_from_context_array(parts.py)
 
 
     def to_dict(self, convert_to_numpy=True):
@@ -86,11 +94,14 @@ class FMA_keeper:
         Convert lists to numpy format if desired, but typically not if data is saved to json
         """
         data = {
+            'Qx0': self.Qx0,
+            'Qy0': self.Qy0,
             'x': self.x.tolist(),
             'y': self.y.tolist(),
+            'x0_norm': self.x0_norm.tolist(),
+            'y0_norm': self.y0_norm.tolist(),
             'px': self.x.tolist(),
             'py': self.y.tolist(),
-            'turns': self.turns.tolist()
         }
         if self.tune_data_is_available:
             data['Qx'] = self.Qx

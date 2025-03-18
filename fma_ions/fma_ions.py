@@ -64,12 +64,6 @@ class FMA:
         if UNIFORM distribution is used, default number of points if uniform linear grid for normalized X and Y are used
     n_sigma : float
         maximum radial distance, i.e. max number of beam sizes sigma to generate particles
-    output_folder : str 
-        folder where to save data
-    plot_order : int
-        order to include in resonance diagram
-    periodicity : int 
-        periodicity in tune diagram
     Q_min_SPS, Q_min_PS : float, optional
         min tune to filter out from synchrotron frequency
     """
@@ -84,9 +78,6 @@ class FMA:
     n_linear: int = 100
     n_sigma: float = 10.0
     mode: str = 'frozen'  # for now, only frozen space charge is available
-    output_folder: str = 'output_fma'
-    plot_order: int = 4
-    periodicity: int = 16
     Q_min_SPS: float = 0.05
     Q_min_PS: float = 0.015
     
@@ -301,14 +292,15 @@ class FMA:
         # Track the particles and return turn-by-turn coordinates
 
         # Instantiate TBT data keeper
-        tbt = FMA_keeper.init_zeroes(self.num_turns)
+        num_part = len(particles.x)
+        tbt = FMA_keeper.init_zeroes(self.num_turns, num_part, self._x_norm, self._y_norm)
 
         print('\nStarting tracking...')
 
         # Perform the tracking
         for turn in range(self.num_turns):
             if turn % 50 == 0:
-                print('Turn {}'.format(i))
+                print('Turn {}'.format(turn))
         
             tbt.update_at_turn(turn, particles, context)
         
@@ -326,7 +318,7 @@ class FMA:
     
   
     
-    def run_FMA(self, tbt, Qmin=0.0, remove_dead_particles=True, which_context = 'cpu'):
+    def run_FMA(self, tbt, Qmin=0.0, remove_dead_particles=True):
         """
         Run FMA analysis for given turn-by-turn coordinates
         
@@ -379,10 +371,6 @@ class FMA:
         Qx_2[Qx_2 == 0.0] = np.nan
         Qy_2[Qy_2 == 0.0] = np.nan
         
-        # Convert to numpy array if running on GPU
-        if which_context == 'gpu':
-           self._kill_ind = self._kill_ind.get()
-
         # Remove dead particles from particle index - if exists
         if remove_dead_particles and self._kill_ind_exists:
             Qx_1[self._kill_ind] = np.nan
@@ -397,8 +385,7 @@ class FMA:
        
         
         
-    def run_SPS(self, load_tbt_data=False, 
-                save_tune_data=True, 
+    def run_SPS(self,
                 ion_type='Pb',
                 qx0=26.31,
                 qy0=26.25,
@@ -470,32 +457,47 @@ class FMA:
         if add_beta_beat:
             line = sps_seq.add_beta_beat_to_line(line)
         
-        # Try loading exisiting data, otherwise perform new tracking
-        try:
-            tbt_dict = self.load_tracking_data()
-        except FileNotFoundError:
-            line = self.install_SC_and_get_line(line0, beamParams, context=context)
-            line.build_tracker(_context=context)    
-            particles = self.generate_particles(line, beamParams, make_single_Jy_trace, context=context)
-            tbt = self.track_particles(particles, line, context)
-            Qx, Qy, d = self.run_FMA(tbt, Qmin=self.Q_min_SPS, context=context)
-            tbt.add_tune_data_to_dict(Qx, Qy, d)
-  
-        # Tunes from Twiss
-        Qh_set = twiss_sps['qx']
-        Qv_set = twiss_sps['qy']
-        
-        # Add interger tunes to fractional tunes 
+        # Add space charge elements to line, build tracker, generate particles
+        line = self.install_SC_and_get_line(line0, beamParams, context=context)
+        line.build_tracker(_context=context)    
+        particles = self.generate_particles(line, beamParams, make_single_Jy_trace, context=context)
+
+        # Track particles, run FMA analysis
+        tbt = self.track_particles(particles, line, context)
+        Qx, Qy, d = self.run_FMA(tbt, Qmin=self.Q_min_SPS)
+
+        # Add interger tunes to fractional tunes, then store in dictionary
         Qx += int(twiss_sps['qx'])
         Qy += int(twiss_sps['qy'])
-        
-        # Make tune footprint, need plot range
-        plot_range  = [[26.0, 26.35], [26.0, 26.35]]
-   
-        self.plot_FMA(d, Qx, Qy, Qh_set, Qv_set,'SPS', plot_range)
-        #self.plot_initial_distribution(x, y, d, case_name='SPS')
+        tbt.add_tune_data_to_dict(Qx, Qy, d)
+
+        # Add set tunes
+        tbt.Qx0 = twiss_sps['qx']
+        tbt.Qy0 = twiss_sps['qy']
+
+        return tbt
 
         
+@dataclass
+class FMA_plotter:
+    """
+    Container for plotting classes and post-processing of FMA run data
+
+    plot_range : list
+        doubly nested list for plot interval
+    output_folder : str 
+        folder where to save data
+    plot_order : int
+        order to include in resonance diagram
+    periodicity : int 
+        periodicity in tune diagram
+    """
+
+    plot_range  = [[26.0, 26.35], [26.0, 26.35]]
+    output_folder: str = 'output'
+    plot_order: int = 4
+    periodicity: int = 6
+
     def load_records_dict_from_json(self, output_folder=None):
         """
         Loads json file with particle data from tracking
@@ -504,20 +506,23 @@ class FMA:
         print('Loading data from {}tbt.json'.format(folder_path))
 
         # Read the json file, return either instanced class or dictionary
-        tbt_dict = FMA_keeper.dict_from_json("{}tbt.json".format(folder_path))
+        try:
+            tbt_dict = FMA_keeper.dict_from_json("{}tbt.json".format(folder_path))
+            return tbt_dict
+        except FileNotFoundError:
+            print('Did not find dictionary!')
 
-        return tbt_dict
 
-
-    def plot_FMA(self, d, Qx, Qy, Qh_set, Qv_set, case_name, 
-                 plot_range, plot_initial_distribution=True):   
+    def plot_FMA(self, tbt_dict=None, case_name='', 
+                    plot_initial_distribution=True):   
         """
         Plots FMA diffusion and possibly initial distribution
         
         Parameters:
         ----------
-        d, Qx, Qy :  numpy.ndarray
-            arrays with input data from self.run_FMA
+        tbt_dict :  dict
+            turn-by-turn dictionary containing arrays with input data from self.run_FMA. If none, will try to load
+            saved dictionary
         Qx_set, Qy_set : float 
             set tunes, input data from Twiss
         case_name : str
@@ -527,13 +532,19 @@ class FMA:
         --------
         None
         """
-        fig = plt.figure(figsize=(9,6))
-        tune_diagram = resonance_lines(plot_range[0],
-                    plot_range[1], np.arange(1, self.plot_order+1), self.periodicity)
+        output_loc = f'{self.output_folder}/output' if self.output_folder is not None else 'output'
+        os.makedirs(output_loc, exist_ok=True)
+
+        if tbt_dict is None:
+            tbt_dict = self.load_records_dict_from_json(output_folder=self.output_folder)
+
+        fig = plt.figure(figsize=(9,6), constrained_layout=True)
+        tune_diagram = resonance_lines(self.plot_range[0],
+                    self.plot_range[1], np.arange(1, self.plot_order+1), self.periodicity)
         tune_diagram.plot_resonance(figure_object = fig, interactive=False)
 
         # Combine Qx, Qy, and d into a single array for sorting
-        data = list(zip(Qx, Qy, d))
+        data = list(zip(tbt_dict['Qx'], tbt_dict['Qy'], tbt_dict['d']))
         
         # Sort the data based on the 'd' values
         sorted_data = sorted(data, key=lambda x: x[2], reverse=False)
@@ -542,7 +553,7 @@ class FMA:
         sorted_Qx, sorted_Qy, sorted_d = zip(*sorted_data)
 
         plt.scatter(sorted_Qx, sorted_Qy, s=5.0, c=sorted_d, marker='o', lw = 0.1, zorder=10, cmap=plt.cm.jet) #, alpha=0.55)
-        plt.plot(Qh_set, Qv_set, 'o', color='k', markerfacecolor='red', zorder=20, markersize=11, label="Set tune")
+        plt.plot(tbt_dict['Qx0'], tbt_dict['Qy0'], 'o', color='k', markerfacecolor='red', zorder=20, markersize=11, label="Set tune")
         plt.xlabel('$Q_{x}$')
         plt.ylabel('$Q_{y}$')
         cbar=plt.colorbar()
@@ -550,66 +561,42 @@ class FMA:
         cbar.ax.tick_params(labelsize='18')
         plt.legend(loc='upper left')
         plt.clim(-20.5,-4.5)
-        fig.tight_layout(pad=0.6, w_pad=0.5, h_pad=1.0)
-        fig.savefig('{}/FMA_plot_{}.png'.format(self.output_folder, case_name), dpi=250)
+        fig.savefig('{}/FMA_plot{}.png'.format(output_loc, case_name), dpi=250)
+
+        if plot_initial_distribution:
+            self.plot_initial_distribution(tbt_dict, case_name, output_loc)
+
+        plt.show()
 
 
-
-
-        
-@dataclass
-class FMA_plotter:
-
-
-    def plot_initial_distribution(self, x, y, d, case_name, use_normalized_coordinates=True,
-                                  interpolate_initial_distribution=False, also_show_plot=False): 
+    def plot_initial_distribution(self, tbt_dict, case_name=''): 
         """
         Plot initial distribution, interpolating between discrete points
         
         Parameters:
         ----------
-        x, y, d :  numpy.ndarray
-            arrays with input data generated from self.run_FMA
+        tbt_dict :  dict
+            turn-by-turn dictionary containing arrays with input data from self.run_FMA.
         case_name : str
             name string for scenario
-        use_normalized_coordinates : bool
-            flag whether to normalize coordinates w.r.t beam size
-        interpolate_initial_distribution : bool
-            interpolate initial particle distribution into colormesh, or keep the points as they are 
-        also_show_plot : bool 
-            whether to run plt.show()
-            
-        Returns:
-        --------
-        None
+        output_loc : str
+            where to save data
         """ 
-        fig2=plt.figure(figsize=(8,6))
-        XX,YY = np.meshgrid(np.unique(x[:,0]), np.unique(y[:,0]))
+        fig2 = plt.figure(figsize=(8,6), constrained_layout=True)
         fig2.suptitle('Initial Distribution', fontsize='18')
         
-        # Combine Qx, Qy, and d into a single array for sorting
-        if use_normalized_coordinates:
-            data = list(zip(self._x_norm, self._y_norm, d))
-            x_string = '$\sigma_{x}$'
-            y_string = '$\sigma_{y}$'
-        else:
-            data = list(zip(x[:,0], y[:,0], d))
-            x_string = 'x [m]'
-            y_string = 'y [m]'
-        
+        # Combine x0_norm, y0_norm and d into a single array for sorting
+        data = list(zip(tbt_dict['x0_norm'], tbt_dict['y0_norm'], tbt_dict['d']))
+        x_string = '$\sigma_{x}$'
+        y_string = '$\sigma_{y}$'
+
         # Sort the data based on the 'd' values
         sorted_data = sorted(data, key=lambda x: x[2], reverse=False)
         
         # Unpack the sorted data
         sorted_x, sorted_y, sorted_d = zip(*sorted_data)
-        
-        if interpolate_initial_distribution:
-            Z = griddata((x[:,0], y[:,0]), d, (XX,YY), method='cubic') # linear alternative
-            Zm = np.ma.masked_invalid(Z)
-            plt.pcolormesh(XX,YY,Zm,cmap=plt.cm.jet)
-        else:
-            plt.scatter(sorted_x, sorted_y, s=5.5, c=sorted_d, marker='o', lw = 0.1, zorder=10, cmap=plt.cm.jet)  # without interpolation
-        
+    
+        plt.scatter(sorted_x, sorted_y, s=5.5, c=sorted_d, marker='o', lw = 0.1, zorder=10, cmap=plt.cm.jet)  # without interpolation
         plt.tick_params(axis='both', labelsize='18')
         plt.xlabel('{}'.format(x_string), fontsize='20')
         plt.ylabel('{}'.format(y_string), fontsize='20')
@@ -617,44 +604,8 @@ class FMA_plotter:
         cbar=plt.colorbar()
         cbar.set_label('d',fontsize='18')
         cbar.ax.tick_params(labelsize='18')
-        fig2.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
-        fig2.savefig('{}/{}_Initial_distribution.png'.format(self.output_folder, case_name), dpi=250)
-        
-        if also_show_plot:
-            plt.show()
-        
-        
-    def plot_centroid_from_tbt_data(self, x_data=None, y_data=None, load_tbt_data=False, also_show_plot=False):
-        """
-        Generate centroid plot from turn-by-turn data to observe e.g. synchrotron motion
-        
-        Parameters:
-        ----------
-        x_tbt_data, y_tbt_data :  numpy.ndarray
-            arrays with turn-by-turn data
-        
-        Returns:
-        --------
-        None
-        """
-        if load_tbt_data:
-            x_tbt_data, y_tbt_data, _, _ = self.load_tracking_data()
-        else:
-            x_tbt_data, y_tbt_data = x_data, y_data
-        fig = plt.figure(figsize=(10,7))
-        fig.suptitle('Centroid evolution')
-        ax = fig.add_subplot(2, 1, 1)  # create an axes object in the figure
-        ax.plot(np.mean(x_tbt_data, axis=0), marker='o', color='b', markersize=3)
-        ax.set_ylabel("Centroid $X$ [m]")
-        ax.set_xlabel("#turns")
-        ax = fig.add_subplot(2, 1, 2)  # create a second axes object in the figure
-        ax.plot(np.mean(y_tbt_data, axis=0), marker='o', color='y', markersize=3)
-        ax.set_ylabel("Centroid $Y$ [m]")
-        ax.set_xlabel("#turns")
-        fig.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
-        
-        if also_show_plot:
-            plt.show()
+        fig2.savefig('{}/Initial_norm_distribution{}.png'.format(self.output_folder, case_name), dpi=250)
+
 
     def plot_tune_over_action(self, twiss, 
                             load_tune_data=False,
