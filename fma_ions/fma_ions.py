@@ -333,8 +333,6 @@ class FMA:
         --------
         Qx, Qy, d : np.ndarrays
             numpy arrays with turn-by-turn action, tune and diffusion data
-        which_context : str
-            'cpu' or 'gpu'
         """
         
         # Initialize empty arrays for tunes of particles, during first and second half of run - at split_ind

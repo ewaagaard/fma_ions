@@ -40,7 +40,7 @@ output_dir = './'
 
 # Tracking on GPU context
 fma_sps = fma_ions.FMA(output_folder=output_dir, n_linear=200)
-fma_sps.run_SPS(qx0={:.3f}, qy0={:.3f})
+fma_sps.run_SPS(qx0={:.3f}, qy0={:.3f}, which_context = 'gpu')
         '''.format(Qx_range[i], Qy_range[j])
         )
         run_file.close()
