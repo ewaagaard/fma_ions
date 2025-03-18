@@ -402,227 +402,6 @@ class FMA:
             raise FileNotFoundError('Tune data does not exist - set correct path or perform FMA!')
 
   
-    def plot_tune_over_action(self, twiss, 
-                              load_tune_data=False,
-                              load_up_to_turn=None,
-                              also_show_plot=True, 
-                              resonance_order=5, 
-                              case_name=None,
-                              plane='X'):
-        
-        """
-        Loads generated turn-by-turn data and plots tunes Qx, Qy over action Jx, Jy
-        
-        Parameters:
-        -----------
-        twiss : xtrack.twisstable
-            twiss table from xtrack
-        load_tbt_data : bool
-            load tune data if FMA has already been done
-        load_up_to_turn : int, optional
-            turn up to which to load tbt data
-        also_show_plot : bool 
-            whether to include "plt.show()"
-        resonance_order : int
-            order up to which resonance should be plotted
-        case_name : str, optional
-            additional string to add to figure heading 
-        plane : str
-            'X' or 'Y'
-        
-        Returns:
-        --------
-        Jx, Jy, Qx, Qy, d : np.ndarrays
-            numpy arrays with turn-by-turn action, tune and diffusion data
-        """
-        if load_up_to_turn is None:
-            load_up_to_turn = self.num_turns
-        
-        # Load tracking data 
-        x, y, px, py  = self.load_tracking_data()
-
-        # Calculate normalized coordinates
-        X = x / np.sqrt(twiss['betx'][0]) 
-        PX = twiss['alfx'][0] / np.sqrt(twiss['betx'][0]) * x + np.sqrt(twiss['betx'][0]) * px
-        Y = y / np.sqrt(twiss['bety'][0]) 
-        PY = twiss['alfy'][0] / np.sqrt(twiss['bety'][0]) * y + np.sqrt(twiss['bety'][0]) * py
-        
-        # Calculate action for each particle
-        Jx = X**2 + PX **2
-        Jy = Y**2 + PY **2
-
-        # Try to load tunes and action if already exists, otherwise perform FMA again
-        if load_tune_data:
-            try:
-                Qx = np.load('{}/Qx.npy'.format(self.output_folder))
-                Qy = np.load('{}/Qy.npy'.format(self.output_folder))
-                d = np.load('{}/d.npy'.format(self.output_folder))
-                print('\nLoaded existing tune and action data!\n')
-    
-            except FileNotFoundError:
-                raise FileNotFoundError('\nDid not find existing tune and action data - initializing FMA!\n')
-        else:
-            
-            # Find tunes of particles up to desired turn
-            Qx, Qy, d = self.run_FMA(x[:, :load_up_to_turn], y[:, :load_up_to_turn])
-            
-            # Save the tunes and action, if possible
-            os.makedirs(self.output_folder, exist_ok=True)
-            np.save('{}/Qx.npy'.format(self.output_folder), Qx)
-            np.save('{}/Qy.npy'.format(self.output_folder), Qy)
-            np.save('{}/d.npy'.format(self.output_folder), d)
-        
-            print('Saved tune and action data.\n')
-                
-        # Plot initial action 
-        fig, ax = plt.subplots(1, 2, figsize=(12,6))
-        name_str = 'Tune over action' if case_name is None else 'Tune over action - {}'.format(case_name)
-        fig.suptitle(name_str)
-
-        ax[0].plot(Jx[:, 0], Qx, 'o', color='b', alpha=0.5, markersize=2.5)
-        ax[1].plot(Jy[:, 0], Qy, 'o', color='r', alpha=0.5, markersize=2.5)
-        
-        ax[0].set_ylabel(r"$Q_{x}$")
-        ax[0].set_xlabel(r"$J_{x}$")
-        ax[1].set_ylabel(r"$Q_{y}$")
-        ax[1].set_xlabel(r"$J_{y}$")
-        
-        ax[0].set_xscale('log')
-        ax[1].set_xscale('log')
-        
-        fig.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
-        
-        # Plot tune over normalized beam size, in horizontal
-        fig2, ax2 = plt.subplots(figsize=(8, 6))
-        if plane == 'X':
-            ax2.scatter(self._x_norm, Qx, s=5.5, c=self._x_norm, marker='o', zorder=10, cmap=plt.cm.cool)
-            ax2.set_ylabel("$Q_{x}$")
-            ax2.set_xlabel("$\sigma_{x}$")
-        elif plane == 'Y':
-            ax2.plot(self._y_norm, Qy, 'o', color='r', alpha=0.5, markersize=2.5)       
-            ax2.set_ylabel("$\Q_{y}$")
-            ax2.set_xlabel("$\sigma_{y}$")
-        else:
-            raise ValueError('\nInvalid plane specified!\n')
-        
-        # Add colorbar, normalized to beam size (in sigmas)
-        fig.colorbar(mpl.cm.ScalarMappable(norm=mpl.colors.Normalize(min(self._x_norm), max(self._x_norm)), cmap='cool'),
-             ax=ax2, orientation='vertical', label='$\sigma_{x}$')
-        
-        fig2.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
-        
-        fig.savefig('{}/{}_Tune_over_action.png'.format(self.output_folder, case_name), dpi=250)
-        fig2.savefig('{}/{}_Tune_over_normalized_{}.png'.format(self.output_folder, case_name, plane), dpi=250)
-        
-        if also_show_plot:
-            plt.show()
-
-        return Jx, Jy, Qx, Qy, d
-        
-        
-    def plot_normalized_phase_space(self, twiss, 
-                                    particle_index=None,
-                                    also_show_plot=True,
-                                    case_name=None,
-                                    plane='X'
-                                    ):
-        """
-        Generate phase space plots in X and Y from generated turn-by-turn data
-        
-        Parameters:
-        -----------
-        twiss : xtrack.twisstable 
-            twiss table from xtrack
-        particle_index : numpy.ndarray, optional
-            array with particle index, if not given takes all
-        also_show_plot : bool 
-            whether to include "plt.show()"
-        case_name : str, optional
-            extra string to add to case name
-        plane : str
-            'X' or 'Y'
-            
-        Returns:
-        -------
-        None
-        """
-        x, y, px, py  = self.load_tracking_data()
-        
-        if particle_index is not None:
-            i = particle_index
-        else:
-            i = np.arange(1, len(x)) # particle index
-        
-        X = x / np.sqrt(twiss['betx'][0]) 
-        PX = twiss['alfx'][0] / np.sqrt(twiss['betx'][0]) * x + np.sqrt(twiss['betx'][0]) * px
-        Y = y / np.sqrt(twiss['bety'][0]) 
-        PY = twiss['alfy'][0] / np.sqrt(twiss['bety'][0]) * y + np.sqrt(twiss['bety'][0]) * py
-
-        # Calculate action for each particle
-        Jx = X**2 + PX **2
-        Jy = Y**2 + PY **2
-
-        # Generate two figures - one in normalized phase space, one in polar action space (Jx, phi)
-        fig, ax = plt.subplots(1, 1, figsize=(8,6))
-        fig.suptitle('Normalized phase space' if case_name is None else 'Normalized phase space - {}'.format(case_name), 
-                     fontsize=16)
-
-        fig2, ax2 = plt.subplots(1, 1, figsize=(8,6))
-        fig2.suptitle('Polar action space' if case_name is None else 'Polar action space - {}'.format(case_name), 
-                     fontsize=16)
-
-        # Calculate phase space angle
-        if plane == 'X':
-            phi = np.arctan2(X, PX)          
-        elif plane == 'Y':
-            phi = np.arctan2(Y, PY)
-        else:
-            raise ValueError('Plane invalid - has to be "X" or "Y"')
-            
-        # Take colors from colormap of normalized phase space
-        colors = plt.cm.cool(np.linspace(0, 1, len(self._x_norm)))
-
-        for particle in i:
-            
-            # Mix black and colorbar 
-            color=colors[particle] if particle % 2 == 0 else 'k'
-                
-            # Plot normalized phase space and action space
-            if plane == 'X':
-                ax.plot(X[particle, :], PX[particle, :], 'o', color=color, alpha=0.5, markersize=1.5)
-                ax.set_ylabel(r"$P_{x}$")
-                ax.set_xlabel(r"$X$")
-                
-                ax2.plot(phi[particle, :], Jx[particle, :], 'o', color=color, alpha=0.5, markersize=1.5)
-                ax2.set_ylabel(r"$J_{x}$")
-                ax2.set_xlabel(r"$\phi$ [rad]")
-            elif plane == 'Y':
-                ax.plot(Y[particle, :], PY[particle, :], 'o', color=color, alpha=0.5, markersize=1.5)
-                ax.set_ylabel(r"$P_{y}$")
-                ax.set_xlabel(r"$Y$")
-                
-                ax2.plot(phi[particle, :], Jy[particle, :], 'o', color=color, alpha=0.5, markersize=1.5)
-                ax2.set_ylabel(r"$J_{y}$")
-                ax2.set_xlabel(r"$\phi$ [rad]")
-                
-        # Add colorbar, normalized to beam size (in sigmas)
-        fig.colorbar(mpl.cm.ScalarMappable(norm=mpl.colors.Normalize(min(self._x_norm), max(self._x_norm)), cmap='cool'),
-             ax=ax, orientation='vertical', label='$\sigma_{x}$')
-        fig.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
-        
-        fig2.colorbar(mpl.cm.ScalarMappable(norm=mpl.colors.Normalize(min(self._x_norm), max(self._x_norm)), cmap='cool'),
-             ax=ax2, orientation='vertical', label='$\sigma_{x}$')
-        fig2.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
-        
-        # Save figures
-        fig.savefig('{}/{}_Normalized_phase_space.png'.format(self.output_folder, case_name), dpi=250)
-        fig2.savefig('{}/{}_Polar_action_space_{}.png'.format(self.output_folder, case_name, plane), dpi=250)
-        
-        if also_show_plot:
-            plt.show()
-        
-        plt.close()
-    
     
     def run_FMA(self, x_tbt_data, y_tbt_data, Qmin=0.0, remove_dead_particles=True, which_context = 'cpu'):
         """
@@ -694,151 +473,12 @@ class FMA:
         return Qx_2, Qy_2, d
        
         
-    def plot_FMA(self, d, Qx, Qy, Qh_set, Qv_set, case_name, 
-                 plot_range, plot_initial_distribution=True):   
-        """
-        Plots FMA diffusion and possibly initial distribution
-        
-        Parameters:
-        ----------
-        d, Qx, Qy :  numpy.ndarray
-            arrays with input data from self.run_FMA
-        Qx_set, Qy_set : float 
-            set tunes, input data from Twiss
-        case_name : str
-            name string for scenario
-            
-        Returns:
-        --------
-        None
-        """
-        fig = plt.figure(figsize=(9,6))
-        tune_diagram = resonance_lines(plot_range[0],
-                    plot_range[1], np.arange(1, self.plot_order+1), self.periodicity)
-        tune_diagram.plot_resonance(figure_object = fig, interactive=False)
-
-        # Combine Qx, Qy, and d into a single array for sorting
-        data = list(zip(Qx, Qy, d))
-        
-        # Sort the data based on the 'd' values
-        sorted_data = sorted(data, key=lambda x: x[2], reverse=False)
-        
-        # Unpack the sorted data
-        sorted_Qx, sorted_Qy, sorted_d = zip(*sorted_data)
-
-        plt.scatter(sorted_Qx, sorted_Qy, s=5.0, c=sorted_d, marker='o', lw = 0.1, zorder=10, cmap=plt.cm.jet) #, alpha=0.55)
-        plt.plot(Qh_set, Qv_set, 'o', color='k', markerfacecolor='red', zorder=20, markersize=11, label="Set tune")
-        plt.xlabel('$Q_{x}$')
-        plt.ylabel('$Q_{y}$')
-        cbar=plt.colorbar()
-        cbar.set_label('d',fontsize='18')
-        cbar.ax.tick_params(labelsize='18')
-        plt.legend(loc='upper left')
-        plt.clim(-20.5,-4.5)
-        fig.tight_layout(pad=0.6, w_pad=0.5, h_pad=1.0)
-        fig.savefig('{}/FMA_plot_{}.png'.format(self.output_folder, case_name), dpi=250)
-        
-        
-    def plot_initial_distribution(self, x, y, d, case_name, use_normalized_coordinates=True,
-                                  interpolate_initial_distribution=False, also_show_plot=False): 
-        """
-        Plot initial distribution, interpolating between discrete points
-        
-        Parameters:
-        ----------
-        x, y, d :  numpy.ndarray
-            arrays with input data generated from self.run_FMA
-        case_name : str
-            name string for scenario
-        use_normalized_coordinates : bool
-            flag whether to normalize coordinates w.r.t beam size
-        interpolate_initial_distribution : bool
-            interpolate initial particle distribution into colormesh, or keep the points as they are 
-        also_show_plot : bool 
-            whether to run plt.show()
-            
-        Returns:
-        --------
-        None
-        """ 
-        fig2=plt.figure(figsize=(8,6))
-        XX,YY = np.meshgrid(np.unique(x[:,0]), np.unique(y[:,0]))
-        fig2.suptitle('Initial Distribution', fontsize='18')
-        
-        # Combine Qx, Qy, and d into a single array for sorting
-        if use_normalized_coordinates:
-            data = list(zip(self._x_norm, self._y_norm, d))
-            x_string = '$\sigma_{x}$'
-            y_string = '$\sigma_{y}$'
-        else:
-            data = list(zip(x[:,0], y[:,0], d))
-            x_string = 'x [m]'
-            y_string = 'y [m]'
-        
-        # Sort the data based on the 'd' values
-        sorted_data = sorted(data, key=lambda x: x[2], reverse=False)
-        
-        # Unpack the sorted data
-        sorted_x, sorted_y, sorted_d = zip(*sorted_data)
-        
-        if interpolate_initial_distribution:
-            Z = griddata((x[:,0], y[:,0]), d, (XX,YY), method='cubic') # linear alternative
-            Zm = np.ma.masked_invalid(Z)
-            plt.pcolormesh(XX,YY,Zm,cmap=plt.cm.jet)
-        else:
-            plt.scatter(sorted_x, sorted_y, s=5.5, c=sorted_d, marker='o', lw = 0.1, zorder=10, cmap=plt.cm.jet)  # without interpolation
-        
-        plt.tick_params(axis='both', labelsize='18')
-        plt.xlabel('{}'.format(x_string), fontsize='20')
-        plt.ylabel('{}'.format(y_string), fontsize='20')
-        plt.clim(-20.5,-4.5)
-        cbar=plt.colorbar()
-        cbar.set_label('d',fontsize='18')
-        cbar.ax.tick_params(labelsize='18')
-        fig2.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
-        fig2.savefig('{}/{}_Initial_distribution.png'.format(self.output_folder, case_name), dpi=250)
-        
-        if also_show_plot:
-            plt.show()
-        
-        
-    def plot_centroid_from_tbt_data(self, x_data=None, y_data=None, load_tbt_data=False, also_show_plot=False):
-        """
-        Generate centroid plot from turn-by-turn data to observe e.g. synchrotron motion
-        
-        Parameters:
-        ----------
-        x_tbt_data, y_tbt_data :  numpy.ndarray
-            arrays with turn-by-turn data
-        
-        Returns:
-        --------
-        None
-        """
-        if load_tbt_data:
-            x_tbt_data, y_tbt_data, _, _ = self.load_tracking_data()
-        else:
-            x_tbt_data, y_tbt_data = x_data, y_data
-        fig = plt.figure(figsize=(10,7))
-        fig.suptitle('Centroid evolution')
-        ax = fig.add_subplot(2, 1, 1)  # create an axes object in the figure
-        ax.plot(np.mean(x_tbt_data, axis=0), marker='o', color='b', markersize=3)
-        ax.set_ylabel("Centroid $X$ [m]")
-        ax.set_xlabel("#turns")
-        ax = fig.add_subplot(2, 1, 2)  # create a second axes object in the figure
-        ax.plot(np.mean(y_tbt_data, axis=0), marker='o', color='y', markersize=3)
-        ax.set_ylabel("Centroid $Y$ [m]")
-        ax.set_xlabel("#turns")
-        fig.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
-        
-        if also_show_plot:
-            plt.show()
-        
         
     def run_SPS(self, load_tbt_data=False, 
                 save_tune_data=True, 
                 ion_type='Pb',
-                Qy_frac=25,
+                qx0=26.31,
+                qy0=26.25,
                 make_single_Jy_trace=False,
                 use_symmetric_lattice=False,
                 add_non_linear_magnet_errors=False,
@@ -856,8 +496,10 @@ class FMA:
             flag to store results Qx, Qy, d from FMA
         ion_type : str
             which ion to use: currently available are 'Pb' and 'O'
-        Qy_frac : int
-            fractional vertical tune 
+        qx0 : float
+            horizontal tune
+        qy0 : float
+            vertical tune
         make_single_Jy_trace : bool 
             flag to create single trace with unique vertical action
             Jy, with varying action Jx. "Trace" instead of "grid", if uniform beam is used
@@ -889,7 +531,7 @@ class FMA:
 
         # Get SPS Pb line - select ion
         if ion_type=='Pb':
-            sps_seq = SPS_sequence_maker()
+            sps_seq = SPS_sequence_maker(qx0=qx0, qy0=qy0)
         elif ion_type=='O':
             sps_seq = SPS_sequence_maker(ion_type='O', Q_PS=4., Q_SPS=8., m_ion=15.9949)
         else:
@@ -897,7 +539,7 @@ class FMA:
         print(beamParams)
         
         # Load line
-        line0, twiss_sps =  sps_seq.load_xsuite_line_and_twiss(Qy_frac=Qy_frac, use_symmetric_lattice=use_symmetric_lattice,
+        line0, twiss_sps =  sps_seq.load_xsuite_line_and_twiss(use_symmetric_lattice=use_symmetric_lattice,
                                                                add_non_linear_magnet_errors=add_non_linear_magnet_errors)
         
         # Install SC, track particles and observe tune diffusion
@@ -1268,4 +910,365 @@ class FMA:
         self.plot_FMA(d, Qx, Qy, Qh_set, Qv_set,'PS', plot_range)
         self.plot_initial_distribution(x, y, d, case_name='PS')
         
+class FMA_plotter:
+
+    def plot_FMA(self, d, Qx, Qy, Qh_set, Qv_set, case_name, 
+                 plot_range, plot_initial_distribution=True):   
+        """
+        Plots FMA diffusion and possibly initial distribution
+        
+        Parameters:
+        ----------
+        d, Qx, Qy :  numpy.ndarray
+            arrays with input data from self.run_FMA
+        Qx_set, Qy_set : float 
+            set tunes, input data from Twiss
+        case_name : str
+            name string for scenario
+            
+        Returns:
+        --------
+        None
+        """
+        fig = plt.figure(figsize=(9,6))
+        tune_diagram = resonance_lines(plot_range[0],
+                    plot_range[1], np.arange(1, self.plot_order+1), self.periodicity)
+        tune_diagram.plot_resonance(figure_object = fig, interactive=False)
+
+        # Combine Qx, Qy, and d into a single array for sorting
+        data = list(zip(Qx, Qy, d))
+        
+        # Sort the data based on the 'd' values
+        sorted_data = sorted(data, key=lambda x: x[2], reverse=False)
+        
+        # Unpack the sorted data
+        sorted_Qx, sorted_Qy, sorted_d = zip(*sorted_data)
+
+        plt.scatter(sorted_Qx, sorted_Qy, s=5.0, c=sorted_d, marker='o', lw = 0.1, zorder=10, cmap=plt.cm.jet) #, alpha=0.55)
+        plt.plot(Qh_set, Qv_set, 'o', color='k', markerfacecolor='red', zorder=20, markersize=11, label="Set tune")
+        plt.xlabel('$Q_{x}$')
+        plt.ylabel('$Q_{y}$')
+        cbar=plt.colorbar()
+        cbar.set_label('d',fontsize='18')
+        cbar.ax.tick_params(labelsize='18')
+        plt.legend(loc='upper left')
+        plt.clim(-20.5,-4.5)
+        fig.tight_layout(pad=0.6, w_pad=0.5, h_pad=1.0)
+        fig.savefig('{}/FMA_plot_{}.png'.format(self.output_folder, case_name), dpi=250)
+        
+        
+    def plot_initial_distribution(self, x, y, d, case_name, use_normalized_coordinates=True,
+                                  interpolate_initial_distribution=False, also_show_plot=False): 
+        """
+        Plot initial distribution, interpolating between discrete points
+        
+        Parameters:
+        ----------
+        x, y, d :  numpy.ndarray
+            arrays with input data generated from self.run_FMA
+        case_name : str
+            name string for scenario
+        use_normalized_coordinates : bool
+            flag whether to normalize coordinates w.r.t beam size
+        interpolate_initial_distribution : bool
+            interpolate initial particle distribution into colormesh, or keep the points as they are 
+        also_show_plot : bool 
+            whether to run plt.show()
+            
+        Returns:
+        --------
+        None
+        """ 
+        fig2=plt.figure(figsize=(8,6))
+        XX,YY = np.meshgrid(np.unique(x[:,0]), np.unique(y[:,0]))
+        fig2.suptitle('Initial Distribution', fontsize='18')
+        
+        # Combine Qx, Qy, and d into a single array for sorting
+        if use_normalized_coordinates:
+            data = list(zip(self._x_norm, self._y_norm, d))
+            x_string = '$\sigma_{x}$'
+            y_string = '$\sigma_{y}$'
+        else:
+            data = list(zip(x[:,0], y[:,0], d))
+            x_string = 'x [m]'
+            y_string = 'y [m]'
+        
+        # Sort the data based on the 'd' values
+        sorted_data = sorted(data, key=lambda x: x[2], reverse=False)
+        
+        # Unpack the sorted data
+        sorted_x, sorted_y, sorted_d = zip(*sorted_data)
+        
+        if interpolate_initial_distribution:
+            Z = griddata((x[:,0], y[:,0]), d, (XX,YY), method='cubic') # linear alternative
+            Zm = np.ma.masked_invalid(Z)
+            plt.pcolormesh(XX,YY,Zm,cmap=plt.cm.jet)
+        else:
+            plt.scatter(sorted_x, sorted_y, s=5.5, c=sorted_d, marker='o', lw = 0.1, zorder=10, cmap=plt.cm.jet)  # without interpolation
+        
+        plt.tick_params(axis='both', labelsize='18')
+        plt.xlabel('{}'.format(x_string), fontsize='20')
+        plt.ylabel('{}'.format(y_string), fontsize='20')
+        plt.clim(-20.5,-4.5)
+        cbar=plt.colorbar()
+        cbar.set_label('d',fontsize='18')
+        cbar.ax.tick_params(labelsize='18')
+        fig2.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+        fig2.savefig('{}/{}_Initial_distribution.png'.format(self.output_folder, case_name), dpi=250)
+        
+        if also_show_plot:
+            plt.show()
+        
+        
+    def plot_centroid_from_tbt_data(self, x_data=None, y_data=None, load_tbt_data=False, also_show_plot=False):
+        """
+        Generate centroid plot from turn-by-turn data to observe e.g. synchrotron motion
+        
+        Parameters:
+        ----------
+        x_tbt_data, y_tbt_data :  numpy.ndarray
+            arrays with turn-by-turn data
+        
+        Returns:
+        --------
+        None
+        """
+        if load_tbt_data:
+            x_tbt_data, y_tbt_data, _, _ = self.load_tracking_data()
+        else:
+            x_tbt_data, y_tbt_data = x_data, y_data
+        fig = plt.figure(figsize=(10,7))
+        fig.suptitle('Centroid evolution')
+        ax = fig.add_subplot(2, 1, 1)  # create an axes object in the figure
+        ax.plot(np.mean(x_tbt_data, axis=0), marker='o', color='b', markersize=3)
+        ax.set_ylabel("Centroid $X$ [m]")
+        ax.set_xlabel("#turns")
+        ax = fig.add_subplot(2, 1, 2)  # create a second axes object in the figure
+        ax.plot(np.mean(y_tbt_data, axis=0), marker='o', color='y', markersize=3)
+        ax.set_ylabel("Centroid $Y$ [m]")
+        ax.set_xlabel("#turns")
+        fig.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+        
+        if also_show_plot:
+            plt.show()
+
+    def plot_tune_over_action(self, twiss, 
+                            load_tune_data=False,
+                            load_up_to_turn=None,
+                            also_show_plot=True, 
+                            resonance_order=5, 
+                            case_name=None,
+                            plane='X'):
     
+        """
+        Loads generated turn-by-turn data and plots tunes Qx, Qy over action Jx, Jy
+        
+        Parameters:
+        -----------
+        twiss : xtrack.twisstable
+            twiss table from xtrack
+        load_tbt_data : bool
+            load tune data if FMA has already been done
+        load_up_to_turn : int, optional
+            turn up to which to load tbt data
+        also_show_plot : bool 
+            whether to include "plt.show()"
+        resonance_order : int
+            order up to which resonance should be plotted
+        case_name : str, optional
+            additional string to add to figure heading 
+        plane : str
+            'X' or 'Y'
+        
+        Returns:
+        --------
+        Jx, Jy, Qx, Qy, d : np.ndarrays
+            numpy arrays with turn-by-turn action, tune and diffusion data
+        """
+        if load_up_to_turn is None:
+            load_up_to_turn = self.num_turns
+        
+        # Load tracking data 
+        x, y, px, py  = self.load_tracking_data()
+
+        # Calculate normalized coordinates
+        X = x / np.sqrt(twiss['betx'][0]) 
+        PX = twiss['alfx'][0] / np.sqrt(twiss['betx'][0]) * x + np.sqrt(twiss['betx'][0]) * px
+        Y = y / np.sqrt(twiss['bety'][0]) 
+        PY = twiss['alfy'][0] / np.sqrt(twiss['bety'][0]) * y + np.sqrt(twiss['bety'][0]) * py
+        
+        # Calculate action for each particle
+        Jx = X**2 + PX **2
+        Jy = Y**2 + PY **2
+
+        # Try to load tunes and action if already exists, otherwise perform FMA again
+        if load_tune_data:
+            try:
+                Qx = np.load('{}/Qx.npy'.format(self.output_folder))
+                Qy = np.load('{}/Qy.npy'.format(self.output_folder))
+                d = np.load('{}/d.npy'.format(self.output_folder))
+                print('\nLoaded existing tune and action data!\n')
+
+            except FileNotFoundError:
+                raise FileNotFoundError('\nDid not find existing tune and action data - initializing FMA!\n')
+        else:
+            
+            # Find tunes of particles up to desired turn
+            Qx, Qy, d = self.run_FMA(x[:, :load_up_to_turn], y[:, :load_up_to_turn])
+            
+            # Save the tunes and action, if possible
+            os.makedirs(self.output_folder, exist_ok=True)
+            np.save('{}/Qx.npy'.format(self.output_folder), Qx)
+            np.save('{}/Qy.npy'.format(self.output_folder), Qy)
+            np.save('{}/d.npy'.format(self.output_folder), d)
+        
+            print('Saved tune and action data.\n')
+                
+        # Plot initial action 
+        fig, ax = plt.subplots(1, 2, figsize=(12,6))
+        name_str = 'Tune over action' if case_name is None else 'Tune over action - {}'.format(case_name)
+        fig.suptitle(name_str)
+
+        ax[0].plot(Jx[:, 0], Qx, 'o', color='b', alpha=0.5, markersize=2.5)
+        ax[1].plot(Jy[:, 0], Qy, 'o', color='r', alpha=0.5, markersize=2.5)
+        
+        ax[0].set_ylabel(r"$Q_{x}$")
+        ax[0].set_xlabel(r"$J_{x}$")
+        ax[1].set_ylabel(r"$Q_{y}$")
+        ax[1].set_xlabel(r"$J_{y}$")
+        
+        ax[0].set_xscale('log')
+        ax[1].set_xscale('log')
+        
+        fig.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+        
+        # Plot tune over normalized beam size, in horizontal
+        fig2, ax2 = plt.subplots(figsize=(8, 6))
+        if plane == 'X':
+            ax2.scatter(self._x_norm, Qx, s=5.5, c=self._x_norm, marker='o', zorder=10, cmap=plt.cm.cool)
+            ax2.set_ylabel("$Q_{x}$")
+            ax2.set_xlabel("$\sigma_{x}$")
+        elif plane == 'Y':
+            ax2.plot(self._y_norm, Qy, 'o', color='r', alpha=0.5, markersize=2.5)       
+            ax2.set_ylabel("$\Q_{y}$")
+            ax2.set_xlabel("$\sigma_{y}$")
+        else:
+            raise ValueError('\nInvalid plane specified!\n')
+        
+        # Add colorbar, normalized to beam size (in sigmas)
+        fig.colorbar(mpl.cm.ScalarMappable(norm=mpl.colors.Normalize(min(self._x_norm), max(self._x_norm)), cmap='cool'),
+                ax=ax2, orientation='vertical', label='$\sigma_{x}$')
+        
+        fig2.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+        
+        fig.savefig('{}/{}_Tune_over_action.png'.format(self.output_folder, case_name), dpi=250)
+        fig2.savefig('{}/{}_Tune_over_normalized_{}.png'.format(self.output_folder, case_name, plane), dpi=250)
+        
+        if also_show_plot:
+            plt.show()
+
+        return Jx, Jy, Qx, Qy, d
+    
+    
+    def plot_normalized_phase_space(self, twiss, 
+                                    particle_index=None,
+                                    also_show_plot=True,
+                                    case_name=None,
+                                    plane='X'
+                                    ):
+        """
+        Generate phase space plots in X and Y from generated turn-by-turn data
+        
+        Parameters:
+        -----------
+        twiss : xtrack.twisstable 
+            twiss table from xtrack
+        particle_index : numpy.ndarray, optional
+            array with particle index, if not given takes all
+        also_show_plot : bool 
+            whether to include "plt.show()"
+        case_name : str, optional
+            extra string to add to case name
+        plane : str
+            'X' or 'Y'
+            
+        Returns:
+        -------
+        None
+        """
+        x, y, px, py  = self.load_tracking_data()
+        
+        if particle_index is not None:
+            i = particle_index
+        else:
+            i = np.arange(1, len(x)) # particle index
+        
+        X = x / np.sqrt(twiss['betx'][0]) 
+        PX = twiss['alfx'][0] / np.sqrt(twiss['betx'][0]) * x + np.sqrt(twiss['betx'][0]) * px
+        Y = y / np.sqrt(twiss['bety'][0]) 
+        PY = twiss['alfy'][0] / np.sqrt(twiss['bety'][0]) * y + np.sqrt(twiss['bety'][0]) * py
+
+        # Calculate action for each particle
+        Jx = X**2 + PX **2
+        Jy = Y**2 + PY **2
+
+        # Generate two figures - one in normalized phase space, one in polar action space (Jx, phi)
+        fig, ax = plt.subplots(1, 1, figsize=(8,6))
+        fig.suptitle('Normalized phase space' if case_name is None else 'Normalized phase space - {}'.format(case_name), 
+                        fontsize=16)
+
+        fig2, ax2 = plt.subplots(1, 1, figsize=(8,6))
+        fig2.suptitle('Polar action space' if case_name is None else 'Polar action space - {}'.format(case_name), 
+                        fontsize=16)
+
+        # Calculate phase space angle
+        if plane == 'X':
+            phi = np.arctan2(X, PX)          
+        elif plane == 'Y':
+            phi = np.arctan2(Y, PY)
+        else:
+            raise ValueError('Plane invalid - has to be "X" or "Y"')
+            
+        # Take colors from colormap of normalized phase space
+        colors = plt.cm.cool(np.linspace(0, 1, len(self._x_norm)))
+
+        for particle in i:
+            
+            # Mix black and colorbar 
+            color=colors[particle] if particle % 2 == 0 else 'k'
+                
+            # Plot normalized phase space and action space
+            if plane == 'X':
+                ax.plot(X[particle, :], PX[particle, :], 'o', color=color, alpha=0.5, markersize=1.5)
+                ax.set_ylabel(r"$P_{x}$")
+                ax.set_xlabel(r"$X$")
+                
+                ax2.plot(phi[particle, :], Jx[particle, :], 'o', color=color, alpha=0.5, markersize=1.5)
+                ax2.set_ylabel(r"$J_{x}$")
+                ax2.set_xlabel(r"$\phi$ [rad]")
+            elif plane == 'Y':
+                ax.plot(Y[particle, :], PY[particle, :], 'o', color=color, alpha=0.5, markersize=1.5)
+                ax.set_ylabel(r"$P_{y}$")
+                ax.set_xlabel(r"$Y$")
+                
+                ax2.plot(phi[particle, :], Jy[particle, :], 'o', color=color, alpha=0.5, markersize=1.5)
+                ax2.set_ylabel(r"$J_{y}$")
+                ax2.set_xlabel(r"$\phi$ [rad]")
+                
+        # Add colorbar, normalized to beam size (in sigmas)
+        fig.colorbar(mpl.cm.ScalarMappable(norm=mpl.colors.Normalize(min(self._x_norm), max(self._x_norm)), cmap='cool'),
+                ax=ax, orientation='vertical', label='$\sigma_{x}$')
+        fig.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+        
+        fig2.colorbar(mpl.cm.ScalarMappable(norm=mpl.colors.Normalize(min(self._x_norm), max(self._x_norm)), cmap='cool'),
+                ax=ax2, orientation='vertical', label='$\sigma_{x}$')
+        fig2.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+        
+        # Save figures
+        fig.savefig('{}/{}_Normalized_phase_space.png'.format(self.output_folder, case_name), dpi=250)
+        fig2.savefig('{}/{}_Polar_action_space_{}.png'.format(self.output_folder, case_name, plane), dpi=250)
+        
+        if also_show_plot:
+            plt.show()
+        
+        plt.close()

@@ -1,4 +1,4 @@
-from .fma_ions import FMA
+from .fma_ions import FMA, FMA_plotter
 
 from .sequences import SPS_sequence_maker
 from .sequences import PS_sequence_maker, BeamParameters_PS
