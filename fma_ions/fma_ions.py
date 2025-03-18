@@ -388,6 +388,7 @@ class FMA:
                 qx0=26.31,
                 qy0=26.25,
                 add_beta_beat=False,
+                I_LSE=None,
                 make_single_Jy_trace=False,
                 use_symmetric_lattice=False,
                 add_non_linear_magnet_errors=False,
@@ -411,6 +412,8 @@ class FMA:
             vertical tune
         add_beta_beat : bool
             whether to add ~7% RMS beta-beat in both planes
+        I_LSE : float
+            sextupolar LSE current, to excite sextupole if desired
         make_single_Jy_trace : bool 
             flag to create single trace with unique vertical action
             Jy, with varying action Jx. "Trace" instead of "grid", if uniform beam is used
@@ -455,6 +458,10 @@ class FMA:
         if add_beta_beat:
             line = sps_seq.add_beta_beat_to_line(line)
         
+        # Excite sextupole if desired
+        if I_LSE is not None:
+            line = sps_seq.excite_LSE_sextupole_from_current(line, I_LSE=I_LSE, which_LSE='lse.12402')      
+
         # Add space charge elements to line, build tracker, generate particles
         line = self.install_SC_and_get_line(line0, beamParams, context=context)
         line.build_tracker(_context=context)    

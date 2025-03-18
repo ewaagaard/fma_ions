@@ -11,7 +11,7 @@ import datetime
 dir_path = pathlib.Path(__file__).parent.absolute()
 
 # Define run files and which parameters to change
-master_name = 'Q26_Pb_FMA_on_momentum_ideal_lattice'
+master_name = 'Q26_Pb_FMA_LSE_3_beta_beat_on_momentum_ideal_lattice'
 
 Qx_range = np.arange(26.28, 26.4, 0.02)
 Qy_range = np.array([26.19, 26.25, 26.27])
@@ -39,7 +39,7 @@ output_dir = './'
 
 # Tracking on GPU context
 fma_sps = fma_ions.FMA(output_folder=output_dir, n_linear=200)
-fma_sps.run_SPS(qx0={:.3f}, qy0={:.3f}, which_context = 'gpu')
+fma_sps.run_SPS(qx0={:.3f}, qy0={:.3f}, which_context = 'gpu', add_beta_beat=True, I_LSE=3.0)
         '''.format(Qx_range[i], Qy_range[j])
         )
         run_file.close()
