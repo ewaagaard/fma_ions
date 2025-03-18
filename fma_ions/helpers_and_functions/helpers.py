@@ -39,13 +39,117 @@ def _geom_epsy(parts: xp.Particles, twiss: xt.TwissTable) -> float:
     sigma_y =  np.std(parts.y[parts.state > 0])
     sig_delta = _sigma_delta(parts)
     return (sigma_y**2 - (twiss["dy"][0] * sig_delta) ** 2) / twiss["bety"][0]
+
 #############################################################################
+
+
+@dataclass
+class FMA_keeper:
+    """
+    Data class to store particle object properties
+    """
+    x: np.ndarray
+    y: np.ndarray
+    px: np.ndarray
+    py: np.ndarray
+    Qx: np.ndarray
+    Qy: np.ndarray
+    d: np.ndarray
+    tune_data_is_available = False
+
+    @classmethod
+    def init_zeroes(cls, n_turns: int) -> Self:  # noqa: F821
+        """Initialize the dataclass with arrays of zeroes."""
+        return cls(
+            x=np.zeros(n_turns, dtype=float),
+            y=np.zeros(n_turns, dtype=float),
+            px=np.zeros(n_turns, dtype=float),
+            py=np.zeros(n_turns, dtype=float),
+            Qx=np.zeros(n_turns, dtype=float),
+            Qy=np.zeros(n_turns, dtype=float),
+            d=np.zeros(n_turns, dtype=float),
+        )
+
+    def update_at_turn(self, turn: int, parts: xp.Particles, context: xo.context):
+        """Automatically update the keeper class"""
+
+        # Store the particle ensemble quantities
+        self.x[turn] = context.nparray_from_context_array(parts.x)
+        self.y[turn] = context.nparray_from_context_array(parts.y)
+        self.px[turn] = context.nparray_from_context_array(parts.px)
+        self.py[turn] = context.nparray_from_context_array(parts.py)
+
+
+    def to_dict(self, convert_to_numpy=True):
+        """
+        Convert data arrays to dictionary, possible also beam profile monitor data
+        Convert lists to numpy format if desired, but typically not if data is saved to json
+        """
+        data = {
+            'x': self.x.tolist(),
+            'y': self.y.tolist(),
+            'px': self.x.tolist(),
+            'py': self.y.tolist(),
+            'turns': self.turns.tolist()
+        }
+        if self.tune_data_is_available:
+            data['Qx'] = self.Qx
+            data['Qy'] = self.Qy
+            data['d'] = self.d
+        # Convert lists to numpy arrays if desired
+        if convert_to_numpy:
+            for key, value in data.items():
+                if isinstance(data[key], list):
+                    data[key] = np.array(data[key])
+                    
+        return data
+
+
+    def add_tune_data_to_dict(self, Qx, Qy, d):
+        """
+        Add FMA data (tunes Qx, Qy and diffusion coefficient d) to dictionary
+        """
+        self.Qx = Qx
+        self.Qy = Qy
+        self.d = d
+        self.tune_data_is_available = True
+
+
+    def to_json(self, file_path=None):
+        """
+        Save the data to a JSON file.
+        """
+        if file_path is None:
+            file_path = './'
+
+        data = self.to_dict()
+
+        with open('{}tbt.json'.format(file_path), 'w') as f:
+            json.dump(data, f, cls=xo.JEncoder)
+
+
+    @staticmethod
+    def dict_from_json(file_path, convert_to_numpy=True):
+        """
+        Load the data from a JSON file and construct a dictionary from data
+        Convert lists in dictionary to numpy format if desired
+        """
+        with open(file_path, 'r') as f:
+            tbt_dict = json.load(f)
+
+        # Convert every list to numpy array
+        if convert_to_numpy:
+            for key, value in tbt_dict.items():
+                if isinstance(tbt_dict[key], list):
+                    tbt_dict[key] = np.array(tbt_dict[key])
+
+        return tbt_dict
 
 
 @dataclass
 class Records:
     """
-    Data class to store numpy.ndarray of results during tracking 
+    Data class to store numpy.ndarray of results during flat-bottom tracking 
     - normalized emittance is used
     - beam profile data (transverse wire scanner and longitudinal profile monitor) can be added
     - initial and final particle object

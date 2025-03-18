@@ -34,8 +34,6 @@ for i, run_file in enumerate(run_files):
 import numpy as np
 output_dir = './'
 
-n_turns = 1200
-num_part = 20_000
 
 # Tracking on GPU context
 fma_sps = fma_ions.FMA(output_folder=output_dir, z0=0., n_linear=200)

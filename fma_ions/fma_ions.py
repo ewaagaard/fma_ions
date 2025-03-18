@@ -33,6 +33,7 @@ from .sequences import PS_sequence_maker
 from .sequences import SPS_sequence_maker
 from .beam_parameters import BeamParameters_SPS
 from .resonance_lines import resonance_lines
+from .helpers_and_functions import FMA_keeper
 
 @dataclass
 class FMA:
@@ -278,7 +279,7 @@ class FMA:
         return particles
         
     
-    def track_particles(self, particles, line, save_tbt_data=True, which_context='cpu'):
+    def track_particles(self, particles, line, context: xo.context):
         """
         Track particles through lattice with space charge elments installed
         
@@ -288,11 +289,9 @@ class FMA:
             particles object from xpart
         line : xtrack.line
             xsuite line to track through
-        save_tbt: bool
-            whether to save turn-by-turn data from tracking
-        which_context : str
-            'cpu' or 'gpu'
-        
+        context : xo.context
+            which context particles are tracked on
+
         Returns:
         -------
         x, y - numpy.ndarrays
@@ -300,117 +299,41 @@ class FMA:
         """          
         #### TRACKING #### 
         # Track the particles and return turn-by-turn coordinates
-        x = np.zeros([len(particles.x), self.num_turns]) 
-        y = np.zeros([len(particles.y), self.num_turns])
-        px = np.zeros([len(particles.px), self.num_turns]) 
-        py = np.zeros([len(particles.py), self.num_turns])
-        
+
+        # Instantiate TBT data keeper
+        tbt = FMA_keeper.init_zeroes(self.num_turns)
+
         print('\nStarting tracking...')
-        i = 0
+
+        # Perform the tracking
         for turn in range(self.num_turns):
-            if i % 20 == 0:
-                print('Tracking turn {}'.format(i))
+            if turn % 50 == 0:
+                print('Turn {}'.format(i))
         
-            if which_context=='cpu':
-                x[:, i] = particles.x
-                y[:, i] = particles.y
-                px[:, i] = particles.px
-                py[:, i] = particles.py
-            elif which_context=='gpu':
-                x[:, i] = particles.x.get()
-                y[:, i] = particles.y.get()
-                px[:, i] = particles.px.get()
-                py[:, i] = particles.py.get()
+            tbt.update_at_turn(turn, particles, context)
         
             # Track the particles
             line.track(particles)
-            i += 1
+
         
         print('Finished tracking.\n')
-        print('Average X and Y of tracking: {} and {}'.format(np.mean(x), np.mean(y)))
-        
+
         # Set particle trajectories of dead particles that got lost in tracking
-        self._kill_ind = particles.state < 1
+        self._kill_ind = context.nparray_from_context_array(particles.state) < 1
         self._kill_ind_exists = True
-        
-        if save_tbt_data:
-            os.makedirs(self.output_folder, exist_ok=True)
-            np.save('{}/x.npy'.format(self.output_folder), x)
-            np.save('{}/y.npy'.format(self.output_folder), y)
-            np.save('{}/px.npy'.format(self.output_folder), px)
-            np.save('{}/py.npy'.format(self.output_folder), py)
-            np.save('{}/x0_norm.npy'.format(self.output_folder), self._x_norm)
-            np.save('{}/y0_norm.npy'.format(self.output_folder), self._y_norm)
-            np.save('{}/state.npy'.format(self.output_folder), self._kill_ind)
-            print('Saved tracking data.')
-        
 
-        return x, y
+        return tbt
     
-    
-    def load_tracking_data(self):
-        """
-        Loads numpy data if tracking has already been made
-        
-        Returns:
-        --------
-        x, y, px, py : np.ndarrays
-            numpy arrays with turn-by-turn data
-        """
-        try:
-            if self.delta0 == 0.0 and self.z0 == 0.0:
-                print('\nLoading on-momentum data!\n')
-            else:
-                print('\nLoading off-momentum data!\n')
-                                
-            x=np.load('{}/x.npy'.format(self.output_folder))
-            y=np.load('{}/y.npy'.format(self.output_folder))
-            px=np.load('{}/px.npy'.format(self.output_folder))
-            py=np.load('{}/py.npy'.format(self.output_folder))
-            self._x_norm =np.load('{}/x0_norm.npy'.format(self.output_folder))
-            self._y_norm =np.load('{}/y0_norm.npy'.format(self.output_folder))
-            
-            # If index with killed particles exist, raise flag for FMA analysis
-            try:
-                self._kill_ind_exists = True
-                self._kill_ind = np.load('{}/state.npy'.format(self.output_folder))
-            except FileNotFoundError:
-                print('\nKill index does not exist - proceeding with all particles\n')
-                self._kill_ind_exists = False
-            
-            return x, y, px, py
-
-        except FileNotFoundError:
-            raise FileNotFoundError('Tracking data does not exist - set correct path or generate the data!')
-
-    
-    def load_tune_data(self):
-        """
-        Loads numpy data of tunes if FMA has already been done
-        
-        Returns:
-        --------
-        Qx, Qy, d : np.ndarrays
-            numpy arrays with turn-by-turn tune and diffusion data
-        """
-        try:
-            Qx = np.load('{}/Qx.npy'.format(self.output_folder))
-            Qy = np.load('{}/Qy.npy'.format(self.output_folder))
-            d = np.load('{}/d.npy'.format(self.output_folder))
-            return Qx, Qy, d
-        except FileNotFoundError:
-            raise FileNotFoundError('Tune data does not exist - set correct path or perform FMA!')
-
   
     
-    def run_FMA(self, x_tbt_data, y_tbt_data, Qmin=0.0, remove_dead_particles=True, which_context = 'cpu'):
+    def run_FMA(self, tbt, Qmin=0.0, remove_dead_particles=True, which_context = 'cpu'):
         """
         Run FMA analysis for given turn-by-turn coordinates
         
         Parameters:
         ----------
-        x_tbt_data, y_tbt_data : np.ndarrays
-            arrays of turn-by-turn data for particles 
+        tbt : FMA_keeper
+            object storing all fma_data
         Qmin : float
             if desired, filter out some lower frequencies
         
@@ -423,31 +346,31 @@ class FMA:
         """
         
         # Initialize empty arrays for tunes of particles, during first and second half of run - at split_ind
-        Qx_1, Qy_1 = np.zeros(len(x_tbt_data)), np.zeros(len(x_tbt_data))
-        Qx_2, Qy_2 = np.zeros(len(x_tbt_data)), np.zeros(len(x_tbt_data))
+        Qx_1, Qy_1 = np.zeros(len(tbt.x)), np.zeros(len(tbt.y))
+        Qx_2, Qy_2 = np.zeros(len(tbt.x)), np.zeros(len(tbt.y))
         split_ind = int(self.num_turns/2)
         
         # Iterate over particles to find tune
-        for i_part in range(len(x_tbt_data)):
+        for i_part in range(len(tbt.x)):
             
             if i_part % 2000 == 0:
                 print('NAFF algorithm of particle {}'.format(i_part))
             
             # Find dominant frequency with NAFFlib - also remember to subtract mean 
-            Qx_1_raw = NAFFlib.get_tunes(x_tbt_data[i_part, :split_ind] \
-                                            - np.mean(x_tbt_data[i_part, :split_ind]), 2)[0]
+            Qx_1_raw = NAFFlib.get_tunes(tbt.x[i_part, :split_ind] \
+                                            - np.mean(tbt.x[i_part, :split_ind]), 2)[0]
             Qx_1[i_part] = Qx_1_raw[np.argmax(Qx_1_raw > Qmin)]  # find most dominant tune larger than this value
             
-            Qy_1_raw = NAFFlib.get_tunes(y_tbt_data[i_part, :split_ind] \
-                                            - np.mean(y_tbt_data[i_part, :split_ind]), 2)[0]
+            Qy_1_raw = NAFFlib.get_tunes(tbt.y[i_part, :split_ind] \
+                                            - np.mean(tbt.y[i_part, :split_ind]), 2)[0]
             Qy_1[i_part] = Qy_1_raw[np.argmax(Qy_1_raw > Qmin)]
                 
-            Qx_2_raw = NAFFlib.get_tunes(x_tbt_data[i_part, split_ind:] \
-                                            - np.mean(x_tbt_data[i_part, split_ind:]), 2)[0]
+            Qx_2_raw = NAFFlib.get_tunes(tbt.x[i_part, split_ind:] \
+                                            - np.mean(tbt.x[i_part, split_ind:]), 2)[0]
             Qx_2[i_part] = Qx_2_raw[np.argmax(Qx_2_raw > Qmin)]
                 
-            Qy_2_raw = NAFFlib.get_tunes(y_tbt_data[i_part, :split_ind] \
-                                            - np.mean(y_tbt_data[i_part, :split_ind]), 2)[0]
+            Qy_2_raw = NAFFlib.get_tunes(tbt.y[i_part, :split_ind] \
+                                            - np.mean(tbt.y[i_part, :split_ind]), 2)[0]
             Qy_2[i_part] = Qy_2_raw[np.argmax(Qy_2_raw > Qmin)]
         
         # Change all zero-valued tunes to NaN
@@ -479,6 +402,7 @@ class FMA:
                 ion_type='Pb',
                 qx0=26.31,
                 qy0=26.25,
+                add_beta_beat=False,
                 make_single_Jy_trace=False,
                 use_symmetric_lattice=False,
                 add_non_linear_magnet_errors=False,
@@ -500,6 +424,8 @@ class FMA:
             horizontal tune
         qy0 : float
             vertical tune
+        add_beta_beat : bool
+            whether to add ~7% RMS beta-beat in both planes
         make_single_Jy_trace : bool 
             flag to create single trace with unique vertical action
             Jy, with varying action Jx. "Trace" instead of "grid", if uniform beam is used
@@ -541,37 +467,20 @@ class FMA:
         # Load line
         line0, twiss_sps =  sps_seq.load_xsuite_line_and_twiss(use_symmetric_lattice=use_symmetric_lattice,
                                                                add_non_linear_magnet_errors=add_non_linear_magnet_errors)
+        if add_beta_beat:
+            line = sps_seq.add_beta_beat_to_line(line)
         
-        # Install SC, track particles and observe tune diffusion
-        if load_tbt_data:
-            try:
-                x, y, _, _ = self.load_tracking_data()
-            except FileExistsError:
-                line = self.install_SC_and_get_line(line0, beamParams, context=context)
-                line.build_tracker(_context=context)
-                particles = self.generate_particles(line, beamParams, make_single_Jy_trace, context=context)
-                x, y = self.track_particles(particles, line, which_context=which_context)
-        else:
+        # Try loading exisiting data, otherwise perform new tracking
+        try:
+            tbt_dict = self.load_tracking_data()
+        except FileNotFoundError:
             line = self.install_SC_and_get_line(line0, beamParams, context=context)
             line.build_tracker(_context=context)    
             particles = self.generate_particles(line, beamParams, make_single_Jy_trace, context=context)
-            x, y = self.track_particles(particles, line, which_context=which_context)
+            tbt = self.track_particles(particles, line, context)
+            Qx, Qy, d = self.run_FMA(tbt, Qmin=self.Q_min_SPS, context=context)
+            tbt.add_tune_data_to_dict(Qx, Qy, d)
   
-        # Extract diffusion coefficient from FMA of turn-by-turn data
-        if load_tbt_data:
-            try: 
-                Qx, Qy, d = self.load_tune_data()
-            except FileNotFoundError:
-                Qx, Qy, d = self.run_FMA(x, y, Qmin=self.Q_min_SPS, which_context=which_context)
-        else:
-            Qx, Qy, d = self.run_FMA(x, y, Qmin=self.Q_min_SPS, which_context=which_context)
-            
-        if save_tune_data and not load_tbt_data:
-            os.makedirs(self.output_folder, exist_ok=True)
-            np.save('{}/Qx.npy'.format(self.output_folder), Qx)
-            np.save('{}/Qy.npy'.format(self.output_folder), Qy)
-            np.save('{}/d.npy'.format(self.output_folder), d)
-        
         # Tunes from Twiss
         Qh_set = twiss_sps['qx']
         Qv_set = twiss_sps['qy']
@@ -584,333 +493,21 @@ class FMA:
         plot_range  = [[26.0, 26.35], [26.0, 26.35]]
    
         self.plot_FMA(d, Qx, Qy, Qh_set, Qv_set,'SPS', plot_range)
-        self.plot_initial_distribution(x, y, d, case_name='SPS')
+        #self.plot_initial_distribution(x, y, d, case_name='SPS')
 
+        
+    def load_records_dict_from_json(self, output_folder=None):
+        """
+        Loads json file with particle data from tracking
+        """
+        folder_path = '{}/'.format(output_folder) if output_folder is not None else ''
+        print('Loading data from {}tbt.json'.format(folder_path))
 
-    def run_SPS_with_beta_beat(self, 
-                               load_tbt_data=False,
-                               save_tune_data=True,
-                               Qy_frac=25, 
-                               beta_beat=0.05,
-                               make_single_Jy_trace=False,
-                               use_symmetric_lattice=False,
-                               add_non_linear_magnet_errors=False
-                               ):
-        """
-        Default FMA analysis for SPS Pb ions, plot final results and tune diffusion in initial distribution
-        
-        Parameters:
-        ----------
-        load_tbt_data : bool 
-            whether to load turn-by-turn (TBT) data from tracking is already saved
-        save_tune_data : bool 
-            flag to store results Qx, Qy, d from FMA
-        Qy_frac : int
-            fractional vertical tune
-        beta_beat : float 
-            relative difference in beta functions (Y for SPS)
-        make_single_Jy_trace : bool 
-            flag to create single trace with unique vertical action
-            Jy, with varying action Jx. "Trace" instead of "grid", if uniform beam is used
-        use_symmetric_lattice : bool
-            flag to use symmetric lattice without QFA and QDA
-        add_non_linear_magnet_errors : bool
-            whether to add non-linear chromatic errors for SPS
-        
-        Returns:
-        -------
-        None
-        """
-        beamParams = BeamParameters_SPS
-        sps_seq = SPS_sequence_maker()
-        line0, twiss_sps =  sps_seq.load_xsuite_line_and_twiss(Qy_frac=Qy_frac, use_symmetric_lattice=use_symmetric_lattice,
-                                                               add_non_linear_magnet_errors=add_non_linear_magnet_errors)
-        
-        # Install SC, track particles and observe tune diffusion
-        if load_tbt_data:
-            try:
-                x, y, _, _ = self.load_tracking_data()
-            except FileExistsError:
-                line_beat = sps_seq.generate_xsuite_seq_with_beta_beat(beta_beat=beta_beat, line=line0)
-                line_SC_beat = self.install_SC_and_get_line(line_beat, beamParams)
-                particles = self.generate_particles(line_SC_beat, beamParams, make_single_Jy_trace)
-                x, y = self.track_particles(particles, line_SC_beat)
-        else:
-            line_beat = sps_seq.generate_xsuite_seq_with_beta_beat(beta_beat=beta_beat, line=line0)
-            line_SC_beat = self.install_SC_and_get_line(line_beat, beamParams)
-            particles = self.generate_particles(line_SC_beat, beamParams, make_single_Jy_trace)
-            x, y = self.track_particles(particles, line_SC_beat)
-  
-        # Extract diffusion coefficient from FMA of turn-by-turn data
-        if load_tbt_data:
-            Qx, Qy, d = self.load_tune_data()
-        else:
-            Qx, Qy, d = self.run_FMA(x, y, Qmin=self.Q_min_SPS)
-            
-        if save_tune_data and not load_tbt_data:
-            os.makedirs(self.output_folder, exist_ok=True)
-            np.save('{}/Qx.npy'.format(self.output_folder), Qx)
-            np.save('{}/Qy.npy'.format(self.output_folder), Qy)
-            np.save('{}/d.npy'.format(self.output_folder), d)
-         
-        # Tunes from Twiss
-        Qh_set = twiss_sps['qx']
-        Qv_set = twiss_sps['qy']
-        
-        # Add interger tunes to fractional tunes 
-        Qx += int(twiss_sps['qx'])
-        Qy += int(twiss_sps['qy'])
-        
-        # Make tune footprint, need plot range
-        plot_range  = [[26.0, 26.35], [26.0, 26.35]]
-   
-        self.plot_FMA(d, Qx, Qy, Qh_set, Qv_set,'SPS', plot_range)
-        self.plot_initial_distribution(x, y, d, case_name='SPS_beta_beat')
-        
-        
+        # Read the json file, return either instanced class or dictionary
+        tbt_dict = FMA_keeper.dict_from_json("{}tbt.json".format(folder_path))
 
-    def run_custom_beam_SPS(self, ion_type, m_ion, Q_SPS, Q_PS,
-                            qx, qy, Nb, load_tbt_data=False, beta_beat=None 
-                            ):
-        """
-        FMA analysis for SPS custom beams
-        
-        Parameters:
-        -----------
-        ion type : str
-            which ion (str)
-        m_ion : float
-            ion mass in atomic units [u]
-        Q_SPS : int 
-            SPS ion charge state
-        Q_PS : int
-            PS ion charge state
-        qx : float
-            horizontal tune
-        qy ; float
-            vertical tune
-        Nb : int
-            bunch intensity (default 'None' will keep default Pb parameters)
-        load_tbt_data : bool
-            flag if tracking is already done
-        
-        Returns:
-        --------
-        None
-        """
-        beamParams = BeamParameters_SPS
-        if Nb is not None:
-            beamParams.Nb = Nb 
-        s = SPS_sequence_maker(qx0=qx, qy0=qy, m_ion=m_ion, Q_SPS=Q_SPS, Q_PS=Q_PS, ion_type=ion_type)
-        line0 = s.generate_xsuite_seq()
-        twiss_sps = line0.twiss()
-        
-        # Install SC, track particles and observe tune diffusion
-        if load_tbt_data:
-            try:
-                x, y, _, _ = self.load_tracking_data()
-            except FileExistsError:
-                line = self.install_SC_and_get_line(line0, beamParams)
-                particles = self.generate_particles(line, beamParams)
-                x, y = self.track_particles(particles, line)
-        else:
-            line = self.install_SC_and_get_line(line0, beamParams)
-            particles = self.generate_particles(line, beamParams)
-            x, y = self.track_particles(particles, line)
-  
-        # Extract diffusion coefficient from FMA of turn-by-turn data
-        Qx, Qy, d = self.run_FMA(x, y)
-         
-        # Tunes from Twiss
-        Qh_set = twiss_sps['qx']
-        Qv_set = twiss_sps['qy']
-        print('\nSet tune is located at {:.4f}, {:.4f}\n'.format(Qh_set, Qv_set))
-        
-        # Add interger tunes to fractional tunes 
-        Qx += int(twiss_sps['qx'])
-        Qy += int(twiss_sps['qy'])
-        
-        # Make tune footprint
-        plot_range  = [[26.0, 26.35], [26.0, 26.35]]
-   
-        self.plot_FMA(d, Qx, Qy, Qh_set, Qv_set,'SPS', plot_range)
-        self.plot_initial_distribution(x, y, d, case_name='SPS')
-        
-        
-    def run_PS(self, load_tbt_data=False, save_tune_data=True):
-        """
-        Default FMA analysis for SPS Pb ions, plot final results and tune diffusion in initial distribution
-        
-        Parameters
-        ----------
-        load_tbt_data : bool
-            flag if turn-by-turn data from tracking is already saved
-        
-        Returns:
-        -------
-        None
-        """
-        beamParams = BeamParameters_PS
-        ps_seq = PS_sequence_maker()
-        
-        line0, twiss_ps = ps_seq.load_xsuite_line_and_twiss()
-        
-        # Install SC, track particles and observe tune diffusion
-        if load_tbt_data:
-            try:
-                x, y, _, _ = self.load_tracking_data()
-            except FileExistsError:
-                line = self.install_SC_and_get_line(line0, beamParams)
-                particles = self.generate_particles(line, beamParams)
-                x, y = self.track_particles(particles, line)
-        else:
-            line = self.install_SC_and_get_line(line0, beamParams)
-            particles = self.generate_particles(line, beamParams)
-            x, y = self.track_particles(particles, line)
-            
-        Qx, Qy, d = self.run_FMA(x, y, Qmin=self.Q_min_PS)
+        return tbt_dict
 
-        if save_tune_data:
-            os.makedirs(self.output_folder, exist_ok=True)
-            np.save('{}/Qx.npy'.format(self.output_folder), Qx)
-            np.save('{}/Qy.npy'.format(self.output_folder), Qy)
-            np.save('{}/d.npy'.format(self.output_folder), d)
-
-
-        # Tunes from Twiss
-        Qh_set = twiss_ps['qx']
-        Qv_set = twiss_ps['qy']
-       
-        # Add interger tunes to fractional tunes 
-        Qx += int(twiss_ps['qx'])
-        Qy += int(twiss_ps['qy']) 
-       
-        # Make tune footprint
-        plot_range  = [[6.0, 6.4], [6.0, 6.4]]
-   
-        self.plot_FMA(d, Qx, Qy, Qh_set, Qv_set,'PS', plot_range) 
-        self.plot_initial_distribution(x, y, d, case_name='PS')
-
-
-    def run_PS_with_beta_beat(self, load_tbt_data=False, beta_beat=0.02):
-        """
-        Default FMA analysis for PS Pb ions, plot final results and tune diffusion in initial distribution
-        
-        Parameters
-        ----------
-        load_tbt_data : bool
-            flag whether turn-by-turn data from tracking is already saved
-        beta_beat : float
-            relative difference in beta functions (X for PS)
-        
-        Returns:
-        -------
-        None
-        """
-        beamParams = BeamParameters_PS
-        ps_seq = PS_sequence_maker()
-        line0, twiss_ps =  ps_seq.load_xsuite_line_and_twiss()
-        
-        # Install SC, track particles and observe tune diffusion
-        if load_tbt_data:
-            try:
-                x, y, _, _ = self.load_tracking_data()
-            except FileExistsError:
-                line_beat = ps_seq.generate_xsuite_seq_with_beta_beat(beta_beat=beta_beat, line=line0)
-                line_SC_beat = self.install_SC_and_get_line(line_beat, beamParams)
-                particles = self.generate_particles(line_SC_beat, beamParams)
-                x, y = self.track_particles(particles, line_SC_beat)
-        else:
-            line_beat = ps_seq.generate_xsuite_seq_with_beta_beat(beta_beat=beta_beat, line=line0)
-            line_SC_beat = self.install_SC_and_get_line(line_beat, beamParams)
-            particles = self.generate_particles(line_SC_beat, beamParams)
-            x, y = self.track_particles(particles, line_SC_beat)
-  
-        # Extract diffusion coefficient from FMA of turn-by-turn data
-        Qx, Qy, d = self.run_FMA(x, y, Qmin=self.Q_min_PS)
-         
-        # Tunes from Twiss
-        Qh_set = twiss_ps['qx']
-        Qv_set = twiss_ps['qy']
-        
-        # Add interger tunes to fractional tunes 
-        Qx += int(twiss_ps['qx'])
-        Qy += int(twiss_ps['qy'])
-        
-        # Make tune footprint, need plot range
-        plot_range  = [[6.0, 6.4], [6.0, 6.4]]
-   
-        self.plot_FMA(d, Qx, Qy, Qh_set, Qv_set,'PS', plot_range)
-        self.plot_initial_distribution(x, y, d, case_name='PS_beta_beat')
-
-
-    def run_custom_beam_PS(self, ion_type, m_ion, Q_LEIR, Q_PS,
-                            qx, qy, Nb=None, load_tbt_data=False 
-                            ):
-        """
-        FMA analysis for SPS custom beams
-        
-        Parameters:
-        -----------
-        ion type : str
-            which ion (str)
-        m_ion : float
-            ion mass in atomic units [u]
-        Q_LEIR : int
-            LEIR ion charge state
-        Q_PS : int
-            PS ion charge state
-        qx : float
-            horizontal tune
-        qy ; float
-            vertical tune
-        Nb : int
-            bunch intensity (default 'None' will keep default Pb parameters)
-        load_tbt_data : bool
-            flag if tracking is already done
-        
-        Returns:
-        --------
-        None, but generates plots
-        """
-        beamParams = BeamParameters_PS
-        if Nb is not None:
-            beamParams.Nb = Nb 
-        s = PS_sequence_maker(qx0=qx, qy0=qy, m_ion=m_ion, Q_LEIR=Q_LEIR, Q_PS=Q_PS, ion_type=ion_type)
-        line0 = s.generate_xsuite_seq()
-        twiss_ps = line0.twiss()
-        
-        # Install SC, track particles and observe tune diffusion
-        if load_tbt_data:
-            try:
-                x, y, _, _ = self.load_tracking_data()
-            except FileExistsError:
-                line = self.install_SC_and_get_line(line0, beamParams)
-                particles = self.generate_particles(line, beamParams)
-                x, y = self.track_particles(particles, line)
-        else:
-            line = self.install_SC_and_get_line(line0, beamParams)
-            particles = self.generate_particles(line, beamParams)
-            x, y = self.track_particles(particles, line)
-              
-        Qx, Qy, d = self.run_FMA(x, y)
-        
-        # Tunes from Twiss
-        Qh_set = twiss_ps['qx']
-        Qv_set = twiss_ps['qy']
-        print('\nSet tune is located at {:.4f}, {:.4f}\n'.format(Qh_set, Qv_set))
-        
-        # Add interger tunes to fractional tunes 
-        Qx += int(twiss_ps['qx'])
-        Qy += int(twiss_ps['qy'])
-        
-        # Make tune footprint
-        plot_range  = [[6.0, 6.4], [6.0, 6.4]]
-   
-        self.plot_FMA(d, Qx, Qy, Qh_set, Qv_set,'PS', plot_range)
-        self.plot_initial_distribution(x, y, d, case_name='PS')
-        
-class FMA_plotter:
 
     def plot_FMA(self, d, Qx, Qy, Qh_set, Qv_set, case_name, 
                  plot_range, plot_initial_distribution=True):   
@@ -955,8 +552,15 @@ class FMA_plotter:
         plt.clim(-20.5,-4.5)
         fig.tight_layout(pad=0.6, w_pad=0.5, h_pad=1.0)
         fig.savefig('{}/FMA_plot_{}.png'.format(self.output_folder, case_name), dpi=250)
+
+
+
+
         
-        
+@dataclass
+class FMA_plotter:
+
+
     def plot_initial_distribution(self, x, y, d, case_name, use_normalized_coordinates=True,
                                   interpolate_initial_distribution=False, also_show_plot=False): 
         """
