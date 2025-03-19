@@ -505,7 +505,7 @@ class FMA_plotter:
         periodicity in tune diagram
     """
 
-    plot_range  = [[26.0, 26.35], [26.0, 26.35]]
+    plot_range  = [[26.0, 26.45], [26.0, 26.45]]
     output_folder: str = 'output'
     plot_order: int = 4
     periodicity: int = 6
@@ -521,11 +521,11 @@ class FMA_plotter:
         try:
             tbt_dict = FMA_keeper.dict_from_json("{}tbt.json".format(folder_path))
             return tbt_dict
-        except FileNotFoundError:
-            print('Did not find dictionary!')
+        except Exception as e:
+            print(f'{e.message}, {e.args}\nDid not find dictionary!')
 
 
-    def plot_FMA(self, tbt_dict=None, case_name='', 
+    def plot_FMA(self, tbt_dict=None, save_dir='output', case_name=None, 
                     plot_initial_distribution=True, show_plot=False):   
         """
         Plots FMA diffusion and possibly initial distribution
@@ -535,6 +535,8 @@ class FMA_plotter:
         tbt_dict :  dict
             turn-by-turn dictionary containing arrays with input data from self.run_FMA. If none, will try to load
             saved dictionary
+        save_dir : str
+            where to save the data
         Qx_set, Qy_set : float 
             set tunes, input data from Twiss
         case_name : str
@@ -544,8 +546,11 @@ class FMA_plotter:
         --------
         None
         """
-        output_loc = f'{self.output_folder}/output' if self.output_folder is not None else 'output'
+        output_loc = f'{save_dir}'
         os.makedirs(output_loc, exist_ok=True)
+
+        if case_name is None:
+            case_name = self.output_folder
 
         if tbt_dict is None:
             tbt_dict = self.load_records_dict_from_json(output_folder=self.output_folder)
@@ -573,10 +578,10 @@ class FMA_plotter:
         cbar.ax.tick_params(labelsize='18')
         plt.legend(loc='upper left')
         plt.clim(-20.5,-4.5)
-        fig.savefig('{}/FMA_plot{}.png'.format(output_loc, case_name), dpi=250)
+        fig.savefig('{}/FMA_plot_{}.png'.format(output_loc, case_name), dpi=250)
 
         if plot_initial_distribution:
-            self.plot_initial_distribution(tbt_dict, case_name, output_loc)
+            self.plot_initial_distribution(tbt_dict, output_loc, case_name)
 
         if show_plot:
             plt.show()
@@ -584,7 +589,7 @@ class FMA_plotter:
             plt.close()
 
 
-    def plot_initial_distribution(self, tbt_dict, case_name=''): 
+    def plot_initial_distribution(self, tbt_dict, save_dir='output', case_name=''): 
         """
         Plot initial distribution, interpolating between discrete points
         
@@ -600,6 +605,11 @@ class FMA_plotter:
         fig2 = plt.figure(figsize=(8,6), constrained_layout=True)
         fig2.suptitle('Initial Distribution', fontsize='18')
         
+        output_loc = f'{save_dir}'
+
+        if case_name is None:
+            case_name = self.output_folder
+
         # Combine x0_norm, y0_norm and d into a single array for sorting
         data = list(zip(tbt_dict['x0_norm'], tbt_dict['y0_norm'], tbt_dict['d']))
         x_string = '$\sigma_{x}$'
@@ -619,7 +629,7 @@ class FMA_plotter:
         cbar=plt.colorbar()
         cbar.set_label('d',fontsize='18')
         cbar.ax.tick_params(labelsize='18')
-        fig2.savefig('{}/Initial_norm_distribution{}.png'.format(self.output_folder, case_name), dpi=250)
+        fig2.savefig('{}/Initial_norm_distribution_{}.png'.format(output_loc, case_name), dpi=250)
 
 
     def plot_tune_over_action(self, twiss, 

@@ -14,7 +14,7 @@ dir_path = pathlib.Path(__file__).parent.absolute()
 master_name = 'Q26_Pb_FMA_on_momentum_ideal_lattice'
 
 Qx_range = np.arange(26.28, 26.4, 0.02)
-Qy_range = np.array([26.19, 26.25, 26.27])
+Qy_range = np.array([26.25]) #np.array([26.19, 26.25, 26.27])
 run_files, folder_names, string_array = [], [] , []
 for i in range(len(Qx_range)):
     run_files0 = []
@@ -38,7 +38,7 @@ for i in range(len(Qx_range)):
 output_dir = './'
 
 # Tracking on GPU context
-fma_sps = fma_ions.FMA(n_linear=200)
+fma_sps = fma_ions.FMA(n_linear=100)
 tbt = fma_sps.run_SPS(qx0={:.3f}, qy0={:.3f}, which_context = 'gpu')
 tbt.to_json(output_dir)
         '''.format(Qx_range[i], Qy_range[j])

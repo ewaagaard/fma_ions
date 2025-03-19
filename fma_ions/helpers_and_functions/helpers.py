@@ -88,7 +88,7 @@ class FMA_keeper:
         self.py[:, turn] = context.nparray_from_context_array(parts.py)
 
 
-    def to_dict(self, convert_to_numpy=True):
+    def to_dict(self, convert_to_numpy=True, also_save_TBT=False):
         """
         Convert data arrays to dictionary, possible also beam profile monitor data
         Convert lists to numpy format if desired, but typically not if data is saved to json
@@ -96,13 +96,14 @@ class FMA_keeper:
         data = {
             'Qx0': self.Qx0,
             'Qy0': self.Qy0,
-            'x': self.x.tolist(),
-            'y': self.y.tolist(),
             'x0_norm': self.x0_norm.tolist(),
             'y0_norm': self.y0_norm.tolist(),
-            'px': self.x.tolist(),
-            'py': self.y.tolist(),
         }
+        if also_save_TBT:
+            data['x'] = self.x.tolist()
+            data['y'] = self.y.tolist()
+            data['px'] = self.x.tolist()
+            data['py'] = self.y.tolist()
         if self.tune_data_is_available:
             data['Qx'] = self.Qx
             data['Qy'] = self.Qy
