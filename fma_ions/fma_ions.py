@@ -522,7 +522,7 @@ class FMA_plotter:
             tbt_dict = FMA_keeper.dict_from_json("{}tbt.json".format(folder_path))
             return tbt_dict
         except Exception as e:
-            print(f'{e.message}, {e.args}\nDid not find dictionary!')
+            print(f'{e}\nDid not find dictionary!')
 
 
     def plot_FMA(self, tbt_dict=None, save_dir='output', case_name=None, 
