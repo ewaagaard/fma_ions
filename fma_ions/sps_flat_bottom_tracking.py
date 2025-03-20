@@ -25,7 +25,9 @@ from xibs.analytical import NagaitsevIBS
 
 import matplotlib.pyplot as plt
 import time
+from pathlib import Path
 
+sequence_path = Path(__file__).resolve().parent.joinpath('../data/sps_sequences').absolute()
 
 @dataclass
 class SPS_Flat_Bottom_Tracker:
@@ -105,6 +107,8 @@ class SPS_Flat_Bottom_Tracker:
                   adjust_integral_for_SC_adaptive_interval_during_tracking=False,
                   distribution_type='gaussian',
                   add_tune_ripple=False,
+                  load_full_spectrum = False, 
+                  apply_50_Hz_comp = True,
                   kqf_amplitudes = np.array([1.0141062492337905e-06]),
                   kqd_amplitudes = np.array([1.0344583265981035e-06]),
                   kqf_phases=np.array([0.7646995873548973]), 
@@ -166,6 +170,10 @@ class SPS_Flat_Bottom_Tracker:
             'gaussian' or 'qgaussian' or 'parabolic' or 'binomial': particle distribution for tracking
         add_tune_ripple : bool
             whether to add external tune ripple from the Tune_Ripple_SPS class
+        load_full_spectrum : bool
+            Set to True to load saved full spectrum signals, False to generate artificial signal with 50, 150 or specified components
+        apply_50_Hz_comp = True
+            If load_full_spectrum is True, set to True to load signals with 50 Hz compensation
         ripple_plane : str
             plane in which to add the tune ripple: 'X', 'Y' or 'both'
         kqf_amplitudes : np.ndarray
@@ -480,10 +488,39 @@ class SPS_Flat_Bottom_Tracker:
             kqf_phases_turns = kqf_phases * turns_per_sec # convert time domain to turn domain, i.e. multiply with turns/sec
             kqd_phases_turns = kqd_phases * turns_per_sec # convert time domain to turn domain, i.e. multiply with turns/sec
 
-            ripple_maker = Tune_Ripple_SPS(num_turns=self.num_turns, qx0=self.qx0, qy0=self.qy0)
-            kqf_ripple, kqd_ripple = ripple_maker.get_k_ripple_summed_signal(ripple_periods, kqf_amplitudes, kqd_amplitudes,
+            # Generate custom tune ripple signal
+            if not load_full_spectrum:
+                ripple_maker = Tune_Ripple_SPS(num_turns=self.num_turns, qx0=self.qx0, qy0=self.qy0)
+                kqf_ripple, kqd_ripple = ripple_maker.get_k_ripple_summed_signal(ripple_periods, kqf_amplitudes, kqd_amplitudes,
                                                                              kqf_phases_turns, kqd_phases_turns)
+            # Load actual ripple signal, with transfer function (TF) applied
+            else:
+                # --- Load saved signals with transfer function applied ---
+                if apply_50_Hz_comp:
+                    kqd_values_tf_applied_file = '{}/tune_ripple/kqd_values_comp_tf_applied.npy'.format(sequence_path)
+                    kqf_values_tf_applied_file = '{}/tune_ripple/kqf_values_comp_tf_applied.npy'.format(sequence_path)
+                else:
+                    kqd_values_tf_applied_file = '{}/tune_ripple/kqd_values_tf_applied.npy'.format(sequence_path)
+                    kqf_values_tf_applied_file = '{}/tune_ripple/kqf_values_tf_applied.npy'.format(sequence_path)
             
+                print('Attemping to load values from {}/tune_ripple/kqd_values ... npy'.format(sequence_path))
+                try:
+                    kqd_loaded_time_domain = np.load(kqd_values_tf_applied_file)
+                    kqf_loaded_time_domain = np.load(kqf_values_tf_applied_file)
+                    print(f"Loaded kqd from: {kqd_values_tf_applied_file}")
+                    print(f"Loaded kqf from: {kqf_values_tf_applied_file}")
+            
+                    # --- Adapt the length of the loaded signals for tracking ---
+                    num_samples_original = len(kqd_loaded_time_domain)
+                    kqd_ripple = np.tile(kqd_loaded_time_domain, int(np.ceil(self.num_turns / num_samples_original)))[:self.num_turns]
+                    kqf_ripple = np.tile(kqf_loaded_time_domain, int(np.ceil(self.num_turns / num_samples_original)))[:self.num_turns]
+                    print('Generated ripple signal array with length {}'.format(len(kqd_ripple)))
+            
+                except FileNotFoundError:
+                    print("Error: One or more of the saved numpy files not found. Please ensure the file paths are correct.")
+                    kqd_ripple = np.zeros(self.num_turns)
+                    kqf_ripple = np.zeros(self.num_turns)
+                
             # Save initial values
             kqf0 = line.vars['kqf']._value
             kqd0 = line.vars['kqd']._value
