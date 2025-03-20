@@ -569,7 +569,7 @@ class FMA_plotter:
         # Unpack the sorted data
         sorted_Qx, sorted_Qy, sorted_d = zip(*sorted_data)
 
-        plt.scatter(sorted_Qx, sorted_Qy, s=5.0, c=sorted_d, marker='o', lw = 0.1, zorder=10, cmap=plt.cm.jet) #, alpha=0.55)
+        plt.scatter(sorted_Qx, sorted_Qy, s=4.5, c=sorted_d, marker='o', lw = 0.1, zorder=10, cmap=plt.cm.jet) #, alpha=0.55)
         plt.plot(tbt_dict['Qx0'], tbt_dict['Qy0'], 'o', color='k', markerfacecolor='red', zorder=20, markersize=11, label="Set tune")
         plt.xlabel('$Q_{x}$')
         plt.ylabel('$Q_{y}$')
@@ -578,7 +578,7 @@ class FMA_plotter:
         cbar.ax.tick_params(labelsize='18')
         plt.legend(loc='upper left')
         plt.clim(-20.5,-4.5)
-        fig.savefig('{}/FMA_plot_{}.png'.format(output_loc, case_name), dpi=250)
+        fig.savefig('{}/FMA_plot_{}.png'.format(output_loc, case_name), dpi=350)
 
         if plot_initial_distribution:
             self.plot_initial_distribution(tbt_dict, output_loc, case_name)
@@ -621,7 +621,7 @@ class FMA_plotter:
         # Unpack the sorted data
         sorted_x, sorted_y, sorted_d = zip(*sorted_data)
     
-        plt.scatter(sorted_x, sorted_y, s=5.5, c=sorted_d, marker='o', lw = 0.1, zorder=10, cmap=plt.cm.jet)  # without interpolation
+        plt.scatter(sorted_x, sorted_y, s=4.5, c=sorted_d, marker='o', lw = 0.1, zorder=10, cmap=plt.cm.jet)  # without interpolation
         plt.tick_params(axis='both', labelsize='18')
         plt.xlabel('{}'.format(x_string), fontsize='20')
         plt.ylabel('{}'.format(y_string), fontsize='20')
@@ -629,7 +629,7 @@ class FMA_plotter:
         cbar=plt.colorbar()
         cbar.set_label('d',fontsize='18')
         cbar.ax.tick_params(labelsize='18')
-        fig2.savefig('{}/Initial_norm_distribution_{}.png'.format(output_loc, case_name), dpi=250)
+        fig2.savefig('{}/Initial_norm_distribution_{}.png'.format(output_loc, case_name), dpi=350)
 
 
     def plot_tune_over_action(self, twiss, 
