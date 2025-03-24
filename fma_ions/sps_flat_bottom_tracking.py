@@ -504,22 +504,18 @@ class SPS_Flat_Bottom_Tracker:
                     kqf_values_tf_applied_file = '{}/tune_ripple/kqf_values_tf_applied.npy'.format(sequence_path)
             
                 print('Attemping to load values from {}/tune_ripple/kqd_values ... npy'.format(sequence_path))
-                try:
-                    kqd_loaded_time_domain = np.load(kqd_values_tf_applied_file)
-                    kqf_loaded_time_domain = np.load(kqf_values_tf_applied_file)
-                    print(f"Loaded kqd from: {kqd_values_tf_applied_file}")
-                    print(f"Loaded kqf from: {kqf_values_tf_applied_file}")
-            
-                    # --- Adapt the length of the loaded signals for tracking ---
-                    num_samples_original = len(kqd_loaded_time_domain)
-                    kqd_ripple = np.tile(kqd_loaded_time_domain, int(np.ceil(self.num_turns / num_samples_original)))[:self.num_turns]
-                    kqf_ripple = np.tile(kqf_loaded_time_domain, int(np.ceil(self.num_turns / num_samples_original)))[:self.num_turns]
-                    print('Generated ripple signal array with length {}'.format(len(kqd_ripple)))
-            
-                except FileNotFoundError:
-                    print("Error: One or more of the saved numpy files not found. Please ensure the file paths are correct.")
-                    kqd_ripple = np.zeros(self.num_turns)
-                    kqf_ripple = np.zeros(self.num_turns)
+                
+                kqd_loaded_time_domain = np.load(kqd_values_tf_applied_file)
+                kqf_loaded_time_domain = np.load(kqf_values_tf_applied_file)
+                print(f"Loaded kqd from: {kqd_values_tf_applied_file}")
+                print(f"Loaded kqf from: {kqf_values_tf_applied_file}")
+        
+                # --- Adapt the length of the loaded signals for tracking ---
+                num_samples_original = len(kqd_loaded_time_domain)
+                kqd_ripple = np.tile(kqd_loaded_time_domain, int(np.ceil(self.num_turns / num_samples_original)))[:self.num_turns]
+                kqf_ripple = np.tile(kqf_loaded_time_domain, int(np.ceil(self.num_turns / num_samples_original)))[:self.num_turns]
+                print('Generated ripple signal array with length {}'.format(len(kqd_ripple)))
+
                 
             # Save initial values
             kqf0 = line.vars['kqf']._value
