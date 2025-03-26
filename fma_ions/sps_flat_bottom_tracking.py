@@ -502,8 +502,8 @@ class SPS_Flat_Bottom_Tracker:
                 else:
                     kqd_values_tf_applied_file = '{}/tune_ripple/kqd_values_tf_applied.npy'.format(sequence_path)
                     kqf_values_tf_applied_file = '{}/tune_ripple/kqf_values_tf_applied.npy'.format(sequence_path)
-            
-                print('Attemping to load values from {}/tune_ripple/kqd_values ... npy'.format(sequence_path))
+                
+                print('Attemping to load values from {}'.format(kqd_values_tf_applied_file))
                 
                 kqd_loaded_time_domain = np.load(kqd_values_tf_applied_file)
                 kqf_loaded_time_domain = np.load(kqf_values_tf_applied_file)
