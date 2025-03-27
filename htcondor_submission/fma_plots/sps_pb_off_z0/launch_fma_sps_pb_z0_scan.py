@@ -44,15 +44,12 @@ tbt.to_json(output_dir)
     )
     run_file.close()
     
-# Flatten list to define script names
-script_names = [x for xs in run_files for x in xs]
-
 # Instantiate the submitter class and launch the jobs
 sub = fma_ions.Submitter() 
 master_job_name = '{:%Y_%m_%d__%H_%M_%S}_{}'.format(datetime.datetime.now(), master_name)
 
 # Launch the Python scripts in this folder
-for k, script in enumerate(script_names):
+for k, script in enumerate(run_files):
     file_name = os.path.join(dir_path, script)
     print(f"Submitting {file_name}")
     sub.submit_GPU(file_name, master_job_name=master_job_name, job_name=folder_names[k])
