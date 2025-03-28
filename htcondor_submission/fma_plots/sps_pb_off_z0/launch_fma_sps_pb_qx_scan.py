@@ -19,7 +19,7 @@ run_files, folder_names, string_array = [], [] , []
 for i in range(len(Qx_range)):
     run_files0 = []
     for j in range(len(Qy_range)):
-        run_files0.append('sps_run_qx_{}_tbt_qy_{}_ripple.py'.format(i+1, j+1))
+        run_files0.append('sps_run_qx_{}_tbt_qy_{}.py'.format(i+1, j+1))
         folder_names.append('sps_Qx_{:.2f}_Qy_{:.2f}'.format(Qx_range[i], Qy_range[j]))
         string_array.append('Qx = {:.2f}, Qy = {:.2f} space charge'.format(Qx_range[i], Qy_range[j]))
     run_files.append(run_files0)
