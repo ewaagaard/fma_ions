@@ -12,16 +12,16 @@ dir_path = pathlib.Path(__file__).parent.absolute()
 
 # Define run files and which parameters to change
 master_name = 'Q26_Pb_FMA_on_momentum_ideal_lattice_z0_scan'
-
-z0_range = np.array([0.0, 1e-3, 1e-2, 1e-1])
+z0 = 3e-3
+ripple_freq = np.array([10., 50., 150., 300., 600.])
 Qx = 26.31
 Qy = 26.25
 
 run_files, folder_names, string_array = [], [] , []
-for i in range(len(z0_range)):
-    run_files.append('sps_run{}_z0.py'.format(i+1))
-    folder_names.append('sps_Qx_{:.2f}_Qy_{:.2f}_z0_{:.3e}'.format(Qx, Qy, z0_range[i]))
-    string_array.append('Qx = {:.2f}, Qy = {:.2f}, z0 = {:.3e}'.format(Qx, Qy, z0_range[i]))
+for i in range(len(ripple_freq)):
+    run_files.append('sps_run{}_z0_ripple.py'.format(i+1))
+    folder_names.append('sps_Qx_{:.2f}_Qy_{:.2f}_ripple_{:.3e}_Hz_ripple'.format(Qx, Qy, ripple_freq[i]))
+    string_array.append('Qx = {:.2f}, Qy = {:.2f}, ripple = {:.3e}'.format(Qx, Qy, ripple_freq[i]))
 
 # Generate the scripts to be submitted
 for i in range(len(z0_range)):
@@ -38,9 +38,9 @@ output_dir = './'
 
 # Tracking on GPU context
 fma_sps = fma_ions.FMA(n_linear=200, z0={})
-tbt = fma_sps.run_SPS(qx0={:.3f}, qy0={:.3f}, which_context = 'gpu')
+tbt = fma_sps.run_SPS(qx0={:.3f}, qy0={:.3f}, which_context = 'gpu', add_tune_ripple=True, ripple_freqs=np.array([{}]))
 tbt.to_json(output_dir)
-    '''.format(z0_range[i], Qx, Qy)
+    '''.format(z0, Qx, Qy, ripple_freq[i])
     )
     run_file.close()
     

@@ -13,14 +13,14 @@ dir_path = pathlib.Path(__file__).parent.absolute()
 # Define run files and which parameters to change
 master_name = 'Q26_Pb_FMA_on_momentum_ideal_lattice_z0_scan_non_linear_magnet_errors'
 
-z0_range = np.array([0.0, 1e-3, 1e-2, 1e-1, 0.5, 1.0, 5.0, 10.])
+z0_range = np.array([0.0, 1e-3, 1e-2, 1e-1])
 Qx = 26.31
 Qy = 26.25
 
 run_files, folder_names, string_array = [], [] , []
 for i in range(len(z0_range)):
-    run_files.append('sps_run{}_z0.py'.format(i+1))
-    folder_names.append('sps_Qx_{:.2f}_Qy_{:.2f}_z0_{:.3e}'.format(Qx, Qy, z0_range[i]))
+    run_files.append('sps_run{}_z0_magnet_errors.py'.format(i+1))
+    folder_names.append('sps_Qx_{:.2f}_Qy_{:.2f}_z0_{:.3e}_magnet_errors'.format(Qx, Qy, z0_range[i]))
     string_array.append('Qx = {:.2f}, Qy = {:.2f}, z0 = {:.3e}'.format(Qx, Qy, z0_range[i]))
 
 # Generate the scripts to be submitted
