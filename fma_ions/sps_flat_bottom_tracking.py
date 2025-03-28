@@ -270,8 +270,11 @@ class SPS_Flat_Bottom_Tracker:
             raise ValueError('Only Pb and O ions implemented so far!')
         
         # Extract line with aperture, beta-beat and non-linear magnet errors if desired
-        line, twiss = sps.load_xsuite_line_and_twiss(add_aperture=add_aperture, add_non_linear_magnet_errors=add_non_linear_magnet_errors, 
+        #line, twiss = sps.load_xsuite_line_and_twiss()
+        line = sps.generate_xsuite_seq(add_aperture=add_aperture, add_non_linear_magnet_errors=add_non_linear_magnet_errors, 
                                                    use_symmetric_lattice=use_symmetric_lattice, voltage=voltage)
+        twiss = line.twiss()
+
         print('{} optics: Qx = {:.3f}, Qy = {:.3f}'.format(self.proton_optics, twiss['qx'], twiss['qy']))
         
         # Check aperture on copy of line
