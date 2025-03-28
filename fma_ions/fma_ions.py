@@ -29,7 +29,6 @@ plt.rcParams.update(
 
 
 import NAFFlib
-from .sequences import PS_sequence_maker
 from .sequences import SPS_sequence_maker
 from .beam_parameters import BeamParameters_SPS
 from .resonance_lines import resonance_lines
@@ -270,7 +269,8 @@ class FMA:
         return particles
         
     
-    def track_particles(self, particles, line, context: xo.context):
+    def track_particles(self, particles, line, context: xo.context, add_tune_ripple=False,
+                        kqf_ripple=None, kqd_ripple=None):
         """
         Track particles through lattice with space charge elments installed
         
@@ -282,6 +282,12 @@ class FMA:
             xsuite line to track through
         context : xo.context
             which context particles are tracked on
+        add_tune_ripple : bool
+            whether to add an external tune ripple
+        kqf_ripple : np.ndarray
+            if add tune ripple, array with modulation of kqf knob
+        kqd_ripple : np.ndarray
+            if add tune ripple, array with modulation of kqd knob
 
         Returns:
         -------
@@ -295,12 +301,23 @@ class FMA:
         num_part = len(particles.x)
         tbt = FMA_keeper.init_zeroes(self.num_turns, num_part, self._x_norm, self._y_norm)
 
-        print('\nStarting tracking...')
+        # Save initial values
+        kqf0 = line.vars['kqf']._value
+        kqd0 = line.vars['kqd']._value
 
+        print('\nStarting tracking...')
         # Perform the tracking
         for turn in range(self.num_turns):
             if turn % 50 == 0:
                 print('Turn {}'.format(turn))
+                
+                if add_tune_ripple:
+                    print('kqf = {:.8f}, kqf = {:.8f}'.format(line.vars['kqf']._value, line.vars['kqd']._value))
+                    
+            ########## ----- Exert TUNE RIPPLE if desired ----- ##########
+            if add_tune_ripple:
+                line.vars['kqf'] = kqf0 + kqf_ripple[turn-1]
+                line.vars['kqd'] = kqd0 + kqd_ripple[turn-1]
         
             tbt.update_at_turn(turn, particles, context)
         
@@ -388,6 +405,12 @@ class FMA:
                 qx0=26.31,
                 qy0=26.25,
                 add_beta_beat=False,
+                add_tune_ripple=False,
+                kqf_amplitudes = np.array([1.0141062492337905e-06]),
+                kqd_amplitudes = np.array([1.0344583265981035e-06]),
+                kqf_phases=np.array([0.7646995873548973]), 
+                kqd_phases=np.array([0.6225130389353318]),
+                ripple_freqs=np.array([50.]),
                 I_LSE=None,
                 make_single_Jy_trace=False,
                 use_symmetric_lattice=False,
@@ -412,6 +435,18 @@ class FMA:
             vertical tune
         add_beta_beat : bool
             whether to add ~7% RMS beta-beat in both planes
+        add_tune_ripple : bool
+            whether to add external tune ripple from the Tune_Ripple_SPS class
+        kqf_amplitudes : np.ndarray
+            amplitude for kqf ripple amplitudes, if applied
+        kqd_amplitudes : np.ndarray
+            amplitude for kqd ripple amplitudes, if applied
+        kqf_phases : np.ndarray
+            ripple phase for desired frequencies of kqf --> obtained from normalized FFT spectrum of IQD and IQF. 
+        kqd_phases : list
+            ripple phases for desired frequencies of kqd --> obtained from normalized FFT spectrum of IQD and IQF. 
+        ripple_freqs : np.ndarray
+            array with desired ripple frequencies in Hz
         I_LSE : float
             sextupolar LSE current, to excite sextupole if desired
         make_single_Jy_trace : bool 
@@ -453,8 +488,10 @@ class FMA:
         print(beamParams)
         
         # Load line
-        line, twiss_sps =  sps_seq.load_xsuite_line_and_twiss(use_symmetric_lattice=use_symmetric_lattice,
-                                                               add_non_linear_magnet_errors=add_non_linear_magnet_errors)
+        line = sps_seq.generate_xsuite_seq(add_non_linear_magnet_errors=add_non_linear_magnet_errors, 
+                                                   use_symmetric_lattice=use_symmetric_lattice)
+        twiss_sps = line.twiss()
+        
         if add_beta_beat:
             line = sps_seq.add_beta_beat_to_line(line)
         
@@ -463,15 +500,36 @@ class FMA:
             line = sps_seq.excite_LSE_sextupole_from_current(line, I_LSE=I_LSE, which_LSE='lse.12402')      
 
         # Add space charge elements to line, build tracker, generate particles
-        line = self.install_SC_and_get_line(line, beamParams, context=context)
+        line = self.install_SC_and_get_line(line, beamParams, context=context, optimize_for_tracking=(not add_tune_ripple))
         line.build_tracker(_context=context)    
         particles = self.generate_particles(line, beamParams, make_single_Jy_trace, context=context)
+
+        # Modulate tune with ripple, if desired
+        if add_tune_ripple:
+
+            # Create ripple in quadrupolar knobs, convert phases to turns
+            turns_per_sec = 1/twiss_sps['T_rev0']
+            ripple_periods = turns_per_sec/ripple_freqs #).astype(int)  # number of turns particle makes during one ripple oscillation
+            kqf_phases_turns = kqf_phases * turns_per_sec # convert time domain to turn domain, i.e. multiply with turns/sec
+            kqd_phases_turns = kqd_phases * turns_per_sec # convert time domain to turn domain, i.e. multiply with turns/sec
+
+            # Generate custom tune ripple signal
+            kqf_ripple, kqd_ripple = self.get_k_ripple_summed_signal(ripple_periods, kqf_amplitudes, kqd_amplitudes,
+                                                                         kqf_phases_turns, kqd_phases_turns)
+            
+            # Save initial values
+            kqf0 = line.vars['kqf']._value
+            kqd0 = line.vars['kqd']._value
+            
+            print('Quadrupolar knobs will oscillate with')
+            print('kqf =  {:.4e} +/- {:.3e}'.format(kqf0, max(kqf_ripple)))
+            print('kqd = {:.4e} +/- {:.3e}'.format(kqd0, max(kqd_ripple)))
 
         # Time the tracking
         time00 = time.time()
         
         # Track particles, run FMA analysis
-        tbt = self.track_particles(particles, line, context)
+        tbt = self.track_particles(particles, line, context, add_tune_ripple=add_tune_ripple, kqf_ripple=kqf_ripple, kqd_ripple=kqd_ripple)
         Qx, Qy, d = self.run_FMA(tbt, Qmin=self.Q_min_SPS)
 
         time01 = time.time()
@@ -488,6 +546,50 @@ class FMA:
         tbt.Qy0 = twiss_sps['qy']
 
         return tbt
+
+
+    def get_k_ripple_summed_signal(self, ripple_periods, kqf_amplitudes, kqd_amplitudes,
+                                   kqf_phases, kqd_phases):
+        """
+        Generate noise signal on top of kqf/kqd values, with desired ripple periods and amplitudes.
+        Phase and frequencies unit must correspond to where it is used, e.g turns
+        
+        Parameters:
+        -----------
+        ripple_periods : np.ndarray
+            floats containing the ripple periods of the noise frequencies
+        kqf_amplitudes : np.ndarray
+            ripple amplitudes for desired frequencies of kqf --> obtained from normalized FFT spectrum of IQD and IQF. 
+            Default without 50 Hz compensation is 1e-6
+        kqd_amplitudes : list
+            ripple amplitudes for desired frequencies of kqd --> obtained from normalized FFT spectrum of IQD and IQF. 
+            Default without 50 Hz compensation is 1e-6
+        kqf_phases : np.ndarray
+            ripple phase for desired frequencies of kqf --> obtained from normalized FFT spectrum of IQD and IQF. 
+        kqd_phases : list
+            ripple phases for desired frequencies of kqd --> obtained from normalized FFT spectrum of IQD and IQF. 
+
+        Returns:
+        --------
+        k_ripple_values : np.ndarray
+            focusing quadrupole values corresponding to modulate Qx according to dq (if chosen plane)
+        """
+
+        turns = np.arange(1, self.num_turns+1)
+        kqf_signals = np.zeros([len(ripple_periods), len(turns)])
+        kqd_signals = np.zeros([len(ripple_periods), len(turns)])
+        for i, ripple_period in enumerate(ripple_periods):
+            kqf_signals[i, :] = kqf_amplitudes[i] * np.sin(2 * np.pi * turns / ripple_period + kqf_phases[i])
+            kqd_signals[i, :] = kqd_amplitudes[i] * np.sin(2 * np.pi * turns / ripple_period + kqd_phases[i])
+
+        # Sum the signal
+        kqf_ripple = np.sum(kqf_signals, axis=0)
+        kqd_ripple = np.sum(kqd_signals, axis=0)
+
+        print('Generated kqf ripple of amplitudes {} and phases {} with ripple periods {}'.format(kqf_amplitudes, kqf_phases, ripple_periods))
+        print('Generated kqd ripple of amplitudes {} and phases {} with ripple periods {}'.format(kqd_amplitudes, kqd_phases, ripple_periods))
+
+        return kqf_ripple, kqd_ripple
 
         
 @dataclass

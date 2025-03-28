@@ -174,8 +174,6 @@ class SPS_Flat_Bottom_Tracker:
             Set to True to load saved full spectrum signals, False to generate artificial signal with 50, 150 or specified components
         apply_50_Hz_comp = True
             If load_full_spectrum is True, set to True to load signals with 50 Hz compensation
-        ripple_plane : str
-            plane in which to add the tune ripple: 'X', 'Y' or 'both'
         kqf_amplitudes : np.ndarray
             amplitude for kqf ripple amplitudes, if applied
         kqd_amplitudes : np.ndarray
