@@ -67,6 +67,7 @@ date
 xrdcp -f {turnbyturn_file_name} {turnbyturn_path_eos}
 xrdcp -f out.txt {os.path.join(settings['output_directory_eos'],"out.txt")}
 xrdcp -f err.txt {os.path.join(settings['output_directory_eos'],"err.txt")}
+xrdcp -f {python_script_name} {os.path.join(settings['output_directory_eos'],"{python_script_name}")}
 xrdcp -f abort.txt {os.path.join(settings['output_directory_eos'],"abort.txt")}
         """)
         bash_script.close()
@@ -154,6 +155,7 @@ date
 xrdcp -f {turnbyturn_file_name} {turnbyturn_path_eos}
 xrdcp -f out.txt {os.path.join(settings['output_directory_eos'],"out.txt")}
 xrdcp -f err.txt {os.path.join(settings['output_directory_eos'],"err.txt")}
+xrdcp -f {python_script_name} {os.path.join(settings['output_directory_eos'],"{python_script_name}")}
 xrdcp -f abort.txt {os.path.join(settings['output_directory_eos'],"abort.txt")}
         """)
         bash_script.close()
