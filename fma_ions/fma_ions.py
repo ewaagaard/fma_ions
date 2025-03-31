@@ -302,8 +302,9 @@ class FMA:
         tbt = FMA_keeper.init_zeroes(self.num_turns, num_part, self._x_norm, self._y_norm)
 
         # Save initial values
-        kqf0 = line.vars['kqf']._value
-        kqd0 = line.vars['kqd']._value
+        if add_tune_ripple:
+            kqf0 = line.vars['kqf']._value
+            kqd0 = line.vars['kqd']._value
 
         print('\nStarting tracking...')
         # Perform the tracking
