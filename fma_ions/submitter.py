@@ -245,9 +245,9 @@ sps.fit_and_plot_transverse_profiles(scan_array_for_x_axis='{scan_array_for_x_ax
         plot_file.write(
         f'''import fma_ions\nfolder_names = {folder_names}\n
 # Load data and plot
-for folder in folder_names:
+for i, folder in enumerate(folder_names):
     fma_plot = fma_ions.FMA_plotter(output_folder=folder)
-    fma_plot.plot_FMA()
+    fma_plot.plot_FMA(nr=i+1)
         '''
         )
         plot_file.close()

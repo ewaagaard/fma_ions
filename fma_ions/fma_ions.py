@@ -505,7 +505,8 @@ class FMA:
         particles = self.generate_particles(line, beamParams, make_single_Jy_trace, context=context)
 
         # Modulate tune with ripple, if desired
-        if add_tune_ripple:
+        if add_tune_ripple and not (0 in ripple_freqs):
+            print(f'\n0 freq in ripple array.{0 in ripple_freqs}\n')
 
             # Create ripple in quadrupolar knobs, convert phases to turns
             turns_per_sec = 1/twiss_sps['T_rev0']
@@ -524,6 +525,9 @@ class FMA:
             print('Quadrupolar knobs will oscillate with')
             print('kqf =  {:.4e} +/- {:.3e}'.format(kqf0, max(kqf_ripple)))
             print('kqd = {:.4e} +/- {:.3e}'.format(kqd0, max(kqd_ripple)))
+        else:
+            kqf_ripple=None
+            kqd_ripple=None
 
         # Time the tracking
         time00 = time.time()
@@ -627,7 +631,7 @@ class FMA_plotter:
             print(f'{e}\nDid not find dictionary!')
 
 
-    def plot_FMA(self, tbt_dict=None, save_dir='output', case_name=None, 
+    def plot_FMA(self, tbt_dict=None, save_dir='output', case_name=None, nr=1,
                     plot_initial_distribution=True, show_plot=False):   
         """
         Plots FMA diffusion and possibly initial distribution
@@ -643,6 +647,8 @@ class FMA_plotter:
             set tunes, input data from Twiss
         case_name : str
             name string for scenario
+        nr : int
+            numbering of plots
             
         Returns:
         --------
@@ -680,10 +686,10 @@ class FMA_plotter:
         cbar.ax.tick_params(labelsize='18')
         plt.legend(loc='upper left')
         plt.clim(-20.5,-4.5)
-        fig.savefig('{}/FMA_plot_{}.png'.format(output_loc, case_name), dpi=350)
+        fig.savefig('{}/FMA_plot_{}_{}.png'.format(output_loc, nr, case_name), dpi=350)
 
         if plot_initial_distribution:
-            self.plot_initial_distribution(tbt_dict, output_loc, case_name)
+            self.plot_initial_distribution(tbt_dict, output_loc, case_name, nr=nr)
 
         if show_plot:
             plt.show()
@@ -691,7 +697,7 @@ class FMA_plotter:
             plt.close()
 
 
-    def plot_initial_distribution(self, tbt_dict, save_dir='output', case_name=''): 
+    def plot_initial_distribution(self, tbt_dict, save_dir='output', case_name='', nr=1): 
         """
         Plot initial distribution, interpolating between discrete points
         
@@ -703,6 +709,8 @@ class FMA_plotter:
             name string for scenario
         output_loc : str
             where to save data
+        nr : int
+            numbering of plots
         """ 
         fig2 = plt.figure(figsize=(8,6), constrained_layout=True)
         fig2.suptitle('Initial Distribution', fontsize='18')
@@ -731,7 +739,7 @@ class FMA_plotter:
         cbar=plt.colorbar()
         cbar.set_label('d',fontsize='18')
         cbar.ax.tick_params(labelsize='18')
-        fig2.savefig('{}/Initial_norm_distribution_{}.png'.format(output_loc, case_name), dpi=350)
+        fig2.savefig('{}/Initial_norm_distribution_{}_{}.png'.format(output_loc, nr, case_name), dpi=350)
 
 
     def plot_tune_over_action(self, twiss, 
