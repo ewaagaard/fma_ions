@@ -633,7 +633,7 @@ class FMA_plotter:
 
 
     def plot_FMA(self, tbt_dict=None, save_dir='output', case_name=None, nr=1,
-                    plot_initial_distribution=True, show_plot=False):   
+                    plot_initial_distribution=True, show_plot=False, d_lim_color=-4.5):   
         """
         Plots FMA diffusion and possibly initial distribution
         
@@ -650,6 +650,8 @@ class FMA_plotter:
             name string for scenario
         nr : int
             numbering of plots
+        d_lim_color : float
+            maximum diffusion coefficient level in colorbar
             
         Returns:
         --------
@@ -686,11 +688,11 @@ class FMA_plotter:
         cbar.set_label('d',fontsize='18')
         cbar.ax.tick_params(labelsize='18')
         plt.legend(loc='upper left')
-        plt.clim(-20.5,-4.5)
+        plt.clim(-20.5, d_lim_color)
         fig.savefig('{}/FMA_plot_{}_{}.png'.format(output_loc, nr, case_name), dpi=350)
 
         if plot_initial_distribution:
-            self.plot_initial_distribution(tbt_dict, output_loc, case_name, nr=nr)
+            self.plot_initial_distribution(tbt_dict, output_loc, case_name, nr=nr, d_lim_color=d_lim_color)
 
         if show_plot:
             plt.show()
@@ -698,7 +700,8 @@ class FMA_plotter:
             plt.close()
 
 
-    def plot_initial_distribution(self, tbt_dict, save_dir='output', case_name='', nr=1): 
+    def plot_initial_distribution(self, tbt_dict, save_dir='output', case_name='', nr=1,
+                                  d_lim_color=-4.5): 
         """
         Plot initial distribution, interpolating between discrete points
         
@@ -712,6 +715,8 @@ class FMA_plotter:
             where to save data
         nr : int
             numbering of plots
+        d_lim_color : float
+            maximum diffusion coefficient level in colorbar
         """ 
         fig2 = plt.figure(figsize=(8,6), constrained_layout=True)
         fig2.suptitle('Initial Distribution', fontsize='18')
@@ -736,7 +741,7 @@ class FMA_plotter:
         plt.tick_params(axis='both', labelsize='18')
         plt.xlabel('{}'.format(x_string), fontsize='20')
         plt.ylabel('{}'.format(y_string), fontsize='20')
-        plt.clim(-20.5,-4.5)
+        plt.clim(-20.5, d_lim_color)
         cbar=plt.colorbar()
         cbar.set_label('d',fontsize='18')
         cbar.ax.tick_params(labelsize='18')
