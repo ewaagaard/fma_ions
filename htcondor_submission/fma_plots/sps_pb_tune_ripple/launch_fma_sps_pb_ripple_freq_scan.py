@@ -12,7 +12,7 @@ dir_path = pathlib.Path(__file__).parent.absolute()
 
 # Define run files and which parameters to change
 master_name = 'Q26_Pb_FMA_on_momentum_ideal_lattice_ripple_scan'
-ripple_freq = [10., 50., 150., 300., 600., 1200.]
+ripple_freq = [0.0, 10., 50., 150., 300., 600., 1200.]
 Qx = 26.31
 Qy = 26.25
 
