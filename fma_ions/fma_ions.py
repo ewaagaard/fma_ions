@@ -316,7 +316,7 @@ class FMA:
                     print('kqf = {:.8f}, kqf = {:.8f}'.format(line.vars['kqf']._value, line.vars['kqd']._value))
                     
             ########## ----- Exert TUNE RIPPLE if desired ----- ##########
-            if add_tune_ripple:
+            if add_tune_ripple and kqf_ripple is not None:
                 line.vars['kqf'] = kqf0 + kqf_ripple[turn-1]
                 line.vars['kqd'] = kqd0 + kqd_ripple[turn-1]
         
