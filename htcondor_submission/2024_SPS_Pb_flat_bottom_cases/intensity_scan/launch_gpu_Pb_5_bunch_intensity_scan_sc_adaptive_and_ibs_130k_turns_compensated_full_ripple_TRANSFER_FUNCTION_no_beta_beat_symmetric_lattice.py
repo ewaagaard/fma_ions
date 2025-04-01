@@ -20,7 +20,7 @@ no_LEIR_inj = [2, 3, 4, 5, 6, 8]
 Nb_array = ['1.3e8', '1.75e8', '2.215e8', '2.93e8', '3.202e8', '3.94e8']
 exn_array = ['0.73e-6', '0.89e-6', '1.11e-6', '1.4e-6', '1.75e-6', '2.1e-6']
 eyn_array = ['0.48e-6', '0.63e-6', '0.74e-6', '0.85e-6', '1.05e-6', '1.175e-6']
-run_files = ['sps_run_leir_inj_{}.py'.format(i+1) for i in range(len(no_LEIR_inj))]
+run_files = ['sps_run_leir_inj_{}_no_beta_beat_symmetric.py'.format(i+1) for i in range(len(no_LEIR_inj))]
 
 # Define script and folder names
 script_names = run_files.copy()
