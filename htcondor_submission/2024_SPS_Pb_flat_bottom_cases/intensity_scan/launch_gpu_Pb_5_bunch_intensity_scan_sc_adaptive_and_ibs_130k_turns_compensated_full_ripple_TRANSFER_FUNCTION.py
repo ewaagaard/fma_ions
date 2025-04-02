@@ -53,12 +53,12 @@ a_150 = 0.5098
 a_300 = 0.2360
 a_600 = 0.1095
 
-# Desired ripple frequencies and amplitudes
+# Desired ripple frequencies and amplitudes - from DCCT measurements 2024-10-30
 ripple_freqs = np.array([50.0, 150.0, 300.0, 600.0])
-kqf_amplitudes = np.array([1.6384433351717334e-08*a_50, 2.1158318710898557e-07*a_150, 3.2779826135772383e-07*a_300, 4.7273849059164697e-07*a_600])
-kqd_amplitudes = np.array([2.753093584240069e-07*a_50, 4.511100472630622e-07*a_150, 5.796354631307802e-07*a_300, 4.5487568431405856e-07*a_600])
-kqf_phases = np.array([0.9192671763874849, 0.030176158557178895, 0.5596488397663701, 0.050511945653341016])
-kqd_phases = np.array([0.9985112397758237, 3.003827454851132, 0.6369886405485959, -3.1126209931146547])
+kqf_amplitudes = np.array([1.79381965522221e-07*a_50, 1.7917856960711038e-07*a_150, 1.717715125357188e-07*a_300, 1.0613897587376263e-07*a_600])
+kqd_amplitudes = np.array([3.1433458408493135e-07*a_50, 4.125645646596158e-07*a_150, 2.6325770762187453e-07*a_300, 8.302889259074001e-08*a_600])
+kqf_phases = np.array([2.5699456856082965, -1.2707524434033985, 1.1509405507521766, -2.3897351868985552])
+kqd_phases = np.array([-1.6168418898711074, -1.5349070763197448, -2.145386063404577, 0.7431459693919794])
 
 # Tracking on GPU context
 sps = fma_ions.SPS_Flat_Bottom_Tracker(qx0={:.3f}, qy0={:.3f}, num_turns=n_turns, num_part=num_part)
@@ -85,3 +85,10 @@ sub.copy_master_plot_script(folder_names, string_array)
 sub.copy_plot_script_emittances_for_scan(master_name, folder_names, scan_array_for_x_axis=Nb_array,
                                              label_for_x_axis='Injected Pb ions per bunch', 
                                              extra_text_string='$Q_{x, y}$ = 26.31, 26.19 - q-Gaussian beam\\nAdaptive SC, ~10% $\\beta$-beat + non-linear magnet errors')
+'''
+# Old values, but from 2024-11-25
+kqf_amplitudes = np.array([1.6384433351717334e-08*a_50, 2.1158318710898557e-07*a_150, 3.2779826135772383e-07*a_300, 4.7273849059164697e-07*a_600])
+kqd_amplitudes = np.array([2.753093584240069e-07*a_50, 4.511100472630622e-07*a_150, 5.796354631307802e-07*a_300, 4.5487568431405856e-07*a_600])
+kqf_phases = np.array([0.9192671763874849, 0.030176158557178895, 0.5596488397663701, 0.050511945653341016])
+kqd_phases = np.array([0.9985112397758237, 3.003827454851132, 0.6369886405485959, -3.1126209931146547])
+'''
