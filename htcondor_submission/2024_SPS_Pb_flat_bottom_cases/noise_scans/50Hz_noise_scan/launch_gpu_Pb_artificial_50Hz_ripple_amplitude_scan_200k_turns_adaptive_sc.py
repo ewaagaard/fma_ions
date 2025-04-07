@@ -21,8 +21,8 @@ run_files = ['sps_run_artificial_50hz_amp_{}_tbt_ripple_scan.py'.format(i+1) for
 
 # Define script and folder names
 script_names = run_files.copy()
-folder_names = ['sps_artificial_50hz_amp_{:.2f}'.format(k_amp_array[i]) for i in range(len(k_amp_array))]
-string_array = ['Summed norm. FFT 50 Hz amplitude = {:.2f}'.format(k_amp_array[i]) for i in range(len(k_amp_array))]    
+folder_names = ['sps_artificial_50hz_amp_{}'.format(k_amp_array[i]) for i in range(len(k_amp_array))]
+string_array = ['Summed norm. FFT 50 Hz amplitude = {}'.format(k_amp_array[i]) for i in range(len(k_amp_array))]    
 
 # Generate the scripts to be submitted
 for i, run_file in enumerate(run_files):
