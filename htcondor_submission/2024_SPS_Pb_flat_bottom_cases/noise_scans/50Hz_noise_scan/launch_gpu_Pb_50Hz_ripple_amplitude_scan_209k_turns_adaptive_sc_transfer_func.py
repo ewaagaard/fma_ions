@@ -11,11 +11,11 @@ import datetime
 dir_path = pathlib.Path(__file__).parent.absolute()
 
 # Define run files and which parameters to change
-master_name = 'Q26_Pb_ions_50Hz_amplitude_scan_130k_turns_adaptive_SC_transfer_func_last_case'
-num_turns = 130_000 
+master_name = 'Q26_Pb_ions_50Hz_amplitude_scan_209k_turns_adaptive_SC_transfer_func'
+num_turns = 209_000 
 Qy = 26.19
 Qx = 26.31
-noise_amp = np.array([132.8])
+noise_amp = np.array([5, 23, 56, 79, 105, 132.8])
 
 run_files = ['sps_run_50hz_amp_{}_tbt_ripple_scan.py'.format(i+1) for i in range(len(noise_amp))]
 
@@ -53,7 +53,7 @@ kqf_phases_array = ['np.array([-2.2178884, -2.043975, 1.6096314, -2.003183])',
                     'np.array([-0.20396788, 0.5095066, -2.0499842, 1.3687758])',
                     'np.array([2.5333304, -3.0855007, 1.2785302, 1.9509202])']
 
-Nb_array = ['3.718e8']
+Nb_array = ['3.4e8', '3.626e8', '3.616e8', '3.46e8', '3.6e8', '3.718e8']
 
 
 # Generate the scripts to be submitted
@@ -95,7 +95,7 @@ sps = fma_ions.SPS_Flat_Bottom_Tracker(qx0={:.3f}, qy0={:.3f}, num_turns=n_turns
 tbt = sps.track_SPS(which_context='gpu', distribution_type='qgaussian', beamParams=beamParams, install_SC_on_line=True, add_beta_beat=True, add_non_linear_magnet_errors=True, 
                     apply_kinetic_IBS_kicks=True, ibs_step = 2000, add_tune_ripple=True, ripple_freqs = ripple_freqs,
                     kqf_amplitudes = transfer_func_fact*kqf_amplitudes, kqd_amplitudes = transfer_func_fact*kqd_amplitudes, 
-                    kqf_phases=kqf_phases, kqd_phases=kqd_phases, SC_adaptive_interval_during_tracking=100)
+                    kqf_phases=kqf_phases, kqd_phases=kqd_phases, SC_adaptive_interval_during_tracking=20)
 tbt.to_json(output_dir)
     '''.format(num_turns, kqd_amplitudes_array[i], kqf_amplitudes_array[i],
                kqd_phases_array[i], kqf_phases_array[i], Nb_array[i],
