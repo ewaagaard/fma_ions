@@ -17,11 +17,11 @@ Qy = 26.19
 Qx = 26.31
 noise_amp = np.array([5, 23, 56, 79, 105, 132.8])
 
-run_files = ['sps_run_50hz_amp_{}_tbt_ripple_scan.py'.format(i+1) for i in range(len(noise_amp))]
+run_files = ['sps_run_50hz_amp_{}_tbt_ripple_scan_209.py'.format(i+1) for i in range(len(noise_amp))]
 
 # Define script and folder names
 script_names = run_files.copy()
-folder_names = ['sps_50hz_amp_{:.2f}'.format(noise_amp[i]) for i in range(len(noise_amp))]
+folder_names = ['sps_50hz_amp_{:.2f}_209'.format(noise_amp[i]) for i in range(len(noise_amp))]
 string_array = ['Summed norm. FFT 50 Hz amplitude = {:.2f}'.format(noise_amp[i]) for i in range(len(noise_amp))]    
 
 # Define arrays with noise levels and components
