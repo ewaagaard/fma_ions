@@ -15,7 +15,7 @@ master_name = 'Q26_Pb_ions_Qy_scan_ibs_50_150_300_600_Hz_ripple_adaptive_sc_no_c
 num_turns = 130_000 # corresponds to 3s for SPS ions at flat bottom
 Qx = 26.31
 Qy_range = np.arange(26.10, 26.26, 0.01)
-run_files = ['sps_run_{}_tbt_qx_26dot31.py'.format(i+1) for i in range(len(Qy_range))]
+run_files = ['sps_run_{}_tbt_qx_26dot31_no_comp.py'.format(i+1) for i in range(len(Qy_range))]
 
 # Define script and folder names
 script_names = run_files.copy()
