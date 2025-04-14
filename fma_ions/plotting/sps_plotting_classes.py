@@ -163,13 +163,15 @@ class SPS_Plotting:
         ax2.fill_between(twiss.s, twiss.y - n_sigmas * sigy, twiss.y + n_sigmas * sigy, alpha=0.5, color='red')
         
         # Available sigmas to aperture
-        fig3, ax3 = plt.subplots(1, 1, figsize=(10, 6), constrained_layout=True)
+        fig3, ax3 = plt.subplots(1, 1, figsize=(9, 6), constrained_layout=True)
         ax3.plot(sv_ap.s, n_sigx_aper, color="blue", alpha=0.85, label='X')
         ax3.plot(sv_ap.s, n_sigy_aper, color="red", alpha=0.85, label='Y')
         ax3.grid(alpha=0.5)
         ax3.set_ylabel('Available aperture [$\sigma_{x,y}$]')
         ax3.set_xlabel('s [m]')
-        ax3.legend(fontsize=10)
+        ax3.legend(fontsize=14)
+        ax3.set_ylim(0.0, 20.1)
+        fig3.savefig('SPS_Q26_available_aperture.png', dpi=350)
 
         plt.show()
 
@@ -901,6 +903,28 @@ class SPS_Plotting:
         if master_job_name is None:
             master_job_name = 'scan_result_final_emittances_and_bunch_intensity'
         fig3.savefig('output_transverse/emittance_evolution_qGaussian_fits_{}.png'.format(master_job_name), dpi=250)
+
+        # Also plot losses
+        fig33, ax33 = plt.subplots(1, 1, figsize=(6.5, 4.5), constrained_layout=True)
+        if apply_uniform_xscale:
+            xx = np.arange(len(scan_array_for_x_axis))
+            xlabels = ['{:.2f}'.format(x) for x in scan_array_for_x_axis]
+        else:
+            xx = scan_array_for_x_axis
+            
+        ax33.plot(xx, 100*(1-transmission), c='red', marker='o', label='Transmission')
+        ax33.grid(alpha=0.55)
+        ax33.set_xlabel(label_for_x_axis)
+        ax33.set_ylabel("Losses [%]")
+        if extra_text_string is not None:
+            ax33.text(0.024, 0.92, extra_text_string, transform=ax33.transAxes, fontsize=12.8)
+        if custom_xticks is not None:
+            ax33.set_xticks(custom_xticks)
+        else:
+            ax33.set_xticks(xx)
+        if transmission_range is not None:
+            ax33.set_ylim(transmission_range[0], transmission_range[1])
+        fig33.savefig('output_transverse/losses_{}.png'.format(master_job_name), dpi=250)
 
         # Also plot q-values
         fig1, ax1 = plt.subplots(1, 1, figsize=(8, 6), constrained_layout=True)
