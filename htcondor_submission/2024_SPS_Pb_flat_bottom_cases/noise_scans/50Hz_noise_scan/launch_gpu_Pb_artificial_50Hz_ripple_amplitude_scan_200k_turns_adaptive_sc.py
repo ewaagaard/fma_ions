@@ -62,4 +62,4 @@ for i, script in enumerate(script_names):
 sub.copy_master_plot_script(folder_names, string_array)
 sub.copy_plot_script_emittances_for_scan(master_name, folder_names, scan_array_for_x_axis=k_amp_array,
                                              label_for_x_axis='Summed 50 Hz norm. FFT noise amplitude', 
-                                             extra_text_string='$Q_{x, y}$ = 26.31, 26.19 - q-Gaussian beam\n Frozen SC, IBS, 15% $\\beta$-beat + non-linear magnet errors')
+                                             extra_text_string='$Q_{x, y}$ = 26.31, 26.19 - q-Gaussian beam\nAdaptive SC, IBS, 15% $\\beta$-beat + non-linear magnet errors')
