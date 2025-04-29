@@ -221,7 +221,7 @@ class SPS_Kick_Plotter:
                         
             ax_spectrum[plane].semilogy(xf, yf, color=colors[plane], label='TBT tune spectrum')
             ax_spectrum[plane].set_ylabel(f'{plane}: norm. FFT amplitude')
-            ax_spectrum[plane].set_xlim(0, 1500)
+            ax_spectrum[plane].set_xlim(transfer_function_bounds[0], transfer_function_bounds[1])
             ax_spectrum[plane].set_ylim(1e-7, 1e-1)
             ax_spectrum[plane].grid(True)
             
@@ -241,7 +241,7 @@ class SPS_Kick_Plotter:
             # Add markers at 50 Hz intervals
             if ripple_freqs is not None:
                 marker_indices = [np.argmin(np.abs(xf - f)) for f in ripple_freqs]
-                ax_spectrum[planes[i]].plot(xf[marker_indices], 1.0/N * np.abs(yf)[marker_indices], 
+                ax_spectrum[planes[i]].plot(xf[marker_indices], np.abs(yf)[marker_indices], 
                                 'r.', markersize=8, label='50 Hz intervals')
                 
             # Compute and append transfer function
