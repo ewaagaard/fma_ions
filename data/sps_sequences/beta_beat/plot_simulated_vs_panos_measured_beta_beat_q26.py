@@ -94,11 +94,12 @@ ax[1].set_xlabel('s [m]')
 fig.savefig('plots/SPS_Q26_ion_tunes_beta_beat_measurements.png', dpi=250)
 
 # Generate figure
+amp_color = 'cyan'
 fig1, ax1 = plt.subplots(2,1, figsize=(10,6), sharex=True, constrained_layout=True)
-ax1[0].errorbar(bb_dict['sx_amplitude'], bb_dict['dbb_H_amplitude_avg'], yerr=bb_dict['dbb_H_amplitude_std'], fmt='o', label='Amplitude method')
-ax1[0].errorbar(bb_dict['sx_phase'], bb_dict['dbb_H_phase_avg'], yerr=bb_dict['dbb_H_phase_std'], fmt='o', label='Phase method')
-ax1[1].errorbar(bb_dict['sx_amplitude'], bb_dict['dbb_H_amplitude_avg'], yerr=bb_dict['dbb_H_amplitude_std'], fmt='o', label='Amplitude method')
-ax1[1].errorbar(bb_dict['sx_phase'], bb_dict['dbb_H_phase_avg'], yerr=bb_dict['dbb_H_phase_std'], fmt='o', label='Phase method')
+ax1[0].errorbar(bb_dict['sx_amplitude'], bb_dict['dbb_H_amplitude_avg'], yerr=bb_dict['dbb_H_amplitude_std'], marker='o', ls='None', color='k', ecolor=amp_color, markerfacecolor=amp_color, label='Amplitude method')
+ax1[0].errorbar(bb_dict['sx_phase'], bb_dict['dbb_H_phase_avg'], yerr=bb_dict['dbb_H_phase_std'], marker='s', color='k', ls='None', ecolor='darkorange', markerfacecolor='darkorange', label='Phase method')
+ax1[1].errorbar(bb_dict['sx_amplitude'], bb_dict['dbb_H_amplitude_avg'], yerr=bb_dict['dbb_H_amplitude_std'], marker='o', color='k', ls='None', ecolor=amp_color,  markerfacecolor=amp_color, label='Amplitude method')
+ax1[1].errorbar(bb_dict['sx_phase'], bb_dict['dbb_H_phase_avg'], yerr=bb_dict['dbb_H_phase_std'], marker='s', color='k', ls='None', ecolor='darkorange', markerfacecolor='darkorange', label='Phase method')
 ax1[0].set_ylabel('$\Delta \\beta_{x} / \\beta_{x}$ [%]')
 ax1[1].set_ylabel('$\Delta \\beta_{y} / \\beta_{y}$ [%]')
 
@@ -110,7 +111,7 @@ else:
     ax1[1].plot(tw0.s[bpm_y_ind], 100*beat_y, color='green', marker='v', label=simulated_label)
 
 for a in ax1:
-    a.legend(fontsize=10.5)
+    a.legend(fontsize=11.5)
     a.grid(alpha=0.55)
 ax1[1].set_xlabel('s [m]')
     
