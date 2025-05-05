@@ -981,13 +981,34 @@ class SPS_Plotting:
         turns_to_plot = 100*index_to_plot # 100 tursn for each index
         # Create empty arrays
         n_profiles = len(index_to_plot)
+        Nb = np.zeros(n_profiles)
         exn = np.zeros(n_profiles)
         q_vals_X = np.zeros(n_profiles)
         q_errors_X = np.zeros(n_profiles)
         eyn = np.zeros(n_profiles)
         q_vals_Y = np.zeros(n_profiles)
         q_errors_Y = np.zeros(n_profiles) 
-          
+        
+        ### Convert beam sizes to emittances ###
+        # If particles are stored
+        try:
+            part = tbt_dict['particles_i']
+            gamma = part['gamma0'][0]
+            beta_rel = part['beta0'][0]
+        except KeyError:
+            print('\nCould not load particle dictionary, extracting info from default Pb line:')
+            #sps_seq = SPS_sequence_maker()
+            #line, twiss_sps = sps_seq.load_xsuite_line_and_twiss()
+            #part = line.particle_ref
+            #gamma = part.gamma0[0]
+            #beta_rel = part.beta0[0]
+            
+            # For now, load fixed values directly
+            gamma = 7.315750557500678
+            beta_rel = 0.9906136825763874
+            
+            print('\n')
+        
         for i, ind in enumerate(index_to_plot):
             print('Fitting WS profile turn {}'.format(turns_to_plot[i]))
 
@@ -1021,10 +1042,6 @@ class SPS_Plotting:
             sigma_raw_X = np.abs(popt_X[2])
             sigma_raw_Y = np.abs(popt_Y[2])
 
-            ### Convert beam sizes to emittances ###
-            part = tbt_dict['particles_i']
-            gamma = part['gamma0'][0]
-            beta_rel = part['beta0'][0]
 
             # Fit q-Gaussian to final X and Y profiles, to latest curves - initial guess from Gaussian
             q0 = 1.02
@@ -1050,6 +1067,7 @@ class SPS_Plotting:
             eyf = sigmaY_betatronic**2 / bety
             exn[i] =  exf * beta_rel * gamma 
             eyn[i] =  eyf * beta_rel * gamma 
+            Nb[i] = tbt_dict['Nb'][turns_to_plot[i]]
 
             ax.plot(X_pos_data, fits.Q_Gaussian(X_pos_data, *popt_Q_X), ls='--', color='lime', label='q-Gaussian fit')
             ax2.plot(Y_pos_data, fits.Q_Gaussian(Y_pos_data, *popt_Q_Y), ls='--', color='lime', label='q-Gaussian fit')
@@ -1058,7 +1076,6 @@ class SPS_Plotting:
             fig.savefig('{}/X_profile_turn_{}.png'.format(output_folder_name, turns_to_plot[i]), dpi=250)
             fig2.savefig('{}/Y_profile_turn_{}.png'.format(output_folder_name, turns_to_plot[i]), dpi=250)
 
-            del fig, fig2
             plt.close()
 
         # Plot fitted emittances and bunch intensity 
@@ -1091,7 +1108,7 @@ class SPS_Plotting:
         fig1.savefig('{}/0001_q_value_evolution_qGaussian_fits.png'.format(output_folder_name), dpi=250)
         plt.close()
 
-        return turns_to_plot, exn, eyn
+        return turns_to_plot, exn, eyn, Nb
 
 
     def plot_multiple_sets_of_tracking_data(self, 
