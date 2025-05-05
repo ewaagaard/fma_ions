@@ -108,6 +108,7 @@ class SPS_Flat_Bottom_Tracker:
                   distribution_type='gaussian',
                   add_tune_ripple=False,
                   load_full_spectrum = False, 
+                  full_ripple_date = '2024_11_25',
                   apply_50_Hz_comp = True,
                   kqf_amplitudes = np.array([1.0141062492337905e-06]),
                   kqd_amplitudes = np.array([1.0344583265981035e-06]),
@@ -172,6 +173,8 @@ class SPS_Flat_Bottom_Tracker:
             whether to add external tune ripple from the Tune_Ripple_SPS class
         load_full_spectrum : bool
             Set to True to load saved full spectrum signals, False to generate artificial signal with 50, 150 or specified components
+        full_ripple_date : str
+            if load_full_spectrum == True, decide from which date to load. Options are '2024_11_25' or '2024_10_30' (not as good compensation)
         apply_50_Hz_comp = True
             If load_full_spectrum is True, set to True to load signals with 50 Hz compensation
         kqf_amplitudes : np.ndarray
@@ -498,11 +501,11 @@ class SPS_Flat_Bottom_Tracker:
             else:
                 # --- Load saved signals with transfer function applied ---
                 if apply_50_Hz_comp:
-                    kqd_values_tf_applied_file = '{}/tune_ripple/kqd_values_comp_tf_applied.npy'.format(sequence_path)
-                    kqf_values_tf_applied_file = '{}/tune_ripple/kqf_values_comp_tf_applied.npy'.format(sequence_path)
+                    kqd_values_tf_applied_file = '{}/tune_ripple/kqd_values_comp_tf_applied_{}.npy'.format(sequence_path, full_ripple_date)
+                    kqf_values_tf_applied_file = '{}/tune_ripple/kqf_values_comp_tf_applied_{}.npy'.format(sequence_path, full_ripple_date)
                 else:
-                    kqd_values_tf_applied_file = '{}/tune_ripple/kqd_values_tf_applied.npy'.format(sequence_path)
-                    kqf_values_tf_applied_file = '{}/tune_ripple/kqf_values_tf_applied.npy'.format(sequence_path)
+                    kqd_values_tf_applied_file = '{}/tune_ripple/kqd_values_tf_applied_{}.npy'.format(sequence_path, full_ripple_date)
+                    kqf_values_tf_applied_file = '{}/tune_ripple/kqf_values_tf_applied_{}.npy'.format(sequence_path, full_ripple_date)
                 
                 print('Attemping to load values from {}'.format(kqd_values_tf_applied_file))
                 
