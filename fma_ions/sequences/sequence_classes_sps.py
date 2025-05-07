@@ -915,8 +915,9 @@ class SPS_sequence_maker:
         if add_aperture:
             print('\nAdded aperture!\n')
             madx.use(sequence='sps')
-            madx.call('{}/APERTURE_SPS_LS2_30-SEP-2020.seq'.format(aperture_fixed_path))
-            
+            madx.call('{}/APERTURE_SPS_LS2_30-SEP-2020.seq'.format(aperture_fixed_path))  # 2020 values used until now
+            #madx.call('{}/APERTURE_EYETS 2024-2025.seq'.format(aperture_fixed_path)) # 2025 value, but somehow fault aperture
+                 
         # Cycle line to lowest dispersion location
         if make_thin:
             madx.use(sequence='sps')
