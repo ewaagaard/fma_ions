@@ -87,7 +87,8 @@ class SPS_Kick_Plotter:
     
     
     def plot_tbt_data_to_spectrum(self, tbt_dict=None, output_folder = 'output_tbt', t4s = 40, i_start = 200,
-                             Q_int = 26, ripple_freqs=None, ion_type='Pb', transfer_function_bounds = [10., 1500.]):
+                             Q_int = 26, ripple_freqs=None, ion_type='Pb', transfer_function_bounds = [10., 1500.],
+                             add_50_Hz_markers=False):
         """
         Convert turn-by-turn data to normalized FFT spectrum
         
@@ -109,6 +110,8 @@ class SPS_Kick_Plotter:
             'Pb' or 'proton'
         transfer_function_bounds : list
             upper and lower limit to analyze for transfer function
+        add_50_Hz_markers : bool
+            whether to add red dots for 50 Hz harmonics
         """
         # Extra path lengths from kicks
         extra_time = 0.0 #0.55e-6 # to account for extra path length
@@ -239,7 +242,7 @@ class SPS_Kick_Plotter:
             ax_spectrum[plane].legend(fontsize=13)
             
             # Add markers at 50 Hz intervals
-            if ripple_freqs is not None:
+            if ripple_freqs is not None and add_50_Hz_markers:
                 marker_indices = [np.argmin(np.abs(xf - f)) for f in ripple_freqs]
                 ax_spectrum[planes[i]].plot(xf[marker_indices], np.abs(yf)[marker_indices], 
                                 'r.', markersize=8, label='50 Hz intervals')
