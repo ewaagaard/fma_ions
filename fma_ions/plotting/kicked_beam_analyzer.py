@@ -183,7 +183,7 @@ class SPS_Kick_Plotter:
         # Setup plot style
         colors = {'H': 'b', 'V': 'g'}
         colors2 = ['cyan', 'lime']
-        fig, (ax_tune, ax_spectrum_H, ax_spectrum_V) = plt.subplots(3, 1, figsize=(12,11), constrained_layout=True)
+        fig, (ax_tune, ax_spectrum_H, ax_spectrum_V) = plt.subplots(3, 1, figsize=(12, 8), constrained_layout=True)
         ax_spectrum = {
             'H': ax_spectrum_H,
             'V': ax_spectrum_V
@@ -223,9 +223,9 @@ class SPS_Kick_Plotter:
             xf = fftshift(fftfreq(N, T))
                         
             ax_spectrum[plane].semilogy(xf, yf, color=colors[plane], label='TBT tune spectrum')
-            ax_spectrum[plane].set_ylabel(f'{plane}: norm. FFT amplitude')
+            ax_spectrum[plane].set_ylabel(f'{plane}: norm. FFT amp.')
             ax_spectrum[plane].set_xlim(transfer_function_bounds[0], transfer_function_bounds[1])
-            ax_spectrum[plane].set_ylim(1e-7, 1e-1)
+            ax_spectrum[plane].set_ylim(1e-7, 1e-2)
             ax_spectrum[plane].grid(True)
             
             tbt_spectrum[plane] = yf
@@ -252,7 +252,8 @@ class SPS_Kick_Plotter:
             transfer_function[planes[i]] = tbt_spectrum[planes[i]] / yf_knob
         
         # Finalize plots
-        ax_tune.set_title('Tune evolution TBT vs knobs data')
+        #ax_tune.set_title('Tune evolution TBT vs knobs data')
+        ax_spectrum['H'].tick_params(axis='x', which='both', labelbottom=False)
         ax_tune.set_xlabel('Turn')
         ax_tune.set_ylabel('Tune')
         ax_tune.legend(fontsize=13)
