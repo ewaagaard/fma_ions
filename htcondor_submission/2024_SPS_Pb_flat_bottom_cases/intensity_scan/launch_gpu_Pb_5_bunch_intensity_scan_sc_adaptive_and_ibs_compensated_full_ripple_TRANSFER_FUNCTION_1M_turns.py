@@ -65,7 +65,7 @@ sps = fma_ions.SPS_Flat_Bottom_Tracker(qx0={:.3f}, qy0={:.3f}, num_turns=n_turns
 tbt = sps.track_SPS(which_context='gpu', distribution_type='qgaussian', beamParams=beamParams, install_SC_on_line=True, add_beta_beat=True, 
                     add_non_linear_magnet_errors=True, apply_kinetic_IBS_kicks=True, ibs_step = 2000, add_tune_ripple=True, ripple_freqs = ripple_freqs,
                     kqf_amplitudes = kqf_amplitudes, kqd_amplitudes = kqd_amplitudes, kqf_phases=kqf_phases, kqd_phases=kqd_phases,
-                    SC_adaptive_interval_during_tracking=100, store_particle=True)
+                    SC_adaptive_interval_during_tracking=100, store_particles=True)
 tbt.to_json(output_dir)
     '''.format(num_turns, Nb_array[i], exn_array[i], eyn_array[i], Qx, Qy)
     )
