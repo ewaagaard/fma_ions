@@ -1,0 +1,108 @@
+# .readthedocs.yaml
+# Read the Docs configuration file
+# See https://docs.readthedocs.io/en/stable/config-file/v2.html for details
+
+version: 2
+
+# Build documentation in the docs/ directory with Sphinx
+sphinx:
+  configuration: docs/conf.py
+  fail_on_warning: true
+  builder: html
+
+# Build documentation with MkDocs
+#mkdocs:
+#  configuration: mkdocs.yml
+
+# Optionally build your docs in additional formats such as PDF and ePub
+formats:
+  - pdf
+  - epub
+
+# Optionally set the version of Python and requirements required to build your docs
+python:
+  version: "3.10"
+  install:
+    - requirements: requirements-docs.txt
+    - method: pip
+      path: .
+      extra_requirements:
+        - docs
+
+# Optionally build documentation for specific branches and tags
+# branches:
+#   main:
+#     name: main
+#   latest:
+#     name: latest
+#   stable:
+#     name: stable
+#     type: tag
+
+# Optionally include additional paths in the build
+tools:
+  apt_packages:
+    - graphviz
+    - texlive-latex-extra
+    - texlive-fonts-recommended
+    - latexmk
+    - dvipng
+
+# Build documentation with Sphinx v2 by default
+sphinx:
+  configuration: docs/conf.py
+  fail_on_warning: false
+
+# Build PDF and ePub too
+formats: all
+
+# Optionally set the version of Python and requirements required to build your docs
+python:
+  version: 3.10
+  install:
+    - method: pip
+      path: .
+      extra_requirements:
+        - docs
+
+# Optionally build documentation for specific branches and tags
+build:
+  os: ubuntu-22.04
+  tools:
+    python: "3.10"
+  jobs:
+    post_create_environment:
+      - pip install -U pip
+      - pip install -U setuptools wheel
+
+# Optionally include additional paths in the build
+sphinx:
+  configuration: docs/conf.py
+  builder: html
+  fail_on_warning: false
+  jobs:
+    post_build:
+      - echo "Documentation built successfully!"
+
+# Optionally include additional paths in the build
+tools:
+  apt_packages:
+    - graphviz
+    - texlive-latex-extra
+    - texlive-fonts-recommended
+    - latexmk
+    - dvipng
+    - texlive-latex-recommended
+    - texlive-fonts-extra
+    - texlive-latex-extra
+    - latex-cjk-all
+    - latex-xcolor
+    - latex-ucs
+    - latex-ucs-doc
+    - latex-ucs-utils
+    - latex-ucs-extra
+    - latex-ucs-extra-doc
+    - latex-ucs-extra-utils
+    - latex-ucs-extra-extra
+    - latex-ucs-extra-extra-doc
+    - latex-ucs-extra-extra-utils

@@ -1,0 +1,11 @@
+include README.md
+include LICENSE
+include pyproject.toml
+include requirements*.txt
+recursive-include fma_ions *.py
+recursive-include docs *
+recursive-include examples *
+recursive-include tests *
+recursive-exclude * __pycache__
+recursive-exclude * *.py[co]
+recursive-exclude * .DS_Store

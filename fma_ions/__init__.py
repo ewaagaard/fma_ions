@@ -1,3 +1,11 @@
+"""fma_ions - A Python package for Frequency Map Analysis of ion beams at CERN.
+
+This package provides tools for tracking particles and studying the behavior of ion beams
+with effects such as space charge, intra-beam scattering, and tune ripple.
+"""
+
+__version__ = "0.1.0"
+
 from .fma_ions import FMA, FMA_plotter
 
 from .sequences import SPS_sequence_maker
