@@ -83,13 +83,20 @@ Quick Start
    fma.plot_tune_diagram(Qx, Qy, d)
 
 API Reference
-------------
+============
 
 .. toctree::
    :maxdepth: 2
    :caption: API Reference
 
    autoapi/index
+
+   If the API reference doesn't appear, make sure you have run:
+   
+   .. code-block:: bash
+   
+      sphinx-apidoc -o docs/autoapi/ ../fma_ions/
+      make html
 
 Indices and tables
 ==================
