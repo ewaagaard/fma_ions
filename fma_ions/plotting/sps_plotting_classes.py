@@ -762,10 +762,16 @@ class SPS_Plotting:
     
                     ### Convert beam sizes to emittances if saved particles, otherwise take numerical object ###
                     try:
-                        part = tbt_dict['particles_i']
-                        gamma = part['gamma0'][0]
-                        beta_rel = part['beta0'][0]
-        
+                        try:
+                            part = tbt_dict['particles_i']
+                            gamma = part['gamma0'][0]
+                            beta_rel = part['beta0'][0]
+                        except KeyError:
+                            print('\nCould not load particle dictionary, extracting info from default Pb line:')
+                            # For now, load fixed values directly
+                            gamma = 7.315750557500678
+                            beta_rel = np.sqrt(1 - 1/gamma**2) # value for Pb 
+
                         # Fit q-Gaussian to final X and Y profiles, to latest curves - initial guess from Gaussian
                         q0 = 1.02
                         p0_qX = [popt_X[1], q0, 1/popt_X[2]**2/(5-3*q0), 2*popt_X[0]]
@@ -978,7 +984,9 @@ class SPS_Plotting:
         
         index_to_plot = np.arange(0, len(tbt_dict['monitorH_x_intensity'])+1, profile_step)
         index_to_plot[-1] -= 1 # correct counting index 
-        turns_to_plot = 100*index_to_plot # 100 tursn for each index
+        turns_to_plot = 100*index_to_plot # 100 turns for each WS measurement index
+        seconds_to_plot = tbt_dict['Seconds'][turns_to_plot]
+        
         # Create empty arrays
         n_profiles = len(index_to_plot)
         Nb = np.zeros(n_profiles)
@@ -1108,7 +1116,7 @@ class SPS_Plotting:
         fig1.savefig('{}/0001_q_value_evolution_qGaussian_fits.png'.format(output_folder_name), dpi=250)
         plt.close()
 
-        return turns_to_plot, exn, eyn, Nb
+        return turns_to_plot, seconds_to_plot, exn, eyn, Nb, q_vals_X, q_vals_Y
 
 
     def plot_multiple_sets_of_tracking_data(self, 
