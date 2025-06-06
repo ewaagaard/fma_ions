@@ -671,8 +671,8 @@ class SPS_Plotting:
                     Nb[0, i]  =  tbt_dict['Nb'][0] # initial
                                     
                     # Plot simulated particle profile
-                    fig, ax = plt.subplots(1, 1, figsize = (8, 6), constrained_layout=True)
-                    fig2, ax2 = plt.subplots(1, 1, figsize = (8, 6), constrained_layout=True)
+                    fig, ax = plt.subplots(1, 1, figsize = (6, 4.5), constrained_layout=True)
+                    fig2, ax2 = plt.subplots(1, 1, figsize = (6, 4.5), constrained_layout=True)
     
                     # Plot measured profiles if desired
                     if load_measured_profiles:
@@ -685,7 +685,7 @@ class SPS_Plotting:
                             # Convert to m, normalize height
                             x_pos *= 1e-3
                             x_measured_bin_heights_sorted = np.array(sorted(x_prof_avg, reverse=True))
-                            x_measured_height_max_avg = np.mean(x_measured_bin_heights_sorted[:5]) # take average of top 3 values
+                            x_measured_height_max_avg = np.mean(x_measured_bin_heights_sorted[:3]) # take average of top 3 values
                             x_prof_avg_norm = x_prof_avg / x_measured_height_max_avg
     
                             # Fit Gaussian, center the profile and re-adjust heights
@@ -705,7 +705,7 @@ class SPS_Plotting:
                             # Convert to m, normalize height
                             y_pos *= 1e-3
                             y_measured_bin_heights_sorted = np.array(sorted(y_prof_avg, reverse=True))
-                            y_measured_height_max_avg = np.mean(y_measured_bin_heights_sorted[:5]) # take average of top 3 values
+                            y_measured_height_max_avg = np.mean(y_measured_bin_heights_sorted[:3]) # take average of top 3 values
                             y_prof_avg_norm = y_prof_avg / y_measured_height_max_avg
                             # Fit Gaussian, center the profile and re-adjust heights
                             popt_Y_meas, _ = fits.fit_Gaussian(y_pos, y_prof_avg_norm, p0=(1.0, 0.0, 0.02))
@@ -717,7 +717,7 @@ class SPS_Plotting:
     
                     # Select index to plot, e.g last set of 100 turns
                     index_to_plot = [0, -1] #[-1] #
-                    plot_str = ['Simulated first 100 turns', 'Simulated last 100 turns'] #['Simulated, last 100 turns']
+                    plot_str = ['Simulated first 100 turns', 'Simulated,\nlast 100 turns'] #['Simulated, last 100 turns']
                     colors = ['blue', 'orange']
     
                     for j, ind in enumerate(index_to_plot):
@@ -734,7 +734,7 @@ class SPS_Plotting:
                     ax.set_xlabel('x [m]')
                     ax.set_ylabel('Normalized counts')
                     ax.set_ylim(0, 1.1)
-                    ax.text(0.02, 0.05, '{} = {:.2f}'.format(label_for_x_axis, scan_array_for_x_axis[i]), transform=ax.transAxes, fontsize=10.8)
+                    ax.text(0.02, 0.05, '{} = {:.2f}'.format(label_for_x_axis, scan_array_for_x_axis[i]), transform=ax.transAxes, fontsize=11.8)
     
                     # Plot profile of particles
                     for j, ind in enumerate(index_to_plot):
@@ -752,7 +752,7 @@ class SPS_Plotting:
                     ax2.set_ylabel('Normalized counts')
                     ax2.set_xlabel('y [m]')
                     ax2.set_ylim(0, 1.1)
-                    ax2.text(0.02, 0.05, '{} = {:.2f}'.format(label_for_x_axis, scan_array_for_x_axis[i]), transform=ax2.transAxes, fontsize=10.8)
+                    ax2.text(0.02, 0.05, '{} = {:.2f}'.format(label_for_x_axis, scan_array_for_x_axis[i]), transform=ax2.transAxes, fontsize=11.8)
     
                     # Fit Gaussian for the emittance
                     popt_X, pcov_X = fits.fit_Gaussian(X_pos_data, X_profile_data, p0=(1.0, 0.0, 0.02))
@@ -823,8 +823,8 @@ class SPS_Plotting:
                     print('exn = {:.3e}, eyn = {:.3e}'.format(exn[1, i], eyn[1, i]))
                     print('Transmission = {:3f}\n'.format(transmission[i]))
                     
-                    ax.legend(loc='upper left', fontsize=11.5)
-                    ax2.legend(loc='upper left', fontsize=11.5)
+                    ax.legend(loc='upper left', fontsize=10.5)
+                    ax2.legend(loc='upper left', fontsize=10.5)
                     fig.savefig('output_transverse/X_profiles/{}_SPS_X_Beam_Profile_WS.png'.format(output_folder), dpi=250)
                     fig2.savefig('output_transverse/Y_profiles/{}_SPS_Y_Beam_Profile_WS.png'.format(output_folder), dpi=250)
                     plt.close()
