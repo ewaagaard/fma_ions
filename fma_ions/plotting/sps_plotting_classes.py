@@ -685,7 +685,7 @@ class SPS_Plotting:
                             # Convert to m, normalize height
                             x_pos *= 1e-3
                             x_measured_bin_heights_sorted = np.array(sorted(x_prof_avg, reverse=True))
-                            x_measured_height_max_avg = np.mean(x_measured_bin_heights_sorted[:3]) # take average of top 3 values
+                            x_measured_height_max_avg = np.mean(x_measured_bin_heights_sorted[:2]) # take average of top 3 values
                             x_prof_avg_norm = x_prof_avg / x_measured_height_max_avg
     
                             # Fit Gaussian, center the profile and re-adjust heights
@@ -705,7 +705,7 @@ class SPS_Plotting:
                             # Convert to m, normalize height
                             y_pos *= 1e-3
                             y_measured_bin_heights_sorted = np.array(sorted(y_prof_avg, reverse=True))
-                            y_measured_height_max_avg = np.mean(y_measured_bin_heights_sorted[:3]) # take average of top 3 values
+                            y_measured_height_max_avg = np.mean(y_measured_bin_heights_sorted[:2]) # take average of top 3 values
                             y_prof_avg_norm = y_prof_avg / y_measured_height_max_avg
                             # Fit Gaussian, center the profile and re-adjust heights
                             popt_Y_meas, _ = fits.fit_Gaussian(y_pos, y_prof_avg_norm, p0=(1.0, 0.0, 0.02))
@@ -740,7 +740,7 @@ class SPS_Plotting:
                     for j, ind in enumerate(index_to_plot):
                         # Normalize bin heights
                         y_bin_heights_sorted = np.array(sorted(tbt_dict['monitorV_y_intensity'][ind], reverse=True))
-                        y_height_max_avg = np.mean(y_bin_heights_sorted[:3]) # take average of top 3 values
+                        y_height_max_avg = np.mean(y_bin_heights_sorted[:2]) # take average of top 3 values
                         Y_pos_data = tbt_dict['monitorV_y_grid']
                         if ind == 0:
                             Y0_profile_data = tbt_dict['monitorV_y_intensity'][ind] / y_height_max_avg ### if changes fast, take particle histogram instead
