@@ -11,8 +11,8 @@ import datetime
 dir_path = pathlib.Path(__file__).parent.absolute()
 
 # Define run files and which parameters to change
-master_name = 'Q26_O_ions_bunch_intensity_scan_adaptive_sc_ibs_with_comp_50_150_300_600_Hz_ripple_130k_turns_TRANSFER_FUNCTION_INT_SCAN_2025_06_17_MD'
-num_turns = 130_000 # corresponds to about 3 s for SPS ions at flat bottom
+master_name = 'Q26_O_ions_bunch_intensity_scan_adaptive_sc_ibs_with_comp_50_150_300_600_Hz_ripple_300k_turns_TRANSFER_FUNCTION_INT_SCAN_2025_06_17_MD'
+num_turns = 300_000 
 Qx = 26.31
 Qy = 26.25
 
@@ -21,7 +21,7 @@ Nb_array = ['24.9e8', '27.3e8', '53.64e8', '64.7e8', '77.2e8']
 #Nb_array = ['18.5e8', '21.125e8', '45.375e8', '53e8', '67.25e8'] # from wire scanner, not fully correct
 exn_array = ['0.63e-6', '0.75e-6', '1.62e-6', '1.55e-6', '1.74e-6'] 
 eyn_array = ['0.5e-6', '0.66e-6', '1.67e-6', '1.68e-6', '2.11e-6']
-run_files = ['sps_oxygen_Nb_scan_{}.py'.format(i+1) for i in range(len(Nb_array))]
+run_files = ['sps_oxygen_Nb_scan_{}_long.py'.format(i+1) for i in range(len(Nb_array))]
 
 # Define script and folder names
 script_names = run_files.copy()
