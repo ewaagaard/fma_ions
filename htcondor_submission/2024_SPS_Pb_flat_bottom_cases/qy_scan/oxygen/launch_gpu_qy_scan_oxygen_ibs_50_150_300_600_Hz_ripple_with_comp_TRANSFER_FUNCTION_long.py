@@ -15,7 +15,7 @@ master_name = 'Qy_scan_oxygen_ibs_50_150_300_600_Hz_ripple_adaptive_sc_WITH_TRAN
 num_turns = 300_000 # corresponds to 9s for SPS ions at flat bottom
 Qx = 26.31
 Qy_range = np.arange(26.12, 26.27, 0.01)
-run_files = ['sps_oxygen_run_{}_tbt_qx_26dot31.py'.format(i+1) for i in range(len(Qy_range))]
+run_files = ['sps_oxygen_run_{}_tbt_qx_26dot31_long.py'.format(i+1) for i in range(len(Qy_range))]
 
 # Define script and folder names
 script_names = run_files.copy()
