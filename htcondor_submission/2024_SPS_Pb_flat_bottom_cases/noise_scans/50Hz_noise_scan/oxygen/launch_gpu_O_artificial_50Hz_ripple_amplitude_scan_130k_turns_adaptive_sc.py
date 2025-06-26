@@ -11,11 +11,11 @@ import datetime
 dir_path = pathlib.Path(__file__).parent.absolute()
 
 # Define run files and which parameters to change
-master_name = 'SPS_oxygen_ions_artificial_50Hz_amplitude_scan_130k_turns_adaptive_SC'
+master_name = 'SPS_oxygen_ions_artificial_50Hz_amplitude_scan_130k_turns_adaptive_SC_exact'
 num_turns = 130_000 
 Qy = 26.25
 Qx = 26.31
-k_amp_array = np.array([1e-6, 2e-6, 3e-6, 4e-6, 5e-6, 6e-6, 7e-6, 8e-6])
+k_amp_array = np.array([5.38471427e-07, 1.30595127e-06, 2.05765618e-06, 2.80237664e-06, 3.54549165e-06, 3.59886481e-06])
 
 run_files = ['sps_run_artificial_50hz_amp_{}_tbt_ripple_scan_short.py'.format(i+1) for i in range(len(k_amp_array))]
 
