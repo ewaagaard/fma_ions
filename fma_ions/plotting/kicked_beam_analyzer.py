@@ -234,11 +234,11 @@ class SPS_Kick_Plotter:
         ### FFT from current spectrum ### 
         for i, key in enumerate(tunes_knob):
             ax_tune.plot(turns_tbt+t4s/2, tunes_knob[key][ind], 
-                        label=f'{planes[i]} tune from knobs k', alpha=0.85, color=colors2[i])
+                        label=f'{planes[i]} tune from optics model', alpha=0.85, color=colors2[i])
             N_knob = len(tunes_knob[key][ind])
             yf_knob = np.abs(fftshift(fft(tunes_knob[key][ind] - np.nanmean(tunes_knob[key][ind]), N_knob))) / N_knob
             xf_knob = fftshift(fftfreq(N_knob, T))
-            ax_spectrum[planes[i]].semilogy(xf_knob, yf_knob, ls='--', alpha=0.85, color=colors2[i], label='Knobs k tune spectrum')
+            ax_spectrum[planes[i]].semilogy(xf_knob, yf_knob, ls='--', alpha=0.85, color=colors2[i], label='Optics model spectrum')
             ax_spectrum[plane].legend(fontsize=13)
             
             # Add markers at 50 Hz intervals
