@@ -67,11 +67,12 @@ class BeamParameters_SPS_Binomial_2016_before_RF_capture:
 @dataclass
 class BeamParameters_SPS_Oxygen:
     """Data Container for SPS oxygen beam parameters"""
-    Nb:  float = 25e8 # half of (John, Bartosik 2021) for oxygen, assuming bunch splitting
-    sigma_z: float = 0.213 # assume same as Pb
-    q : float = 0.59 # q-Gaussian parameter after RF spill --> assume same as Pb
-    exn: float = 1.3e-6
+    Nb:  float = 23.625e8 # measured on 2025-07-03 half of (John, Bartosik 2021) used 50 for oxygen,
+    sigma_z: float = 0.26 # use 2025-07-03 WCM measurement with q-Gaussian fit
+    q : float = 0.37 # q-Gaussian parameter after RF spill --> use 2025-07-03 WCM measurement
+    exn: float = 0.9e-6
     eyn: float = 0.9e-6
+    m : float = 9 # dummy value, not needed if q-Gaussian is used
 
 @dataclass
 class BeamParameters_SPS_Proton:

@@ -11,10 +11,10 @@ import datetime
 dir_path = pathlib.Path(__file__).parent.absolute()
 
 # Define run files and which parameters to change
-master_name = 'Qy_scan_oxygen_ibs_50_150_300_600_Hz_ripple_adaptive_sc_WITH_TRANSFER_FUNCTION_130k_turns'
+master_name = 'Qy_scan_oxygen_ibs_50_150_300_600_Hz_ripple_adaptive_sc_WITH_TRANSFER_FUNCTION_130k_turns_as_03_07_2025_MD'
 num_turns = 130_000 # corresponds to 3s for SPS ions at flat bottom
 Qx = 26.31
-Qy_range = np.arange(26.12, 26.27, 0.01)
+Qy_range = np.arange(26.10, 26.28, 0.01)
 run_files = ['sps_oxygen_run_{}_tbt_qx_26dot31.py'.format(i+1) for i in range(len(Qy_range))]
 
 # Define script and folder names
@@ -37,11 +37,6 @@ output_dir = './'
 n_turns = {}
 num_part = 20_000
 
-beamParams=fma_ions.BeamParameters_SPS()
-beamParams.Nb = 75.2e8
-beamParams.exn = 1.74e-6
-beamParams.eyn = 2.11e-6
-
 # Transfer function factors
 a_50 = 1.0 #1.7170
 a_150 = 0.5098
@@ -58,7 +53,7 @@ kqd_phases = np.array([0.9985112397758237, 3.003827454851132, 0.6369886405485959
 
 # Tracking on GPU context
 sps = fma_ions.SPS_Flat_Bottom_Tracker(qx0={:.3f}, qy0={:.3f}, num_turns=n_turns, num_part=num_part)
-tbt = sps.track_SPS(ion_type='O', beamParams=beamParams, which_context='gpu', distribution_type='qgaussian', install_SC_on_line=True, add_beta_beat=True,
+tbt = sps.track_SPS(ion_type='O', which_context='gpu', distribution_type='qgaussian', install_SC_on_line=True, add_beta_beat=True,
                 add_non_linear_magnet_errors=True, apply_kinetic_IBS_kicks=True, ibs_step = 2000,
                 add_tune_ripple=True, ripple_freqs = ripple_freqs, kqf_amplitudes = kqf_amplitudes, 
                 kqd_amplitudes = kqd_amplitudes, kqf_phases=kqf_phases, kqd_phases=kqd_phases,
