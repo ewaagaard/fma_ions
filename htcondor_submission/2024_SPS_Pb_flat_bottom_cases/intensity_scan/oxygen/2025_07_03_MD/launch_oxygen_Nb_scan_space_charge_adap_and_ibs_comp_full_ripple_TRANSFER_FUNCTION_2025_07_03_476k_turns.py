@@ -25,7 +25,7 @@ Nb0 = np.array([16.58413887, 17.75226021, 21.62930679, 26.4480648 , 32.95989609]
 Nb_array = ['{:.2f}e8'.format(Nb) for Nb in Nb0]  
 exn_array = ['{:.2f}e-6'.format(exn) for exn in eyn0] # note that we artificially set eyn = exn for O8+ ions
 eyn_array = ['{:.2f}e-6'.format(eyn) for eyn in eyn0]
-run_files = ['sps_oxygen_Nb_scan_{}.py'.format(i+1) for i in range(len(Nb_array))]
+run_files = ['sps_oxygen_Nb_scan_{}_longer.py'.format(i+1) for i in range(len(Nb_array))]
 
 # Define script and folder names
 script_names = run_files.copy()
