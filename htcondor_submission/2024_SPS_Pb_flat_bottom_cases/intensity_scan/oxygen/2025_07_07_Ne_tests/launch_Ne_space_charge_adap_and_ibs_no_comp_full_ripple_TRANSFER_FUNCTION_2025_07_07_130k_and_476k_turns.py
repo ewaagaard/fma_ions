@@ -17,7 +17,7 @@ Qx = 26.31
 Qy = 26.25
 
 # Use measured 2025-06-17 O8+ SPS values
-run_files = ['sps_Ne_scan_run_{}.py'.format(i+1) for i in range(len(num_turns))]
+run_files = ['sps_Ne_no_comp_run_{}.py'.format(i+1) for i in range(len(num_turns))]
 
 # Define script and folder names
 script_names = run_files.copy()
@@ -74,6 +74,3 @@ for i, script in enumerate(script_names):
     print(f"Submitting {file_name}")
     sub.submit_GPU(file_name, master_job_name=master_job_name, job_name=folder_names[i])
 sub.copy_master_plot_script(folder_names, string_array)
-sub.copy_plot_script_emittances_for_scan(master_name, folder_names, scan_array_for_x_axis=Nb_array,
-                                             label_for_x_axis='Injected Pb ions per bunch', 
-                                             extra_text_string='$Q_{x, y}$ = 26.31, 26.25 - q-Gaussian beam\\nAdaptive SC, ~10% $\\beta$-beat + non-linear magnet errors')
