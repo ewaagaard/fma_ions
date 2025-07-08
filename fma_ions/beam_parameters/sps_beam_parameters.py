@@ -75,6 +75,16 @@ class BeamParameters_SPS_Oxygen:
     m : float = 9 # dummy value, not needed if q-Gaussian is used
 
 @dataclass
+class BeamParameters_SPS_Neon:
+    """Data Container for SPS Neon beam parameters"""
+    Nb:  float = 2.37e9 # measured on 2025-07-07 
+    sigma_z: float = 0.26 # use 2025-07-03 WCM measurement with q-Gaussian fit, assume same as oxygen
+    q : float = 0.37 # q-Gaussian parameter after RF spill --> use 2025-07-03 WCM measurement
+    exn: float = 1.03e-6 # measured on 2025-07-07 evening
+    eyn: float = 1.2e-6 # measured on 2025-07-07 evening
+    m : float = 9 # dummy value, not needed if q-Gaussian is used
+
+@dataclass
 class BeamParameters_SPS_Proton:
     """
     Data Container for SPS proton default beam parameters

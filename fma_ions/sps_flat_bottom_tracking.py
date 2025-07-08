@@ -11,7 +11,7 @@ import xpart as xp
 import xfields as xf
 import xobjects as xo
 
-from .beam_parameters import BeamParameters_SPS, BeamParameters_SPS_Binomial_2016, BeamParameters_SPS_Binomial_2016_before_RF_capture, BeamParameters_SPS_Oxygen, BeamParameters_SPS_Proton
+from .beam_parameters import BeamParameters_SPS, BeamParameters_SPS_Binomial_2016, BeamParameters_SPS_Binomial_2016_before_RF_capture, BeamParameters_SPS_Oxygen, BeamParameters_SPS_Proton, BeamParameters_SPS_Neon
 
 from .sequences import SPS_sequence_maker
 from .tune_ripple import Tune_Ripple_SPS
@@ -141,7 +141,7 @@ class SPS_Flat_Bottom_Tracker:
         Parameters:
         ----------
         ion_type : str
-            which ion to use: currently available are 'Pb' and 'O'
+            which ion to use: currently available are 'Pb' and 'O' and 'Ne'
         which_context : str
             'gpu' or 'cpu'
         add_non_linear_magnet_errors : bool
@@ -242,6 +242,8 @@ class SPS_Flat_Bottom_Tracker:
                 beamParams = BeamParameters_SPS()
             if ion_type=='O':
                 beamParams = BeamParameters_SPS_Oxygen()
+            if ion_type=='Ne':
+                beamParams = BeamParameters_SPS_Neon()
             if ion_type=='proton':
                 beamParams = BeamParameters_SPS_Proton()
                 harmonic_nb = 4620 # update harmonic number
@@ -266,7 +268,9 @@ class SPS_Flat_Bottom_Tracker:
         if ion_type=='Pb' or ion_type=='proton':
             sps = SPS_sequence_maker(ion_type=ion_type, proton_optics=self.proton_optics, qx0=self.qx0, qy0=self.qy0)
         elif ion_type=='O':
-            sps = SPS_sequence_maker(ion_type='O', Q_PS=4., Q_SPS=8., m_ion=15.9949, proton_optics=self.proton_optics, qx0=self.qx0, qy0=self.qy0) 
+            sps = SPS_sequence_maker(ion_type='O', Q_PS=4., Q_SPS=8., m_ion=15.9949, proton_optics=self.proton_optics, qx0=self.qx0, qy0=self.qy0)
+        elif ion_type=='Ne':
+            sps = SPS_sequence_maker(ion_type='Ne', Q_PS=5., Q_SPS=10., m_ion=20.1797, proton_optics=self.proton_optics, qx0=self.qx0, qy0=self.qy0)
         else:
             raise ValueError('Only Pb and O ions implemented so far!')
         

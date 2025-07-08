@@ -46,7 +46,7 @@ class SPS_sequence_maker:
     optics: str 
         absolute path to optics repository -> cloned from https://gitlab.cern.ch/acc-models
     """
-    ion_type: str = 'Pb' # Define beam type - default is Pb
+    ion_type: str = 'Pb' # Define beam type - default is Pb, also O, Ne are possible
     qx0: float = 26.30
     qy0: float = 26.19
     dq1: float = -0.367 if ion_type == 'Pb' else 0.174 # ion values measured 2024-11-19, proton vals: knobs + Ingrid
