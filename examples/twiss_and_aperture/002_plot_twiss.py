@@ -29,6 +29,6 @@ spdisp.set_xlabel('s [m]')
 spdisp.legend(fontsize=12, loc='upper right')
 spdisp.grid(alpha=0.45)
 
-spbet.set_xlim(-0.1, 1650)
+spbet.set_xlim(-0.1, 1151.0) # one sixth
 fig1.savefig('SPS_Q26_twiss_function.png', dpi=350)
 plt.show()
