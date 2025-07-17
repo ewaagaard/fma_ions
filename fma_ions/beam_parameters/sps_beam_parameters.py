@@ -67,7 +67,7 @@ class BeamParameters_SPS_Binomial_2016_before_RF_capture:
 @dataclass
 class BeamParameters_SPS_Oxygen:
     """Data Container for SPS oxygen beam parameters"""
-    Nb:  float = 23.625e8 # measured on 2025-07-03 half of (John, Bartosik 2021) used 50 for oxygen,
+    Nb:  float = 30.4e8 # updated value for Qy scan #23.625e8 # measured on 2025-07-03 half of (John, Bartosik 2021) used 50 for oxygen,
     sigma_z: float = 0.26 # use 2025-07-03 WCM measurement with q-Gaussian fit
     q : float = 0.37 # q-Gaussian parameter after RF spill --> use 2025-07-03 WCM measurement
     exn: float = 0.9e-6
