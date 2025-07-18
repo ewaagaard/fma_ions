@@ -15,11 +15,11 @@ N = len(t)
 # Signal parameters
 I_dc = 70.0  # DC current (A)
 I_50hz = 0.001  # 50 Hz component amplitude (A) - at the threshold
-I_100hz = 0.0005  # 100 Hz harmonic (A)
-I_150hz = 0.0003  # 150 Hz harmonic (A)
+I_100hz = 0.0 #0.0005  # 100 Hz harmonic (A)
+I_150hz = 0.0#0.0003  # 150 Hz harmonic (A)
 
 # Add some broadband noise to simulate other fluctuations
-noise_level = 0.003  # A (RMS)
+noise_level = 0.0#0.003  # A (RMS)
 
 # Create synthetic DCCT signal
 current = (I_dc + 
