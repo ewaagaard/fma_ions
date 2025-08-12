@@ -14,7 +14,7 @@ import datetime
 dir_path = pathlib.Path(__file__).parent.absolute()
 
 # Define run files and which parameters to change
-master_name = 'Qy_scan_oxygen_ibs_50_150_300_600_Hz_ripple_adaptive_sc_WITH_TRANSFER_FUNCTION_300k_turns_as_03_07_2025_MD_longer'
+master_name = 'Qy_scan_oxygen_ibs_50_150_300_600_Hz_ripple_adaptive_sc_WITH_TRANSFER_FUNCTION_477k_turns_as_03_07_2025_MD_longer_50A_adjusted'
 num_turns = 477_000 # corresponds to 11s for SPS ions at flat bottom
 Qx = 26.31
 Qy_range = np.arange(26.10, 26.28, 0.01)
