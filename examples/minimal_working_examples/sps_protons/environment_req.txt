@@ -1,0 +1,43 @@
+asttokens @ file:///home/conda/feedstock_root/build_artifacts/asttokens_1733250440834/work
+certifi==2025.8.3
+cffi==1.17.1
+charset-normalizer==3.4.3
+Cython==3.1.2
+decorator @ file:///home/conda/feedstock_root/build_artifacts/decorator_1740384970518/work
+exceptiongroup @ file:///home/conda/feedstock_root/build_artifacts/exceptiongroup_1746947292760/work
+executing @ file:///home/conda/feedstock_root/build_artifacts/executing_1745502089858/work
+idna==3.10
+ipython @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_ipython_1751465044/work
+ipython_pygments_lexers @ file:///home/conda/feedstock_root/build_artifacts/ipython_pygments_lexers_1737123620466/work
+jedi @ file:///home/conda/feedstock_root/build_artifacts/jedi_1733300866624/work
+lark==1.2.2
+matplotlib-inline @ file:///home/conda/feedstock_root/build_artifacts/matplotlib-inline_1733416936468/work
+numpy @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_numpy_1753401560/work/dist/numpy-2.3.2-cp311-cp311-linux_x86_64.whl#sha256=469440884ff65cdd5601d2ff9e1c5b9bcc2d8176c37e37ec78a0666703a54157
+pandas==2.3.1
+parso @ file:///home/conda/feedstock_root/build_artifacts/parso_1733271261340/work
+pexpect @ file:///home/conda/feedstock_root/build_artifacts/pexpect_1733301927746/work
+pickleshare @ file:///home/conda/feedstock_root/build_artifacts/pickleshare_1733327343728/work
+prompt_toolkit @ file:///home/conda/feedstock_root/build_artifacts/prompt-toolkit_1744724089886/work
+ptyprocess @ file:///home/conda/feedstock_root/build_artifacts/ptyprocess_1733302279685/work/dist/ptyprocess-0.7.0-py2.py3-none-any.whl#sha256=92c32ff62b5fd8cf325bec5ab90d7be3d2a8ca8c8a3813ff487a8d2002630d1f
+pure_eval @ file:///home/conda/feedstock_root/build_artifacts/pure_eval_1733569405015/work
+pycparser==2.22
+Pygments @ file:///home/conda/feedstock_root/build_artifacts/pygments_1750615794071/work
+python-dateutil==2.9.0.post0
+pytz==2025.2
+requests==2.32.4
+scipy @ file:///home/conda/feedstock_root/build_artifacts/scipy-split_1751147407503/work/dist/scipy-1.16.0-cp311-cp311-linux_x86_64.whl#sha256=af2237dd5dad564373927317264a4269e1a7afc6dc576b23ef2fd3e6f93926c5
+six==1.17.0
+stack_data @ file:///home/conda/feedstock_root/build_artifacts/stack_data_1733569443808/work
+tqdm==4.67.1
+traitlets @ file:///home/conda/feedstock_root/build_artifacts/traitlets_1733367359838/work
+typing_extensions @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_typing_extensions_1751643513/work
+tzdata==2025.2
+urllib3==2.5.0
+wcwidth @ file:///home/conda/feedstock_root/build_artifacts/wcwidth_1733231326287/work
+xcoll==0.6.2
+xdeps==0.10.5
+xfields==0.25.1
+xobjects==0.5.2
+xpart==0.23.1
+xsuite==0.36.2
+xtrack==0.88.3
