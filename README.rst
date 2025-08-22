@@ -1,13 +1,3 @@
-.. fma_ions documentation master file, created by
-   sphinx-quickstart on Tue Jun  3 17:02:37 2025.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
-.. _fma_ions:
-
-fma_ions
-========
-
 .. image:: https://img.shields.io/pypi/v/fma_ions.svg
    :target: https://pypi.org/project/fma_ions/
    :alt: PyPI version
@@ -20,9 +10,16 @@ fma_ions
    :target: https://github.com/ewaagaard/fma_ions/actions
    :alt: Build Status
 
+.. image:: https://codecov.io/gh/ewaagaard/fma_ions/branch/main/graph/badge.svg
+   :target: https://codecov.io/gh/ewaagaard/fma_ions
+   :alt: Code Coverage
+
 .. image:: https://readthedocs.org/projects/fma-ions/badge/?version=latest
    :target: https://fma-ions.readthedocs.io/en/latest/?badge=latest
    :alt: Documentation Status
+
+fma_ions
+========
 
 A Python package for Frequency Map Analysis (FMA) of ion beams in particle accelerators, with a focus on the CERN accelerator complex.
 
@@ -50,6 +47,7 @@ For GPU support, install the appropriate version of `cupy` for your CUDA version
 
 Documentation
 -------------
+
 For full documentation, including installation, usage, and API reference, see:
 
 https://fma-ions.readthedocs.io/
@@ -82,34 +80,14 @@ Quick Start
    # Plot results
    fma.plot_tune_diagram(Qx, Qy, d)
 
-API Reference
-============
-
-.. toctree::
-   :maxdepth: 2
-   :caption: API Reference
-
-   autoapi/index
-
-   If the API reference doesn't appear, make sure you have run:
-   
-   .. code-block:: bash
-   
-      sphinx-apidoc -o docs/autoapi/ ../fma_ions/
-      make html
-
-Indices and tables
-==================
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
-
 License
 -------
+
 This project is licensed under the MIT License - see the `LICENSE <https://github.com/ewaagaard/fma_ions/blob/main/LICENSE>`_ file for details.
 
 Citation
 --------
+
 If you use this software in your research, please consider citing it.
 
 .. code-block:: bibtex
